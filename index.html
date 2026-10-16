@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dropline Route Planner</title>
+<meta name="theme-color" content="#123b3a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: phone = map on top, stop list below; wide screens = list column left, map right. Road-sign condensed type. */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#15211f; --muted:#5b6a67; --line:#d9e0de;
+  --accent:#0f5c5a; --accent-ink:#ffffff; --accent-soft:#dcecea;
+  --ok:#23773a; --fail:#c0392b; --skip:#a86400; --pend:#55636a;
+  --ok-soft:#e1f1e4; --fail-soft:#f8e3e0; --skip-soft:#f6ecd9; --pend-soft:#e8ecee;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1514; --surface:#18201f; --ink:#e7eeec; --muted:#9aaba7; --line:#2b3634;
+  --accent:#4fb3ad; --accent-ink:#06201f; --accent-soft:#163533;
+  --ok:#5cc173; --fail:#ef7a6c; --skip:#e3a54a; --pend:#9aa8ae;
+  --ok-soft:#173222; --fail-soft:#3a1f1c; --skip-soft:#352812; --pend-soft:#222b2e;
+  color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+
+.app{display:grid;grid-template-rows:auto auto 1fr;height:100%}
+header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));padding-top:max(10px,env(safe-area-inset-top));background:var(--accent);color:var(--accent-ink)}
+.brand{font:700 22px/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase;flex:1;min-width:0}
+.brand small{display:block;font:500 12px/1.2 var(--f-body);letter-spacing:.04em;text-transform:none;opacity:.85;margin-top:2px}
+.hbtn{background:transparent;border:1.5px solid currentColor;border-radius:8px;padding:6px 10px;font-weight:600;font-size:13px;color:inherit}
+
+#map{height:40vh;min-height:230px;background:var(--line);z-index:0}
+.main{overflow:auto;padding:12px max(14px,env(safe-area-inset-right)) 28px max(14px,env(safe-area-inset-left));padding-bottom:max(28px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (min-width:900px){
+  .app{grid-template-columns:440px 1fr;grid-template-rows:auto 1fr}
+  header.top{grid-column:1/-1}
+  #map{grid-column:2;grid-row:2;height:auto}
+  .main{grid-column:1;grid-row:2;border-right:1px solid var(--line)}
+}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.label{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* summary */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+.summary div{border-radius:8px;padding:6px 2px;font-variant-numeric:tabular-nums}
+.summary b{display:block;font:700 22px/1 var(--f-display)}
+.summary span{font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.s-p{background:var(--pend-soft);color:var(--pend)} .s-d{background:var(--ok-soft);color:var(--ok)}
+.s-f{background:var(--fail-soft);color:var(--fail)} .s-k{background:var(--skip-soft);color:var(--skip)}
+.metrics{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.metrics .v{font:700 20px/1 var(--f-display)}
+.badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--pend-soft);color:var(--pend)}
+.badge.live{background:var(--ok-soft);color:var(--ok)} .badge.est{background:var(--skip-soft);color:var(--skip)} .badge.stale{background:var(--fail-soft);color:var(--fail)}
+
+.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:600;background:var(--pend-soft);color:var(--ink);min-height:44px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border:1.5px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.grow{flex:1}
+
+/* address entry */
+.addr{position:relative}
+.addr input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--bg);min-height:46px}
+.addr input:focus{border-color:var(--accent);outline:none}
+.sugg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:20;overflow:hidden;max-height:300px;overflow-y:auto}
+.sugg button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 12px}
+.sugg button:last-child{border-bottom:0}
+.sugg button:hover,.sugg button:focus{background:var(--accent-soft)}
+.sugg .sub{display:block;font-size:12px;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted);margin:6px 0 0}
+.msg{font-size:13px;padding:8px 10px;border-radius:8px;background:var(--accent-soft)}
+.msg.err{background:var(--fail-soft);color:var(--fail)}
+
+/* next stop */
+.next{border:2px solid var(--accent)}
+.next h2{margin:4px 0 2px;font:700 24px/1.1 var(--f-display);text-wrap:balance}
+.next .acts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.act-d{background:var(--ok);color:#fff}.act-f{background:var(--fail);color:#fff}.act-k{background:var(--skip);color:#fff}
+
+/* stops list */
+.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.stop{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px}
+.stop.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 17px/1 var(--f-display);color:#fff;background:var(--pend);font-variant-numeric:tabular-nums}
+.num.delivered{background:var(--ok)}.num.failed{background:var(--fail)}.num.skipped{background:var(--skip)}
+.stop .txt{min-width:0}
+.stop .a{font-weight:600;overflow-wrap:anywhere}
+.stop .m{font-size:12px;color:var(--muted)}
+.chip{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:5px}
+.chip.pending{background:var(--pend-soft);color:var(--pend)}.chip.delivered{background:var(--ok-soft);color:var(--ok)}
+.chip.failed{background:var(--fail-soft);color:var(--fail)}.chip.skipped{background:var(--skip-soft);color:var(--skip)}
+.handle{touch-action:none;border:0;background:transparent;padding:8px 6px;color:var(--muted);font-size:18px;line-height:1}
+.more{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px;border-top:1px dashed var(--line)}
+.more .btn{padding:8px 10px;min-height:40px;font-size:14px}
+.sortable-ghost{opacity:.35}
+.reasons{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+
+/* sheets */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px max(16px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.sheet h3{font:700 22px/1.1 var(--f-display);margin:0 0 10px;text-transform:uppercase;letter-spacing:.02em}
+.sheet h4{margin:14px 0 6px;font-size:14px}
+.sheet ul{margin:0;padding-left:18px}
+.sheet li{margin:3px 0}
+.saved{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.saved .t{flex:1;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+.field input{border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.toggle{display:flex;gap:8px;align-items:center;font-size:14px}
+
+/* map pins */
+.pin{width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);background:#55636a}
+.pin span{transform:rotate(45deg);color:#fff;font:700 14px/1 "Barlow Condensed",Arial,sans-serif}
+.pin.delivered{background:#23773a}.pin.failed{background:#c0392b}.pin.skipped{background:#a86400}
+.pin.start{background:#0f5c5a}.pin.sel{outline:3px solid #f5c400}
+.leaflet-container{font-family:var(--f-body)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(18px,env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;z-index:2000;font-size:14px;max-width:90vw}
+@media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">Dropline<small>Route planner · prototype v1</small></div>
+    <button class="hbtn" id="btnRoutes">Routes</button>
+    <button class="hbtn" id="btnAbout">What works</button>
+  </header>
+  <div id="map" aria-label="Map of delivery stops"></div>
+  <main class="main">
+    <section class="panel" aria-label="Route summary">
+      <div class="summary">
+        <div class="s-p"><b id="cP">0</b><span>Pending</span></div>
+        <div class="s-d"><b id="cD">0</b><span>Delivered</span></div>
+        <div class="s-f"><b id="cF">0</b><span>Failed</span></div>
+        <div class="s-k"><b id="cK">0</b><span>Skipped</span></div>
+      </div>
+      <div class="metrics">
+        <div><div class="label">Stops</div><div class="v"><span id="nStops">0</span>/25</div></div>
+        <div><div class="label">Drive time</div><div class="v" id="mTime">–</div></div>
+        <div><div class="label">Distance</div><div class="v" id="mDist">–</div></div>
+        <div style="align-self:center"><span class="badge" id="optBadge">Not optimised</span></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary grow" id="btnOpt">Optimise route</button>
+        <button class="btn ghost" id="btnFit" title="Show all stops on map">Fit map</button>
+      </div>
+      <p class="msg" id="optMsg" hidden></p>
+    </section>
+
+    <section class="panel next" id="nextCard" hidden aria-label="Next stop">
+      <div class="label">Next stop <span id="nextNum"></span></div>
+      <h2 id="nextAddr"></h2>
+      <div class="m" id="nextMeta" style="font-size:13px;color:var(--muted)"></div>
+      <div class="acts">
+        <button class="btn act-d" data-next="delivered">Delivered</button>
+        <button class="btn act-f" data-next="failed">Failed</button>
+        <button class="btn act-k" data-next="skipped">Skip</button>
+      </div>
+      <div class="reasons" id="nextReasons" hidden style="margin-top:8px"></div>
+      <a class="btn ghost" id="nextNav" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;text-decoration:none">Open in Google Maps ↗</a>
+    </section>
+
+    <section class="panel" aria-label="Start location">
+      <div class="label">Start from</div>
+      <div class="addr" style="margin-top:6px">
+        <input id="startIn" type="text" placeholder="Depot or starting address" autocomplete="off" aria-label="Start address">
+        <div class="sugg" id="startSugg" hidden></div>
+      </div>
+      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="retStart"> Return to start at end of run</label>
+    </section>
+
+    <section class="panel" aria-label="Add stop">
+      <div class="label">Add delivery stop</div>
+      <div class="addr" style="margin-top:6px">
+        <input id="addrIn" type="text" placeholder="e.g. 12 George St, Parramatta" autocomplete="off" aria-label="Stop address">
+        <div class="sugg" id="addrSugg" hidden></div>
+      </div>
+      <p class="hint">Type at least 4 characters and pick a suggestion. Australian addresses only.</p>
+      <div class="row" style="margin-top:8px">
+        <button class="btn ghost grow" id="btnSample">Load 25 Parramatta test stops</button>
+        <button class="btn ghost" id="btnClear">Clear</button>
+      </div>
+      <div class="row" id="clearConfirm" hidden style="margin-top:8px">
+        <span style="flex:1">Remove all stops?</span>
+        <button class="btn" id="clearNo">Keep</button>
+        <button class="btn act-f" id="clearYes">Remove all</button>
+      </div>
+    </section>
+
+    <section aria-label="Stops">
+      <div class="row" style="justify-content:space-between;margin:2px 2px 8px">
+        <div class="label">Delivery order</div>
+        <div class="m" style="font-size:12px;color:var(--muted)">Drag ☰ or use ▲▼ to reorder</div>
+      </div>
+      <ol class="stops" id="stops"></ol>
+      <p class="hint" id="emptyHint">No stops yet. Add an address above or load the 25 test stops.</p>
+    </section>
+  </main>
+</div>
+
+<div class="sheet-bg" id="routesSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Saved routes">
+    <h3>Saved routes</h3>
+    <p class="hint" style="margin-top:0">Your current route saves automatically on this phone. Save a named copy to keep test routes side by side.</p>
+    <div class="field"><label for="saveName" class="label">Name this route</label><input id="saveName" type="text" placeholder="e.g. Friday Parramatta run"></div>
+    <button class="btn primary" id="btnSaveAs" style="width:100%">Save a copy</button>
+    <h4>On this device</h4>
+    <div id="savedList"></div>
+    <h4>Move to another device</h4>
+    <div class="row">
+      <button class="btn ghost grow" id="btnExport">Export file</button>
+      <label class="btn ghost grow" style="text-align:center">Import file<input type="file" id="importIn" accept=".json,application/json" hidden></label>
+    </div>
+    <button class="btn" id="closeRoutes" style="width:100%;margin-top:14px">Close</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="aboutSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="What works in this prototype">
+    <h3>What works in v1</h3>
+    <h4 style="color:var(--ok)">Fully working (needs internet)</h4>
+    <ul>
+      <li>Australian address search with suggestions</li>
+      <li>Up to 25 stops, numbered on the map and in the list</li>
+      <li>Drag-and-drop or ▲▼ reordering</li>
+      <li>Route optimisation of every pending stop together, using real road travel times</li>
+      <li>Road route line, total drive time and distance</li>
+      <li>Pending, delivered, failed (with reason) and skipped statuses</li>
+      <li>Auto-save and resume on this device, named copies, export/import file</li>
+    </ul>
+    <h4 style="color:var(--skip)">Demonstration only</h4>
+    <ul>
+      <li>Free public map services: no guaranteed uptime, light testing only, no live traffic</li>
+      <li>If the routing service is down, times fall back to straight-line estimates (marked "Estimate")</li>
+      <li>"Open in Google Maps" hands each stop to Google Maps for directions</li>
+      <li>The 25 test stops are public places, not real customers</li>
+    </ul>
+    <h4 style="color:var(--fail)">Not built yet</h4>
+    <ul>
+      <li>Built-in voice turn-by-turn navigation and automatic rerouting (planned for the Android app)</li>
+      <li>Delivery time windows, parcel sizes, multiple drivers</li>
+      <li>Accounts, cloud sync and business dashboard</li>
+      <li>Proof of delivery (photo or signature)</li>
+    </ul>
+    <p class="hint">Map data © OpenStreetMap contributors. Address search by Photon (komoot). Routing by the OSRM public demo server.</p>
+    <button class="btn" id="closeAbout" style="width:100%;margin-top:10px">Close</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script>
+(function(){
+"use strict";
+const MAX_STOPS = 25;
+const OSRM = "https://router.project-osrm.org";
+const PHOTON = "https://photon.komoot.io/api/";
+const NOMINATIM = "https://nominatim.openstreetmap.org/search";
+const AU_BBOX = "112.9,-43.7,153.7,-10.6";
+const PARRA = [-33.8150, 151.0030];
+const STORE_CUR = "dropline.current.v1", STORE_SAVED = "dropline.saved.v1";
+
+/* Public places used as test stops. Coordinates are approximate; they are refined by live address search after loading. */
+const SAMPLE_START = {label:"Parramatta Square, Parramatta NSW 2150", lat:-33.8156, lon:151.0040};
+const SAMPLE = [
+ ["Westfield Parramatta, Church St, Parramatta NSW 2150",-33.8176,151.0034],
+ ["Parramatta Station, Darcy St, Parramatta NSW 2150",-33.8174,151.0049],
+ ["CommBank Stadium, O'Connell St, Parramatta NSW 2150",-33.8079,151.0028],
+ ["Old Government House, Parramatta Park, Parramatta NSW 2150",-33.8113,150.9994],
+ ["Riverside Theatres, Market St, Parramatta NSW 2150",-33.8103,151.0044],
+ ["Westmead Hospital, Hawkesbury Rd, Westmead NSW 2145",-33.8025,150.9873],
+ ["Westmead Station, Hawkesbury Rd, Westmead NSW 2145",-33.8079,150.9874],
+ ["Harris Park Station, Wigram St, Harris Park NSW 2150",-33.8227,151.0076],
+ ["Elizabeth Farm, Alice St, Rosehill NSW 2142",-33.8221,151.0170],
+ ["Rosehill Gardens Racecourse, James Ruse Dr, Rosehill NSW 2142",-33.8257,151.0230],
+ ["Granville Station, Granville NSW 2142",-33.8329,151.0122],
+ ["Merrylands Station, Merrylands NSW 2160",-33.8367,150.9919],
+ ["Stockland Merrylands, McFarlane St, Merrylands NSW 2160",-33.8357,150.9893],
+ ["Guildford Station, Guildford NSW 2161",-33.8536,150.9839],
+ ["Wentworthville Station, Wentworthville NSW 2145",-33.8069,150.9711],
+ ["Pendle Hill Station, Pendle Hill NSW 2145",-33.8017,150.9555],
+ ["Toongabbie Station, Toongabbie NSW 2146",-33.7875,150.9516],
+ ["Winston Hills Mall, Caroline Chisholm Dr, Winston Hills NSW 2153",-33.7771,150.9825],
+ ["North Rocks Shopping Centre, North Rocks Rd, North Rocks NSW 2151",-33.7709,151.0187],
+ ["Carlingford Court, Pennant Hills Rd, Carlingford NSW 2118",-33.7819,151.0482],
+ ["Dundas Station, Dundas NSW 2117",-33.8044,151.0347],
+ ["Oatlands Golf Club, Bettington Rd, Oatlands NSW 2117",-33.7958,151.0254],
+ ["Ermington Shopping Centre, River Rd, Ermington NSW 2115",-33.8128,151.0571],
+ ["Parramatta Leagues Club, Eels Pl, Parramatta NSW 2150",-33.8064,151.0040],
+ ["Cumberland Hospital, Fleet St, North Parramatta NSW 2151",-33.8002,151.0007]
+];
+
+/* ---------- state ---------- */
+const uid = () => Math.random().toString(36).slice(2,10);
+const blankRoute = () => ({id:uid(), name:"", start:null, returnToStart:false, stops:[], opt:null, updatedAt:Date.now()});
+let route = loadJSON(STORE_CUR) || blankRoute();
+if (!Array.isArray(route.stops)) route = blankRoute();
+let selId = null, expandedId = null, failPickId = null;
+
+function loadJSON(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+function saveJSON(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+function persist(){ route.updatedAt = Date.now(); if(!saveJSON(STORE_CUR, route)) toast("This browser blocked saving. Your route will not survive a reload."); }
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function fmtTime(sec){ if(sec==null) return "–"; const m = Math.round(sec/60); return m < 60 ? m+" min" : Math.floor(m/60)+" h "+(m%60)+" m"; }
+function fmtDist(m){ if(m==null) return "–"; return (m/1000).toFixed(m<10000?1:0)+" km"; }
+function hav(a,b){ const R=6371000, r=Math.PI/180; const dLa=(b.lat-a.lat)*r, dLo=(b.lon-a.lon)*r;
+  const x=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
+let toastT; function toast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 3200); }
+function gmaps(s){ return "https://www.google.com/maps/dir/?api=1&destination="+s.lat+","+s.lon+"&travelmode=driving"; }
+async function fetchJSON(url, ms){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms||12000);
+  try{ const r = await fetch(url,{signal:c.signal}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); } finally{ clearTimeout(t); } }
+
+/* ---------- address search ---------- */
+function photonLabel(p){
+  const line1 = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name || "";
+  const nm = (p.name && p.street && p.name !== line1) ? p.name+", " : "";
+  const sub = p.district || p.locality || p.city || "";
+  const tail = [sub, p.state ? stateAbbr(p.state) : "", p.postcode].filter(Boolean).join(" ");
+  return (nm + [line1, tail].filter(Boolean).join(", ")).replace(/^, /,"");
+}
+function stateAbbr(s){ const m={"New South Wales":"NSW","Victoria":"VIC","Queensland":"QLD","Western Australia":"WA","South Australia":"SA","Tasmania":"TAS","Australian Capital Territory":"ACT","Northern Territory":"NT"}; return m[s]||s; }
+async function geocode(q, limit){
+  const bias = route.start || (route.stops[0]) || {lat:PARRA[0], lon:PARRA[1]};
+  try{
+    const u = PHOTON+"?q="+encodeURIComponent(q)+"&limit="+(limit||6)+"&lang=en&bbox="+AU_BBOX+"&lat="+bias.lat+"&lon="+bias.lon;
+    const j = await fetchJSON(u, 8000);
+    const out = (j.features||[]).filter(f => !f.properties.countrycode || f.properties.countrycode === "AU").map(f => ({
+      label: photonLabel(f.properties), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0]}));
+    if (out.length) return out;
+  }catch(e){ /* fall through to Nominatim */ }
+  const u2 = NOMINATIM+"?format=jsonv2&countrycodes=au&limit="+(limit||6)+"&q="+encodeURIComponent(q);
+  const j2 = await fetchJSON(u2, 9000);
+  return (j2||[]).map(r => ({label:r.display_name.replace(/, Australia$/,""), lat:+r.lat, lon:+r.lon}));
+}
+function wireSearch(input, box, onPick){
+  let timer, seq = 0, results = [];
+  const close = () => { box.hidden = true; box.innerHTML = ""; };
+  input.addEventListener("input", () => {
+    clearTimeout(timer); const q = input.value.trim();
+    if (q.length < 4){ close(); return; }
+    timer = setTimeout(async () => {
+      const my = ++seq; box.hidden = false; box.innerHTML = '<button disabled>Searching…</button>';
+      try{ results = await geocode(q); }catch(e){ results = null; }
+      if (my !== seq) return;
+      if (results === null){ box.innerHTML = '<button disabled>Address search is unavailable. Check your internet connection and try again.</button>'; return; }
+      if (!results.length){ box.innerHTML = '<button disabled>No Australian matches. Try adding the suburb.</button>'; return; }
+      box.innerHTML = results.map((r,i) => { const parts = r.label.split(", "); return '<button data-i="'+i+'">'+esc(parts[0])+'<span class="sub">'+esc(parts.slice(1).join(", "))+'</span></button>'; }).join("");
+    }, 380);
+  });
+  box.addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if(!b) return; onPick(results[+b.dataset.i]); input.value = ""; close(); });
+  input.addEventListener("keydown", e => { if(e.key === "Escape") close(); if(e.key==="Enter"){ const b = box.querySelector("button[data-i]"); if(b){ e.preventDefault(); b.click(); } } });
+  document.addEventListener("click", e => { if(!box.contains(e.target) && e.target !== input) close(); });
+}
+
+/* ---------- route editing ---------- */
+function addStop(r){
+  if (route.stops.length >= MAX_STOPS){ toast("The prototype plans up to 25 stops."); return; }
+  if (route.stops.some(s => Math.abs(s.lat-r.lat)<1e-5 && Math.abs(s.lon-r.lon)<1e-5)){ toast("That address is already on the list."); return; }
+  route.stops.push({id:uid(), label:r.label, lat:r.lat, lon:r.lon, status:"pending", reason:"", approx:!!r.approx});
+  markStale(); persist(); render(); toast("Added stop "+route.stops.length);
+}
+function setStart(r){ route.start = {label:r.label, lat:r.lat, lon:r.lon}; markStale(); persist(); render(); }
+function markStale(){ if (route.opt) route.opt.stale = true; }
+function move(id, dir){ const i = route.stops.findIndex(s=>s.id===id), j = i+dir; if(i<0||j<0||j>=route.stops.length) return;
+  [route.stops[i], route.stops[j]] = [route.stops[j], route.stops[i]]; markStale(); persist(); render(); }
+function removeStop(id){ route.stops = route.stops.filter(s=>s.id!==id); if(selId===id) selId=null; markStale(); persist(); render(); }
+function setStatus(id, st, reason){ const s = route.stops.find(x=>x.id===id); if(!s) return;
+  s.status = st; s.reason = st==="failed" ? (reason||"") : ""; s.doneAt = st==="pending" ? null : Date.now();
+  failPickId = null; persist(); render(); }
+
+/* ---------- optimisation ----------
+   All pending stops are solved together in one problem:
+   1. one OSRM "table" request returns road travel times between every pair of points (origin + up to 25 stops = 26x26),
+   2. a local solver (many starting tours + 2-opt + or-opt moves) finds the shortest-time visiting order,
+   3. one OSRM "route" request draws the road line in that order. */
+function tourCost(D, order, endIdx){ let c = 0, prev = 0; for (const k of order){ c += D[prev][k]; prev = k; } if (endIdx != null) c += D[prev][endIdx]; return c; }
+function improve(D, order, endIdx){
+  let best = tourCost(D, order, endIdx), improved = true, n = order.length;
+  while (improved){
+    improved = false;
+    for (let i = 0; i < n-1; i++) for (let j = i+1; j < n; j++){ // 2-opt: reverse a segment
+      const cand = order.slice(0,i).concat(order.slice(i,j+1).reverse(), order.slice(j+1));
+      const c = tourCost(D, cand, endIdx); if (c < best - 1e-9){ order = cand; best = c; improved = true; }
+    }
+    for (let len = 1; len <= 3; len++) for (let i = 0; i + len <= n; i++){ // or-opt: move a run of 1-3 stops
+      const seg = order.slice(i, i+len), rest = order.slice(0,i).concat(order.slice(i+len));
+      for (let p = 0; p <= rest.length; p++){ if (p === i) continue;
+        const cand = rest.slice(0,p).concat(seg, rest.slice(p));
+        const c = tourCost(D, cand, endIdx); if (c < best - 1e-9){ order = cand; best = c; improved = true; }
+      }
+    }
+  }
+  return {order, cost:best};
+}
+function solve(D, endIdx){
+  // nodes 1..m are stops; node 0 is origin; endIdx is a fixed final node (or null for an open route)
+  const m = D.length - (endIdx != null && endIdx !== 0 ? 2 : 1);
+  const nodes = Array.from({length:m}, (_,i)=>i+1);
+  if (m <= 1) return {order:nodes, cost:tourCost(D,nodes,endIdx)};
+  let seed = 12345; const rnd = () => (seed = (seed*1103515245+12345) & 0x7fffffff) / 0x7fffffff;
+  const starts = [];
+  { const left = new Set(nodes), o = []; let cur = 0; while(left.size){ let b=null,bc=Infinity; for(const k of left){ if(D[cur][k]<bc){bc=D[cur][k];b=k;} } o.push(b); left.delete(b); cur=b; } starts.push(o); } // nearest neighbour
+  { let o = []; for (const k of nodes){ let bp=0, bc=Infinity; for(let p=0;p<=o.length;p++){ const c = tourCost(D, o.slice(0,p).concat([k],o.slice(p)), endIdx); if(c<bc){bc=c;bp=p;} } o.splice(bp,0,k); } starts.push(o); } // cheapest insertion
+  for (let t = 0; t < 30; t++){ const o = nodes.slice(); for(let i=o.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [o[i],o[j]]=[o[j],o[i]]; } starts.push(o); }
+  let best = null;
+  for (const s of starts){ const r = improve(D, s, endIdx); if (!best || r.cost < best.cost) best = r; }
+  return best;
+}
+
+async function optimise(){
+  const btn = $("btnOpt"), msg = $("optMsg");
+  const done = route.stops.filter(s => s.status !== "pending"), pend = route.stops.filter(s => s.status === "pending");
+  if (pend.length < 2){ showMsg("Add at least 2 pending stops to optimise.", true); return; }
+  const startPt = route.start || null;
+  const origin = done.length ? done[done.length-1] : startPt;
+  if (!origin){ showMsg("Set a start address first, so the planner knows where the run begins.", true); return; }
+  const closed = route.returnToStart && startPt;
+  const pts = [origin].concat(pend); let endIdx = null;
+  if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
+  btn.disabled = true; btn.textContent = "Optimising…";
+  let D, Dist, method = "road";
+  try{
+    const coords = pts.map(p => p.lon.toFixed(6)+","+p.lat.toFixed(6)).join(";");
+    const j = await fetchJSON(OSRM+"/table/v1/driving/"+coords+"?annotations=duration,distance", 20000);
+    if (j.code !== "Ok" || !j.durations) throw new Error(j.message || "table failed");
+    D = j.durations.map(r => r.map(v => v == null ? 1e7 : v)); Dist = j.distances;
+  }catch(e){
+    method = "estimate";
+    D = pts.map(a => pts.map(b => hav(a,b)*1.35/ (35/3.6))); // straight line x1.35 at 35 km/h
+    Dist = pts.map(a => pts.map(b => hav(a,b)*1.35));
+  }
+  const before = tourCost(D, pend.map((_,i)=>i+1), endIdx);
+  const t0 = performance.now(); const res = solve(D, endIdx); const ms = Math.round(performance.now()-t0);
+  const ordered = res.order.map(k => pts[k]);
+  if (new Set(ordered.map(s=>s.id)).size !== pend.length) { showMsg("Optimisation failed a safety check. Your order was not changed.", true); btn.disabled=false; btn.textContent="Optimise route"; return; }
+  route.stops = done.concat(ordered);
+  let distSum = 0, prev = 0; for (const k of res.order){ distSum += Dist[prev][k]; prev = k; } if (endIdx!=null) distSum += Dist[prev][endIdx];
+  route.opt = {method, duration:res.cost, distance:distSum, before, stops:pend.length, matrix:pts.length, solveMs:ms, at:Date.now(), stale:false, geometry:null, legs:null, closed:!!closed};
+  persist(); render();
+  const saved = before - res.cost;
+  showMsg((method==="road" ? "Optimised all "+pend.length+" pending stops together using road travel times ("+pts.length+"×"+pts.length+" = "+(pts.length*pts.length)+" pairs)." :
+    "Routing service unavailable, so all "+pend.length+" stops were optimised using straight-line estimates.") +
+    (saved > 30 ? " Saves about "+fmtTime(saved)+" ("+Math.round(saved/before*100)+"%) versus the previous order." : " The previous order was already close to the best found."), method!=="road");
+  btn.disabled = false; btn.textContent = "Optimise route";
+  await drawRoad();
+}
+async function drawRoad(){
+  if (!route.opt || route.opt.method !== "road") return;
+  const done = route.stops.filter(s => s.status !== "pending"), pend = route.stops.filter(s => s.status === "pending");
+  const origin = done.length ? done[done.length-1] : route.start; if(!origin || !pend.length) return;
+  const pts = [origin].concat(pend); if (route.opt.closed && route.start) pts.push(route.start);
+  try{
+    const coords = pts.map(p => p.lon.toFixed(6)+","+p.lat.toFixed(6)).join(";");
+    const j = await fetchJSON(OSRM+"/route/v1/driving/"+coords+"?overview=full&geometries=geojson&steps=false", 20000);
+    if (j.code !== "Ok") throw new Error("route failed");
+    const r = j.routes[0];
+    route.opt.geometry = r.geometry.coordinates.map(c => [+(c[1].toFixed(5)), +(c[0].toFixed(5))]);
+    route.opt.legs = {}; pend.forEach((st,i) => { route.opt.legs[st.id] = r.legs[i].duration; }); route.opt.duration = r.duration; route.opt.distance = r.distance;
+    persist(); render();
+  }catch(e){ /* keep straight connector lines */ }
+}
+function showMsg(t, warn){ const m = $("optMsg"); m.textContent = t; m.hidden = false; m.classList.toggle("err", !!warn); }
+
+/* ---------- sample route ---------- */
+async function loadSample(){
+  route = blankRoute(); route.name = "Parramatta test run";
+  route.start = Object.assign({}, SAMPLE_START);
+  route.stops = SAMPLE.map(([label,lat,lon]) => ({id:uid(), label, lat, lon, status:"pending", reason:"", approx:true}));
+  selId = expandedId = null; $("optMsg").hidden = true;
+  persist(); render(); fitAll(); toast("Loaded 25 test stops. Checking their exact locations…");
+  let fixed = 0;
+  for (const s of route.stops){
+    try{
+      const r = (await geocode(s.label, 1))[0];
+      if (r && hav(r, s) < 2500){ s.lat = r.lat; s.lon = r.lon; s.approx = false; fixed++; }
+    }catch(e){}
+    await new Promise(r => setTimeout(r, 250));
+  }
+  persist(); render();
+  toast(fixed === route.stops.length ? "All 25 test stops located." : fixed+" of 25 test stops located exactly; the rest use approximate pins.");
+}
+
+/* ---------- map ---------- */
+const map = L.map("map", {zoomControl:true, attributionControl:true}).setView(PARRA, 13);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+const layer = L.layerGroup().addTo(map);
+function pin(cls, txt){ return L.divIcon({className:"", html:'<div class="pin '+cls+'"><span>'+txt+'</span></div>', iconSize:[28,28], iconAnchor:[14,28]}); }
+function drawMap(){
+  layer.clearLayers();
+  if (route.start) L.marker([route.start.lat, route.start.lon], {icon:pin("start","S"), zIndexOffset:1000, title:"Start"}).addTo(layer).bindTooltip("Start: "+route.start.label);
+  route.stops.forEach((s,i) => {
+    const m = L.marker([s.lat, s.lon], {icon:pin(s.status+(s.id===selId?" sel":""), i+1), title:(i+1)+". "+s.label}).addTo(layer);
+    m.on("click", () => { selId = expandedId = s.id; render(); const el = document.querySelector('[data-id="'+s.id+'"]'); if(el) el.scrollIntoView({block:"center", behavior:"smooth"}); });
+  });
+  if (route.opt && !route.opt.stale && route.opt.geometry) L.polyline(route.opt.geometry, {color:"#0f5c5a", weight:5, opacity:.8}).addTo(layer);
+  else if (route.stops.length){ const line = (route.start ? [[route.start.lat, route.start.lon]] : []).concat(route.stops.map(s => [s.lat, s.lon]));
+    L.polyline(line, {color:"#55636a", weight:2, dashArray:"6 6", opacity:.7}).addTo(layer); }
+}
+function fitAll(){ const ll = route.stops.map(s=>[s.lat,s.lon]); if(route.start) ll.push([route.start.lat,route.start.lon]); if(ll.length) map.fitBounds(ll, {padding:[30,30], maxZoom:15}); }
+
+/* ---------- render ---------- */
+const REASONS = ["No one home","Address not found","Refused","Unsafe access","Other"];
+function render(){
+  const st = route.stops, cnt = {pending:0,delivered:0,failed:0,skipped:0}; st.forEach(s => cnt[s.status]++);
+  $("cP").textContent = cnt.pending; $("cD").textContent = cnt.delivered; $("cF").textContent = cnt.failed; $("cK").textContent = cnt.skipped;
+  $("nStops").textContent = st.length;
+  const o = route.opt, b = $("optBadge");
+  if (!o){ b.className = "badge"; b.textContent = "Not optimised"; $("mTime").textContent = "–"; $("mDist").textContent = "–"; }
+  else { $("mTime").textContent = fmtTime(o.duration); $("mDist").textContent = fmtDist(o.distance);
+    if (o.stale){ b.className = "badge stale"; b.textContent = "Order changed"; }
+    else if (o.method === "road"){ b.className = "badge live"; b.textContent = "Optimised"; }
+    else { b.className = "badge est"; b.textContent = "Estimate"; } }
+  $("btnOpt").textContent = o && !o.stale ? "Re-optimise" : "Optimise route";
+  if (document.activeElement !== $("startIn")) $("startIn").value = route.start ? route.start.label : "";
+  $("retStart").checked = !!route.returnToStart;
+  $("emptyHint").hidden = st.length > 0;
+
+  // next stop card
+  const nextIdx = st.findIndex(s => s.status === "pending"), nx = st[nextIdx];
+  $("nextCard").hidden = !nx || !(o && !o.stale) && cnt.delivered+cnt.failed+cnt.skipped === 0;
+  if (nx){ $("nextNum").textContent = "· #"+(nextIdx+1)+" of "+st.length; $("nextAddr").textContent = nx.label;
+    const leg = o && !o.stale && o.legs ? o.legs[nx.id] : null;
+    $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + (nx.approx ? "Approximate pin" : "Located on map");
+    $("nextNav").href = gmaps(nx); $("nextCard").dataset.id = nx.id;
+    const rs = $("nextReasons"); rs.hidden = failPickId !== nx.id;
+    rs.innerHTML = '<span class="label" style="width:100%">Why did it fail?</span>' + REASONS.map(r => '<button class="btn" data-nreason="'+esc(r)+'">'+esc(r)+'</button>').join("");
+  }
+
+  // list
+  let elapsed = 0;
+  $("stops").innerHTML = st.map((s,i) => {
+    let eta = "";
+    if (o && !o.stale && o.legs && s.status === "pending" && o.legs[s.id] != null){ elapsed += o.legs[s.id]; eta = " · ~"+fmtTime(elapsed)+" drive"; }
+    const exp = expandedId === s.id;
+    return '<li class="stop'+(s.id===selId?" sel":"")+'" data-id="'+s.id+'">' +
+      '<div class="num '+s.status+'">'+(i+1)+'</div>' +
+      '<div class="txt" data-tap="'+s.id+'"><div class="a">'+esc(s.label)+'</div><div class="m"><span class="chip '+s.status+'">'+s.status+'</span>'+(s.reason?" "+esc(s.reason):"")+(s.approx?" · approx. pin":"")+eta+'</div></div>' +
+      '<div class="row" style="gap:0;flex-wrap:nowrap"><button class="handle" aria-label="Move up" data-up="'+s.id+'">▲</button><button class="handle" aria-label="Move down" data-down="'+s.id+'">▼</button><button class="handle drag" aria-label="Drag to reorder">☰</button></div>' +
+      (exp ? '<div class="more">' +
+        (s.status!=="delivered" ? '<button class="btn act-d" data-st="delivered" data-sid="'+s.id+'">Delivered</button>' : '') +
+        (s.status!=="failed" ? '<button class="btn act-f" data-st="failed" data-sid="'+s.id+'">Failed</button>' : '') +
+        (s.status!=="skipped" ? '<button class="btn act-k" data-st="skipped" data-sid="'+s.id+'">Skip</button>' : '') +
+        (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') +
+        '<a class="btn ghost" style="text-decoration:none" target="_blank" rel="noopener" href="'+gmaps(s)+'">Google Maps ↗</a>' +
+        '<button class="btn ghost" data-rm="'+s.id+'">Remove</button>' +
+        (failPickId===s.id ? '<div class="reasons"><span class="label" style="width:100%">Why did it fail?</span>'+REASONS.map(r=>'<button class="btn" data-reason="'+esc(r)+'" data-sid="'+s.id+'">'+esc(r)+'</button>').join("")+'</div>' : '') +
+        '</div>' : '') +
+      '</li>';
+  }).join("");
+  drawMap();
+}
+
+/* ---------- events ---------- */
+wireSearch($("addrIn"), $("addrSugg"), addStop);
+wireSearch($("startIn"), $("startSugg"), setStart);
+$("retStart").addEventListener("change", e => { route.returnToStart = e.target.checked; markStale(); persist(); render(); });
+$("btnOpt").addEventListener("click", optimise);
+$("btnFit").addEventListener("click", fitAll);
+$("btnSample").addEventListener("click", loadSample);
+$("btnClear").addEventListener("click", () => $("clearConfirm").hidden = false);
+$("clearNo").addEventListener("click", () => $("clearConfirm").hidden = true);
+$("clearYes").addEventListener("click", () => { const keep = route.start; route = blankRoute(); route.start = keep; $("clearConfirm").hidden = true; $("optMsg").hidden = true; persist(); render(); });
+$("stops").addEventListener("click", e => {
+  const t = e.target;
+  if (t.dataset.up){ move(t.dataset.up, -1); return; }
+  if (t.dataset.down){ move(t.dataset.down, 1); return; }
+  if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
+  if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
+  if (t.dataset.st){ if (t.dataset.st === "failed"){ failPickId = t.dataset.sid; render(); return; } setStatus(t.dataset.sid, t.dataset.st); return; }
+  const tap = t.closest("[data-tap]"); if (tap){ const id = tap.dataset.tap; expandedId = expandedId === id ? null : id; selId = id; failPickId = null; render();
+    const s = route.stops.find(x=>x.id===id); if (s) map.panTo([s.lat, s.lon]); }
+});
+document.querySelector("#nextCard .acts").addEventListener("click", e => { const st = e.target.dataset.next; if(!st) return; const id = $("nextCard").dataset.id;
+  if (st === "failed"){ failPickId = failPickId === id ? null : id; render(); return; } setStatus(id, st); toast(st === "delivered" ? "Marked delivered" : "Skipped"); });
+$("nextReasons").addEventListener("click", e => { const r = e.target.dataset.nreason; if(!r) return; setStatus($("nextCard").dataset.id, "failed", r); toast("Marked failed: "+r); });
+if (window.Sortable) Sortable.create($("stops"), {handle:".drag", animation:150, onEnd: ev => {
+  if (ev.oldIndex === ev.newIndex) return; const [s] = route.stops.splice(ev.oldIndex, 1); route.stops.splice(ev.newIndex, 0, s); markStale(); persist(); render(); }});
+
+/* saved routes */
+function renderSaved(){
+  const all = loadJSON(STORE_SAVED) || {}; const items = Object.values(all).sort((a,b)=>b.updatedAt-a.updatedAt);
+  $("savedList").innerHTML = items.length ? items.map(r => '<div class="saved"><div class="t"><b>'+esc(r.name||"Untitled")+'</b><div class="m" style="font-size:12px;color:var(--muted)">'+r.stops.length+' stops · '+r.stops.filter(s=>s.status!=="pending").length+' done · '+new Date(r.updatedAt).toLocaleString("en-AU",{dateStyle:"medium",timeStyle:"short"})+'</div></div><button class="btn primary" data-load="'+r.id+'">Resume</button><button class="btn ghost" data-del="'+r.id+'">Delete</button></div>').join("")
+    : '<p class="hint">No saved copies yet.</p>';
+}
+$("btnRoutes").addEventListener("click", () => { $("saveName").value = route.name || ""; renderSaved(); $("routesSheet").hidden = false; });
+$("closeRoutes").addEventListener("click", () => $("routesSheet").hidden = true);
+$("btnSaveAs").addEventListener("click", () => {
+  const all = loadJSON(STORE_SAVED) || {}; const copy = JSON.parse(JSON.stringify(route)); copy.id = uid(); copy.name = $("saveName").value.trim() || "Route "+new Date().toLocaleDateString("en-AU"); copy.updatedAt = Date.now();
+  all[copy.id] = copy; if (saveJSON(STORE_SAVED, all)) toast("Saved “"+copy.name+"”"); else toast("This browser blocked saving."); renderSaved(); });
+$("savedList").addEventListener("click", e => { const all = loadJSON(STORE_SAVED) || {};
+  if (e.target.dataset.load){ const r = all[e.target.dataset.load]; if(!r) return; route = JSON.parse(JSON.stringify(r)); route.id = uid(); persist(); selId = expandedId = null; $("optMsg").hidden = true; render(); fitAll(); $("routesSheet").hidden = true; toast("Resumed “"+(r.name||"route")+"”"); }
+  if (e.target.dataset.del){ delete all[e.target.dataset.del]; saveJSON(STORE_SAVED, all); renderSaved(); } });
+$("btnExport").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(route, null, 1)], {type:"application/json"}); const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = (route.name || "dropline-route").replace(/[^\w-]+/g,"-")+".json"; document.body.appendChild(a); a.click(); a.remove(); });
+$("importIn").addEventListener("change", e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
+  rd.onload = () => { try{ const r = JSON.parse(rd.result); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0;
+      route = r; route.id = uid(); persist(); render(); fitAll(); $("routesSheet").hidden = true; toast("Imported "+r.stops.length+" stops"); }catch(err){ toast("That file is not a Dropline route."); } };
+  rd.readAsText(f); e.target.value = ""; });
+$("btnAbout").addEventListener("click", () => $("aboutSheet").hidden = false);
+$("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
+document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
+
+render(); if (route.stops.length) fitAll();
+if (route.opt && !route.opt.stale && route.opt.method === "road" && !route.opt.geometry) drawRoad();
+window.RP = {solve, tourCost, get route(){ return route; }};
+})();
+</script>
+</body>
+</html>

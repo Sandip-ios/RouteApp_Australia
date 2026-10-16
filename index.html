@@ -134,7 +134,7 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v1</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v1.1</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -170,7 +170,7 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
         <button class="btn act-k" data-next="skipped">Skip</button>
       </div>
       <div class="reasons" id="nextReasons" hidden style="margin-top:8px"></div>
-      <a class="btn ghost" id="nextNav" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;text-decoration:none">Open in Google Maps ↗</a>
+      <a class="btn ghost" id="nextNav" style="display:block;text-align:center;margin-top:8px;text-decoration:none">Open in Google Maps ↗</a>
     </section>
 
     <section class="panel" aria-label="Start location">
@@ -245,7 +245,7 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
     <ul>
       <li>Free public map services: no guaranteed uptime, light testing only, no live traffic</li>
       <li>If the routing service is down, times fall back to straight-line estimates (marked "Estimate")</li>
-      <li>"Open in Google Maps" hands each stop to Google Maps for directions</li>
+      <li>"Open in Google Maps" hands each stop to the Google Maps app, with directions from the previous stop (or the start)</li>
       <li>The 25 test stops are public places, not real customers</li>
     </ul>
     <h4 style="color:var(--fail)">Not built yet</h4>
@@ -323,7 +323,8 @@ function fmtDist(m){ if(m==null) return "–"; return (m/1000).toFixed(m<10000?1
 function hav(a,b){ const R=6371000, r=Math.PI/180; const dLa=(b.lat-a.lat)*r, dLo=(b.lon-a.lon)*r;
   const x=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
 let toastT; function toast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 3200); }
-function gmaps(s){ return "https://www.google.com/maps/dir/?api=1&destination="+s.lat+","+s.lon+"&travelmode=driving"; }
+function gmaps(s, from){ return "https://www.google.com/maps/dir/?api=1"+(from ? "&origin="+from.lat.toFixed(6)+","+from.lon.toFixed(6) : "")+"&destination="+s.lat.toFixed(6)+","+s.lon.toFixed(6)+"&travelmode=driving"; }
+function prevPoint(i){ return i > 0 ? route.stops[i-1] : route.start; }
 async function fetchJSON(url, ms){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms||12000);
   try{ const r = await fetch(url,{signal:c.signal}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); } finally{ clearTimeout(t); } }
 
@@ -538,7 +539,7 @@ function render(){
   if (nx){ $("nextNum").textContent = "· #"+(nextIdx+1)+" of "+st.length; $("nextAddr").textContent = nx.label;
     const leg = o && !o.stale && o.legs ? o.legs[nx.id] : null;
     $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + (nx.approx ? "Approximate pin" : "Located on map");
-    $("nextNav").href = gmaps(nx); $("nextCard").dataset.id = nx.id;
+    $("nextNav").href = gmaps(nx, prevPoint(nextIdx)); $("nextCard").dataset.id = nx.id;
     const rs = $("nextReasons"); rs.hidden = failPickId !== nx.id;
     rs.innerHTML = '<span class="label" style="width:100%">Why did it fail?</span>' + REASONS.map(r => '<button class="btn" data-nreason="'+esc(r)+'">'+esc(r)+'</button>').join("");
   }
@@ -558,7 +559,7 @@ function render(){
         (s.status!=="failed" ? '<button class="btn act-f" data-st="failed" data-sid="'+s.id+'">Failed</button>' : '') +
         (s.status!=="skipped" ? '<button class="btn act-k" data-st="skipped" data-sid="'+s.id+'">Skip</button>' : '') +
         (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') +
-        '<a class="btn ghost" style="text-decoration:none" target="_blank" rel="noopener" href="'+gmaps(s)+'">Google Maps ↗</a>' +
+        '<a class="btn ghost" style="text-decoration:none" href="'+gmaps(s, prevPoint(i))+'">Google Maps ↗</a>' +
         '<button class="btn ghost" data-rm="'+s.id+'">Remove</button>' +
         (failPickId===s.id ? '<div class="reasons"><span class="label" style="width:100%">Why did it fail?</span>'+REASONS.map(r=>'<button class="btn" data-reason="'+esc(r)+'" data-sid="'+s.id+'">'+esc(r)+'</button>').join("")+'</div>' : '') +
         '</div>' : '') +

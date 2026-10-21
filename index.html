@@ -201,7 +201,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
     <section class="panel" aria-label="Add stops">
       <div class="label">Add delivery stops</div>
       <div class="addr" style="margin-top:6px">
-        <input id="addrIn" type="text" placeholder="e.g. 12 Hanson Avenue, Heathpool" autocomplete="off" aria-label="Stop address">
+        <input id="addrIn" type="text" placeholder="e.g. 100 King William Street, Adelaide" autocomplete="off" aria-label="Stop address">
         <div class="sugg" id="addrSugg" hidden></div>
       </div>
       <p class="hint">Type at least 4 characters and pick a suggestion. Australian addresses only.</p>
@@ -233,7 +233,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
     <h3>Import stops</h3>
     <p class="hint" style="margin-top:0">Choose a run-sheet file (.csv) or paste addresses, one per line. The same address on several lines becomes one stop with several parcels. Your list stays on this phone.</p>
     <label class="btn primary" style="display:block;text-align:center;margin-top:8px">Choose file<input type="file" id="impFile" accept=".csv,.txt,.json,text/csv,text/plain,application/json" hidden></label>
-    <div class="field" style="margin-top:12px"><label for="impText" class="label">Or paste addresses</label><textarea id="impText" placeholder="12 Hanson Avenue, Heathpool SA 5068&#10;21B Clapton Road, Marryatville SA 5068"></textarea></div>
+    <div class="field" style="margin-top:12px"><label for="impText" class="label">Or paste addresses</label><textarea id="impText" placeholder="100 King William Street, Adelaide SA 5000&#10;1 Rundle Mall, Adelaide SA 5000"></textarea></div>
     <label class="toggle"><input type="checkbox" id="impReplace" checked> Replace the current stops</label>
     <button class="btn primary" id="impGo" style="width:100%;margin-top:10px">Import pasted addresses</button>
     <div id="impStatus" hidden style="margin-top:12px"><div id="impStatusTxt" class="msg"></div><div class="bar"><i id="impBar"></i></div></div>

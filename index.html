@@ -146,7 +146,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v2.1</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v2.2</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -414,12 +414,13 @@ function grader(q){
   const pick = list => { const ok = list.filter(r => !pc || !r.postcode || String(r.postcode) === pc); return ok.length ? Object.assign(ok[0], {geo:grade(ok[0])}) : null; };
   return pick;
 }
+/* Returns a result, null when the address is not known, or undefined when the service was busy or unreachable. */
 async function photonLocate(q, bias){
-  for (let tries = 0; ; tries++){
-    try{ return grader(q)(await photon(q, 3, bias)); }
-    catch(e){ if (e.status === 429 && tries < 3){ await sleep(2000*(tries+1)); continue; } return null; }
-  }
+  try{ return grader(q)(await photon(q, 3, bias)); }
+  catch(e){ if (e.status === 429) photonSlow = Date.now(); return undefined; }
 }
+let photonSlow = 0;
+function fmtLeft(sec){ sec = Math.max(1, Math.round(sec)); return sec < 60 ? "about "+sec+" s left" : "about "+Math.ceil(sec/60)+" min left"; }
 async function nominatimLocate(q){ try{ return grader(q)(await nominatim(q, 3)); }catch(e){ return null; } }
 /* Locations found before are remembered on this phone, so a repeat address imports instantly. */
 const STORE_GEO = "dropline.geocache.v1";
@@ -516,13 +517,18 @@ async function locatePending(){
   const need = [], refine = []; let done = 0, fromCache = 0, bias = null;
   for (const s of todo){ const c = geoCache[gkey(s.query || s.label)];
     if (c){ s.lat = c.lat; s.lon = c.lon; s.geo = c.geo; done++; fromCache++; } else need.push(s); }
-  const progress = () => { const msg = "Finding locations: "+done+" of "+todo.length; impStatus(msg, todo.length ? done/todo.length : 1); $("geoAlertTxt").textContent = msg; };
+  const t0 = Date.now(), done0 = done;
+  const progress = () => { const n = done - done0, left = todo.length - done;
+    const eta = n >= 3 && left > 0 ? " · "+fmtLeft((Date.now()-t0)/1000/n*left) : "";
+    const msg = "Finding locations: "+done+" of "+todo.length+eta; impStatus(msg, todo.length ? done/todo.length : 1); $("geoAlertTxt").textContent = msg; };
   progress(); render();
   let next = 0, lastRender = 0;
   const worker = async () => {
     while (next < need.length){
       const s = need[next++]; if (!route.stops.includes(s)) continue;
-      const r = await photonLocate(s.query || s.label, bias || undefined);
+      if (Date.now() - photonSlow < 3000) await sleep(1500);      // service asked us to slow down
+      let r = await photonLocate(s.query || s.label, bias || undefined);
+      if (r === undefined){ await sleep(1500); r = await photonLocate(s.query || s.label, bias || undefined); }   // one retry, not the slow service
       if (r){ s.lat = r.lat; s.lon = r.lon; s.geo = r.geo; bias = r; if (r.geo === "exact") cachePut(s.query || s.label, r); else refine.push(s); }
       else { s.geo = "searching"; refine.push(s); }
       done++; progress();
@@ -542,7 +548,7 @@ async function refineInBackground(list){
   const my = refining = {}; let improved = 0, k = 0;
   for (const s of list){
     if (refining !== my) return;
-    k++; $("geoAlertTxt").textContent = "Improving approximate pins: "+k+" of "+list.length;
+    k++; $("geoAlertTxt").textContent = "Improving approximate pins: "+k+" of "+list.length+" · "+fmtLeft((list.length-k+1)*1.3)+" (you can optimise now)";
     if (!route.stops.includes(s) || s.geo === "manual") continue;
     const r = await nominatimLocate(s.query || s.label);
     if (r && (r.geo === "exact" || !has(s))){

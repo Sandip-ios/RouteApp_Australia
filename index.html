@@ -129,12 +129,24 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
 .leaflet-container{font-family:var(--f-body)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(18px,env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;z-index:2000;font-size:14px;max-width:90vw}
 @media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
+.chip.warn{background:var(--skip-soft);color:var(--skip)}
+.chip.miss{background:var(--fail-soft);color:var(--fail)}
+.chip.big{background:var(--accent-soft);color:var(--accent)}
+.chip.mark{background:var(--pend-soft);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font:14px/1.4 var(--f-body);color:var(--ink);resize:vertical}
+.bar{height:8px;border-radius:99px;background:var(--pend-soft);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:var(--accent)}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
+.alert{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--skip-soft);color:var(--ink);margin-top:10px}
+.alert span{flex:1;min-width:0}
+.placing #map{outline:4px solid var(--skip);outline-offset:-4px}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v1.2</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v2.0</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -148,15 +160,17 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
         <div class="s-k"><b id="cK">0</b><span>Skipped</span></div>
       </div>
       <div class="metrics">
-        <div><div class="label">Stops</div><div class="v"><span id="nStops">0</span>/25</div></div>
+        <div><div class="label">Stops</div><div class="v"><span id="nStops">0</span>/200</div></div>
         <div><div class="label">Drive time</div><div class="v" id="mTime">–</div></div>
         <div><div class="label">Distance</div><div class="v" id="mDist">–</div></div>
         <div style="align-self:center"><span class="badge" id="optBadge">Not optimised</span></div>
       </div>
+      <div class="alert" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:36px;padding:6px 10px">Find locations</button></div>
       <div class="row" style="margin-top:12px">
         <button class="btn primary grow" id="btnOpt">Optimise route</button>
         <button class="btn ghost" id="btnFit" title="Show all stops on map">Fit map</button>
       </div>
+      <div class="bar" id="optBar" hidden><i></i></div>
       <p class="msg" id="optMsg" hidden></p>
     </section>
 
@@ -164,6 +178,7 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
       <div class="label">Next stop <span id="nextNum"></span></div>
       <h2 id="nextAddr"></h2>
       <div class="m" id="nextMeta" style="font-size:13px;color:var(--muted)"></div>
+      <div class="chips" id="nextChips"></div>
       <div class="acts">
         <button class="btn act-d" data-next="delivered">Delivered</button>
         <button class="btn act-f" data-next="failed">Failed</button>
@@ -179,16 +194,18 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
         <input id="startIn" type="text" placeholder="Depot or starting address" autocomplete="off" aria-label="Start address">
         <div class="sugg" id="startSugg" hidden></div>
       </div>
+      <button class="btn ghost" id="btnMyLoc" style="width:100%;margin-top:8px">Use my location as start</button>
       <label class="toggle" style="margin-top:8px"><input type="checkbox" id="retStart"> Return to start at end of run</label>
     </section>
 
-    <section class="panel" aria-label="Add stop">
-      <div class="label">Add delivery stop</div>
+    <section class="panel" aria-label="Add stops">
+      <div class="label">Add delivery stops</div>
       <div class="addr" style="margin-top:6px">
-        <input id="addrIn" type="text" placeholder="e.g. 12 George St, Parramatta" autocomplete="off" aria-label="Stop address">
+        <input id="addrIn" type="text" placeholder="e.g. 12 Hanson Avenue, Heathpool" autocomplete="off" aria-label="Stop address">
         <div class="sugg" id="addrSugg" hidden></div>
       </div>
       <p class="hint">Type at least 4 characters and pick a suggestion. Australian addresses only.</p>
+      <button class="btn primary" id="btnImport" style="width:100%;margin-top:8px">Import a run sheet or address list</button>
       <div class="row" style="margin-top:8px">
         <button class="btn ghost grow" id="btnSample">Load 25 Parramatta test stops</button>
         <button class="btn ghost" id="btnClear">Clear</button>
@@ -206,16 +223,29 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
         <div class="m" style="font-size:12px;color:var(--muted)">Drag ☰ or use ▲▼ to reorder</div>
       </div>
       <ol class="stops" id="stops"></ol>
-      <p class="hint" id="emptyHint">No stops yet. Add an address above or load the 25 test stops.</p>
+      <p class="hint" id="emptyHint">No stops yet. Add an address above, import a run sheet, or load the 25 test stops.</p>
     </section>
   </main>
+</div>
+
+<div class="sheet-bg" id="importSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Import stops">
+    <h3>Import stops</h3>
+    <p class="hint" style="margin-top:0">Choose a run-sheet file (.csv) or paste addresses, one per line. The same address on several lines becomes one stop with several parcels. Your list stays on this phone.</p>
+    <label class="btn primary" style="display:block;text-align:center;margin-top:8px">Choose file<input type="file" id="impFile" accept=".csv,.txt,.json,text/csv,text/plain,application/json" hidden></label>
+    <div class="field" style="margin-top:12px"><label for="impText" class="label">Or paste addresses</label><textarea id="impText" placeholder="12 Hanson Avenue, Heathpool SA 5068&#10;21B Clapton Road, Marryatville SA 5068"></textarea></div>
+    <label class="toggle"><input type="checkbox" id="impReplace" checked> Replace the current stops</label>
+    <button class="btn primary" id="impGo" style="width:100%;margin-top:10px">Import pasted addresses</button>
+    <div id="impStatus" hidden style="margin-top:12px"><div id="impStatusTxt" class="msg"></div><div class="bar"><i id="impBar"></i></div></div>
+    <button class="btn" id="closeImport" style="width:100%;margin-top:14px">Close</button>
+  </div>
 </div>
 
 <div class="sheet-bg" id="routesSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Saved routes">
     <h3>Saved routes</h3>
     <p class="hint" style="margin-top:0">Your current route saves automatically on this phone. Save a named copy to keep test routes side by side.</p>
-    <div class="field"><label for="saveName" class="label">Name this route</label><input id="saveName" type="text" placeholder="e.g. Friday Parramatta run"></div>
+    <div class="field"><label for="saveName" class="label">Name this route</label><input id="saveName" type="text" placeholder="e.g. Tuesday Burnside run"></div>
     <button class="btn primary" id="btnSaveAs" style="width:100%">Save a copy</button>
     <h4>On this device</h4>
     <div id="savedList"></div>
@@ -230,32 +260,34 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
 
 <div class="sheet-bg" id="aboutSheet" hidden>
   <div class="sheet" role="dialog" aria-label="What works in this prototype">
-    <h3>What works in v1</h3>
+    <h3>What works in v2</h3>
     <h4 style="color:var(--ok)">Fully working (needs internet)</h4>
     <ul>
-      <li>Australian address search with suggestions</li>
-      <li>Up to 25 stops, numbered on the map and in the list</li>
+      <li>Up to 200 stops; import a run sheet (.csv) or pasted address list</li>
+      <li>Several parcels at one address grouped into one stop, with run-sheet numbers</li>
+      <li>Australian address search; pins marked "Check pin" when only the street was found</li>
+      <li>Move any pin by tapping the map</li>
+      <li>Route optimisation of every pending stop together, using road travel times</li>
+      <li>Use my location as the start, with a live blue dot while the page is open</li>
       <li>Drag-and-drop or ▲▼ reordering</li>
-      <li>Route optimisation of every pending stop together, using real road travel times</li>
-      <li>Road route line, total drive time and distance</li>
       <li>Pending, delivered, failed (with reason) and skipped statuses</li>
       <li>Auto-save and resume on this device, named copies, export/import file</li>
     </ul>
     <h4 style="color:var(--skip)">Demonstration only</h4>
     <ul>
-      <li>Free public map services: no guaranteed uptime, light testing only, no live traffic</li>
-      <li>If the routing service is down, times fall back to straight-line estimates (marked "Estimate")</li>
-      <li>"Open in Google Maps" hands each stop to the Google Maps app, with directions from the previous stop (or the start)</li>
-      <li>The 25 test stops are public places, not real customers</li>
+      <li>Free public map services: no guaranteed uptime, no live traffic</li>
+      <li>If road times are unavailable, the plan uses straight-line estimates (marked "Estimate")</li>
+      <li>Directions are handed to Google Maps for each stop</li>
+      <li>Location tracking only while this page is open and the screen is on</li>
     </ul>
     <h4 style="color:var(--fail)">Not built yet</h4>
     <ul>
       <li>Built-in voice turn-by-turn navigation and automatic rerouting (planned for the Android app)</li>
-      <li>Delivery time windows, parcel sizes, multiple drivers</li>
+      <li>Reading a paper run sheet from a photo</li>
+      <li>Delivery time windows, multiple drivers, proof of delivery</li>
       <li>Accounts, cloud sync and business dashboard</li>
-      <li>Proof of delivery (photo or signature)</li>
     </ul>
-    <p class="hint">Map data © OpenStreetMap contributors. Address search by Photon (komoot). Routing by the OSRM public demo server.</p>
+    <p class="hint">Map data © OpenStreetMap contributors. Address search by Photon (komoot) and Nominatim. Routing by the OSRM public demo server. Addresses you import are sent to these services to find their locations.</p>
     <button class="btn" id="closeAbout" style="width:100%;margin-top:10px">Close</button>
   </div>
 </div>
@@ -266,15 +298,16 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
 <script>
 (function(){
 "use strict";
-const MAX_STOPS = 25;
+const MAX_STOPS = 200;
 const OSRM = "https://router.project-osrm.org";
 const PHOTON = "https://photon.komoot.io/api/";
 const NOMINATIM = "https://nominatim.openstreetmap.org/search";
 const AU_BBOX = "112.9,-43.7,153.7,-10.6";
 const PARRA = [-33.8150, 151.0030];
 const STORE_CUR = "dropline.current.v1", STORE_SAVED = "dropline.saved.v1";
+const TABLE_MAX = 100;   // most coordinates the free routing server accepts in one travel-time request
 
-/* Public places used as test stops. Coordinates are approximate; they are refined by live address search after loading. */
+/* Public places used as test stops. */
 const SAMPLE_START = {label:"Parramatta Square, Parramatta NSW 2150", lat:-33.8156, lon:151.0040};
 const SAMPLE = [
  ["Westfield Parramatta, Church St, Parramatta NSW 2150",-33.8176,151.0034],
@@ -309,7 +342,7 @@ const uid = () => Math.random().toString(36).slice(2,10);
 const blankRoute = () => ({id:uid(), name:"", start:null, returnToStart:false, stops:[], opt:null, updatedAt:Date.now()});
 let route = loadJSON(STORE_CUR) || blankRoute();
 if (!Array.isArray(route.stops)) route = blankRoute();
-let selId = null, expandedId = null, failPickId = null;
+let selId = null, expandedId = null, failPickId = null, placingId = null, myLoc = null, watchId = null, busy = false;
 
 function loadJSON(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
 function saveJSON(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
@@ -318,19 +351,37 @@ function persist(){ route.updatedAt = Date.now(); if(!saveJSON(STORE_CUR, route)
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const has = p => p && p.lat != null && p.lon != null;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 function fmtTime(sec){ if(sec==null) return "–"; const m = Math.round(sec/60); return m < 60 ? m+" min" : Math.floor(m/60)+" h "+(m%60)+" m"; }
 function fmtDist(m){ if(m==null) return "–"; return (m/1000).toFixed(m<10000?1:0)+" km"; }
 function hav(a,b){ const R=6371000, r=Math.PI/180; const dLa=(b.lat-a.lat)*r, dLo=(b.lon-a.lon)*r;
   const x=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
-let toastT; function toast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 3200); }
+let toastT; function toast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 3500); }
 function ll(p){ return p.lat.toFixed(6)+","+p.lon.toFixed(6); }
-function gmaps(s, from){ return "https://www.google.com/maps/dir/"+(from ? ll(from) : "")+"/"+ll(s)+"/data=!4m2!4m1!3e0"; }
-function geoLink(s){ return "geo:"+ll(s)+"?q="+ll(s)+"("+encodeURIComponent(s.label.split(",")[0])+")"; }
-function prevPoint(i){ return i > 0 ? route.stops[i-1] : route.start; }
+function gmaps(s, from){
+  if (!has(s)) return "https://www.google.com/maps/search/"+encodeURIComponent(s.query || s.label);
+  return "https://www.google.com/maps/dir/"+(has(from) ? ll(from) : "")+"/"+ll(s)+"/data=!4m2!4m1!3e0"; }
+function geoLink(s){ return has(s) ? "geo:"+ll(s)+"?q="+ll(s)+"("+encodeURIComponent(s.label.split(",")[0])+")" : "geo:0,0?q="+encodeURIComponent(s.query || s.label); }
+function prevPoint(i){ for (let k = i-1; k >= 0; k--) if (has(route.stops[k])) return route.stops[k]; return route.start; }
 async function fetchJSON(url, ms){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms||12000);
-  try{ const r = await fetch(url,{signal:c.signal}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); } finally{ clearTimeout(t); } }
+  try{ const r = await fetch(url,{signal:c.signal}); const j = await r.json().catch(()=>null); if(!r.ok){ const e = new Error("HTTP "+r.status); e.body = j; throw e; } return j; } finally{ clearTimeout(t); } }
+function parcels(s){ return s.parcels && s.parcels.length ? s.parcels : [{seq:null, size:"", note:""}]; }
+function isBig(size){ const n = String(size||"").match(/[\d.]+/g); return !!n && Math.max(...n.map(Number)) >= 60; }
+function chipsFor(s){
+  const ps = parcels(s), out = [];
+  if (s.geo === "missing") out.push('<span class="chip miss">No location</span>');
+  else if (s.geo === "pending") out.push('<span class="chip warn">Finding location…</span>');
+  else if (s.geo === "street" || s.approx) out.push('<span class="chip warn">Check pin</span>');
+  if (ps.some(p => isBig(p.size))) out.push('<span class="chip big">Large parcel</span>');
+  const notes = [...new Set(ps.map(p => p.note).filter(Boolean))]; notes.forEach(n => out.push('<span class="chip mark">★ '+esc(n)+'</span>'));
+  return out.join("");
+}
+function parcelLine(s){ const ps = parcels(s); const seqs = ps.map(p => p.seq).filter(x => x != null);
+  return (seqs.length ? "#"+seqs.join(", #")+" · " : "") + ps.length + (ps.length === 1 ? " parcel" : " parcels"); }
 
 /* ---------- address search ---------- */
+function stateAbbr(s){ const m={"New South Wales":"NSW","Victoria":"VIC","Queensland":"QLD","Western Australia":"WA","South Australia":"SA","Tasmania":"TAS","Australian Capital Territory":"ACT","Northern Territory":"NT"}; return m[s]||s; }
 function photonLabel(p){
   const line1 = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name || "";
   const nm = (p.name && p.street && p.name !== line1) ? p.name+", " : "";
@@ -338,19 +389,35 @@ function photonLabel(p){
   const tail = [sub, p.state ? stateAbbr(p.state) : "", p.postcode].filter(Boolean).join(" ");
   return (nm + [line1, tail].filter(Boolean).join(", ")).replace(/^, /,"");
 }
-function stateAbbr(s){ const m={"New South Wales":"NSW","Victoria":"VIC","Queensland":"QLD","Western Australia":"WA","South Australia":"SA","Tasmania":"TAS","Australian Capital Territory":"ACT","Northern Territory":"NT"}; return m[s]||s; }
+function biasPoint(){ if (has(myLoc)) return myLoc; if (has(route.start)) return route.start; const s = route.stops.find(has); return s || {lat:PARRA[0], lon:PARRA[1]}; }
+let lastNom = 0;
+async function nominatim(q, limit){
+  const wait = 1100 - (Date.now() - lastNom); if (wait > 0) await sleep(wait); lastNom = Date.now();
+  const j = await fetchJSON(NOMINATIM+"?format=jsonv2&addressdetails=1&countrycodes=au&limit="+(limit||6)+"&q="+encodeURIComponent(q), 10000);
+  return (j||[]).map(r => ({label:r.display_name.replace(/, Australia$/,""), lat:+r.lat, lon:+r.lon, housenumber:r.address && r.address.house_number, postcode:r.address && r.address.postcode}));
+}
+async function photon(q, limit, bias){
+  const b = bias || biasPoint();
+  const j = await fetchJSON(PHOTON+"?q="+encodeURIComponent(q)+"&limit="+(limit||6)+"&lang=en&bbox="+AU_BBOX+"&lat="+b.lat+"&lon="+b.lon, 8000);
+  return (j.features||[]).filter(f => !f.properties.countrycode || f.properties.countrycode === "AU").map(f => ({
+    label: photonLabel(f.properties), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], housenumber:f.properties.housenumber, postcode:f.properties.postcode}));
+}
 async function geocode(q, limit){
-  const bias = route.start || (route.stops[0]) || {lat:PARRA[0], lon:PARRA[1]};
-  try{
-    const u = PHOTON+"?q="+encodeURIComponent(q)+"&limit="+(limit||6)+"&lang=en&bbox="+AU_BBOX+"&lat="+bias.lat+"&lon="+bias.lon;
-    const j = await fetchJSON(u, 8000);
-    const out = (j.features||[]).filter(f => !f.properties.countrycode || f.properties.countrycode === "AU").map(f => ({
-      label: photonLabel(f.properties), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0]}));
-    if (out.length) return out;
-  }catch(e){ /* fall through to Nominatim */ }
-  const u2 = NOMINATIM+"?format=jsonv2&countrycodes=au&limit="+(limit||6)+"&q="+encodeURIComponent(q);
-  const j2 = await fetchJSON(u2, 9000);
-  return (j2||[]).map(r => ({label:r.display_name.replace(/, Australia$/,""), lat:+r.lat, lon:+r.lon}));
+  try{ const out = await photon(q, limit); if (out.length) return out; }catch(e){}
+  return nominatim(q, limit);
+}
+/* Locate one imported address: prefer a result with the same postcode; "exact" when the house number matched. */
+async function locateOne(q, bias){
+  const pc = (q.match(/\b(\d{4})\s*$/) || [])[1];
+  const num = (q.match(/^\s*(\d+)/) || [])[1];
+  const grade = r => (num && r.housenumber && String(r.housenumber).match(/^\d+/) && String(r.housenumber).match(/^\d+/)[0] === num) ? "exact" : "street";
+  const pick = list => { const ok = list.filter(r => !pc || !r.postcode || String(r.postcode) === pc); return ok.length ? ok[0] : null; };
+  let best = null;
+  try{ const r = pick(await photon(q, 3, bias)); if (r) best = Object.assign(r, {geo:grade(r)}); }catch(e){}
+  if (!best || best.geo !== "exact"){
+    try{ const r = pick(await nominatim(q, 3)); if (r && (!best || grade(r) === "exact")) best = Object.assign(r, {geo:grade(r)}); }catch(e){}
+  }
+  return best;
 }
 function wireSearch(input, box, onPick){
   let timer, seq = 0, results = [];
@@ -374,9 +441,9 @@ function wireSearch(input, box, onPick){
 
 /* ---------- route editing ---------- */
 function addStop(r){
-  if (route.stops.length >= MAX_STOPS){ toast("The prototype plans up to 25 stops."); return; }
-  if (route.stops.some(s => Math.abs(s.lat-r.lat)<1e-5 && Math.abs(s.lon-r.lon)<1e-5)){ toast("That address is already on the list."); return; }
-  route.stops.push({id:uid(), label:r.label, lat:r.lat, lon:r.lon, status:"pending", reason:"", approx:!!r.approx});
+  if (route.stops.length >= MAX_STOPS){ toast("The prototype plans up to "+MAX_STOPS+" stops."); return; }
+  if (route.stops.some(s => has(s) && Math.abs(s.lat-r.lat)<1e-5 && Math.abs(s.lon-r.lon)<1e-5)){ toast("That address is already on the list."); return; }
+  route.stops.push({id:uid(), label:r.label, query:r.label, lat:r.lat, lon:r.lon, geo:"exact", status:"pending", reason:"", parcels:[]});
   markStale(); persist(); render(); toast("Added stop "+route.stops.length);
 }
 function setStart(r){ route.start = {label:r.label, lat:r.lat, lon:r.lon}; markStale(); persist(); render(); }
@@ -388,94 +455,230 @@ function setStatus(id, st, reason){ const s = route.stops.find(x=>x.id===id); if
   s.status = st; s.reason = st==="failed" ? (reason||"") : ""; s.doneAt = st==="pending" ? null : Date.now();
   failPickId = null; persist(); render(); }
 
+/* ---------- import ---------- */
+function parseCSV(text){
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++){ const c = text[i];
+    if (q){ if (c === '"'){ if (text[i+1] === '"'){ f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true; else if (c === ","){ row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r"){ if (c === "\r" && text[i+1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c; }
+  if (f !== "" || row.length){ row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ""));
+}
+function cleanAddr(a){ return a.replace(/\s+/g," ").replace(/\s*,?\s*\bAU(STRALIA)?\s*$/i,"").replace(/\bNone\b\s*/g,"").trim(); }
+/* Returns [{address, search, parcels:[{seq,size,note}]}] grouped by address, keeping first-seen order. */
+function parseList(text){
+  text = text.replace(/^﻿/, "");
+  const groups = new Map();
+  const add = (address, search, parcel) => { address = cleanAddr(address); if (!address) return;
+    const k = address.toLowerCase(); if (!groups.has(k)) groups.set(k, {address, search:cleanAddr(search||address), parcels:[]}); groups.get(k).parcels.push(parcel); };
+  const rows = parseCSV(text), head = (rows[0]||[]).map(h => h.trim().toLowerCase());
+  const ai = head.indexOf("address");
+  if (ai >= 0){
+    const si = head.indexOf("search"), qi = head.indexOf("seq"), zi = head.findIndex(h => h.startsWith("size") || h.startsWith("dimension")), ni = head.indexOf("note");
+    rows.slice(1).forEach(r => add(r[ai]||"", si>=0 ? r[si] : "", {seq: qi>=0 && r[qi] ? +r[qi] || r[qi] : null, size: zi>=0 ? (r[zi]||"") : "", note: ni>=0 ? (r[ni]||"") : ""}));
+  } else {
+    text.split(/\r?\n/).forEach(line => { let l = line.trim(); if (!l) return;
+      let seq = null; const m = l.match(/^#\s*(\d+)[\s.:)\-]+(.*)$/) || l.match(/^(\d+)\t(.*)$/); if (m){ seq = +m[1]; l = m[2]; }
+      add(l, l, {seq, size:"", note:""}); });
+  }
+  return [...groups.values()];
+}
+async function importText(text){
+  const list = parseList(text);
+  if (!list.length){ impStatus("No addresses found. Check the file has an \"address\" column or one address per line.", 0, true); return; }
+  const replace = $("impReplace").checked;
+  const room = MAX_STOPS - (replace ? 0 : route.stops.length);
+  if (list.length > room){ impStatus("That list has "+list.length+" addresses. The planner takes up to "+MAX_STOPS+" stops"+(replace ? "" : " in total")+". Remove some addresses and try again.", 0, true); return; }
+  if (replace){ const keep = route.start; route = blankRoute(); route.start = keep; selId = expandedId = null; $("optMsg").hidden = true; }
+  list.forEach(g => route.stops.push({id:uid(), label:g.address, query:g.search, lat:null, lon:null, geo:"pending", status:"pending", reason:"", parcels:g.parcels}));
+  const np = list.reduce((a,g) => a + g.parcels.length, 0);
+  markStale(); persist(); render();
+  impStatus("Added "+list.length+" stops ("+np+" parcels). Finding their locations…", 0);
+  await locatePending();
+}
+function impStatus(t, frac, err){ $("impStatus").hidden = false; const m = $("impStatusTxt"); m.textContent = t; m.classList.toggle("err", !!err); $("impBar").style.width = Math.round((frac||0)*100)+"%"; }
+async function locatePending(){
+  if (busy) return; busy = true; $("btnLocate").disabled = true;
+  const todo = route.stops.filter(s => s.geo === "pending");
+  let done = 0, bias = null;
+  for (const s of todo){
+    if (!route.stops.includes(s)) continue;
+    const r = await locateOne(s.query || s.label, bias || undefined);
+    if (r){ s.lat = r.lat; s.lon = r.lon; s.geo = r.geo; bias = r; } else { s.geo = "missing"; }
+    done++;
+    const msg = "Finding locations: "+done+" of "+todo.length;
+    impStatus(msg, done/todo.length); $("geoAlertTxt").textContent = msg;
+    if (done % 10 === 0) persist();
+    render();
+    if (done < todo.length) await sleep(250);
+  }
+  busy = false; $("btnLocate").disabled = false;
+  persist(); render(); fitAll();
+  const miss = route.stops.filter(s => s.geo === "missing").length, chk = route.stops.filter(s => s.geo === "street").length;
+  impStatus("Done. "+(todo.length - miss)+" of "+todo.length+" located"+(chk ? "; "+chk+" only to street level (marked Check pin)" : "")+(miss ? "; "+miss+" not found (marked No location)" : "")+".", 1);
+}
+
 /* ---------- optimisation ----------
-   All pending stops are solved together in one problem:
-   1. one OSRM "table" request returns road travel times between every pair of points (origin + up to 25 stops = 26x26),
-   2. a local solver (many starting tours + 2-opt + or-opt moves) finds the shortest-time visiting order,
-   3. one OSRM "route" request draws the road line in that order. */
+   All pending stops are solved together as one problem:
+   1. road travel times between every pair of points, fetched in blocks of up to 100 points,
+   2. a local solver (construction + 2-opt + or-opt + random restarts) finds the shortest-time order,
+   3. the road line is drawn in that order. */
 function tourCost(D, order, endIdx){ let c = 0, prev = 0; for (const k of order){ c += D[prev][k]; prev = k; } if (endIdx != null) c += D[prev][endIdx]; return c; }
-function improve(D, order, endIdx){
-  let best = tourCost(D, order, endIdx), improved = true, n = order.length;
-  while (improved){
-    improved = false;
-    for (let i = 0; i < n-1; i++) for (let j = i+1; j < n; j++){ // 2-opt: reverse a segment
-      const cand = order.slice(0,i).concat(order.slice(i,j+1).reverse(), order.slice(j+1));
-      const c = tourCost(D, cand, endIdx); if (c < best - 1e-9){ order = cand; best = c; improved = true; }
-    }
-    for (let len = 1; len <= 3; len++) for (let i = 0; i + len <= n; i++){ // or-opt: move a run of 1-3 stops
-      const seg = order.slice(i, i+len), rest = order.slice(0,i).concat(order.slice(i+len));
-      for (let p = 0; p <= rest.length; p++){ if (p === i) continue;
-        const cand = rest.slice(0,p).concat(seg, rest.slice(p));
-        const c = tourCost(D, cand, endIdx); if (c < best - 1e-9){ order = cand; best = c; improved = true; }
+function solve(D, endIdx, budgetMs){
+  const n = D.length, S = n, N = n + 1;              // S is a virtual finish node
+  const W = new Float64Array(N*N);
+  for (let i = 0; i < n; i++){ for (let j = 0; j < n; j++) W[i*N+j] = D[i][j]; W[i*N+S] = endIdx == null ? 0 : D[i][endIdx]; }
+  const nodes = []; for (let k = 1; k < n; k++) if (k !== endIdx) nodes.push(k);
+  const m = nodes.length;
+  if (m === 0) return {order:[], cost:tourCost(D, [], endIdx)};
+  const w = (a,b) => W[a*N+b];
+  const pathCost = P => { let c = 0; for (let i = 0; i < P.length-1; i++) c += w(P[i],P[i+1]); return c; };
+  let fwd, bwd;
+  const prefix = P => { const L = P.length; fwd = new Float64Array(L); bwd = new Float64Array(L);
+    for (let x = 1; x < L; x++){ fwd[x] = fwd[x-1] + w(P[x-1],P[x]); bwd[x] = bwd[x-1] + w(P[x],P[x-1]); } };
+  function localSearch(P){
+    const L = P.length; let improved = true; prefix(P);
+    while (improved){
+      improved = false;
+      for (let i = 1; i <= L-3; i++) for (let j = i+1; j <= L-2; j++){        // 2-opt: reverse P[i..j]
+        const d = w(P[i-1],P[j]) + (bwd[j]-bwd[i]) + w(P[i],P[j+1]) - w(P[i-1],P[i]) - (fwd[j]-fwd[i]) - w(P[j],P[j+1]);
+        if (d < -1e-7){ let a = i, b = j; while (a < b){ const t = P[a]; P[a] = P[b]; P[b] = t; a++; b--; } prefix(P); improved = true; }
+      }
+      for (let len = 1; len <= 3; len++) for (let i = 1; i + len - 1 <= L-2; i++){ // or-opt: move P[i..i+len-1], either direction
+        const a = P[i-1], s0 = P[i], sl = P[i+len-1], b = P[i+len];
+        const gain = w(a,s0) + w(sl,b) - w(a,b);
+        const inner = (bwd[i+len-1]-bwd[i]) - (fwd[i+len-1]-fwd[i]);
+        let bestD = -1e-7, bestJ = -1, bestRev = false;
+        for (let j = 0; j <= L-2; j++){ if (j >= i-1 && j <= i+len-1) continue;
+          const p = P[j], q = P[j+1], base = w(p,q);
+          const d1 = w(p,s0) + w(sl,q) - base - gain; if (d1 < bestD){ bestD = d1; bestJ = j; bestRev = false; }
+          const d2 = w(p,sl) + w(s0,q) - base + inner - gain; if (d2 < bestD){ bestD = d2; bestJ = j; bestRev = true; } }
+        if (bestJ >= 0){
+          const seg = P.splice(i, len); if (bestRev) seg.reverse();
+          const at = bestJ < i ? bestJ + 1 : bestJ + 1 - len; P.splice(at, 0, ...seg); prefix(P); improved = true; }
       }
     }
+    return P;
   }
-  return {order, cost:best};
-}
-function solve(D, endIdx){
-  // nodes 1..m are stops; node 0 is origin; endIdx is a fixed final node (or null for an open route)
-  const m = D.length - (endIdx != null && endIdx !== 0 ? 2 : 1);
-  const nodes = Array.from({length:m}, (_,i)=>i+1);
-  if (m <= 1) return {order:nodes, cost:tourCost(D,nodes,endIdx)};
   let seed = 12345; const rnd = () => (seed = (seed*1103515245+12345) & 0x7fffffff) / 0x7fffffff;
+  const ri = k => Math.floor(rnd()*k);
   const starts = [];
-  { const left = new Set(nodes), o = []; let cur = 0; while(left.size){ let b=null,bc=Infinity; for(const k of left){ if(D[cur][k]<bc){bc=D[cur][k];b=k;} } o.push(b); left.delete(b); cur=b; } starts.push(o); } // nearest neighbour
-  { let o = []; for (const k of nodes){ let bp=0, bc=Infinity; for(let p=0;p<=o.length;p++){ const c = tourCost(D, o.slice(0,p).concat([k],o.slice(p)), endIdx); if(c<bc){bc=c;bp=p;} } o.splice(bp,0,k); } starts.push(o); } // cheapest insertion
-  for (let t = 0; t < 30; t++){ const o = nodes.slice(); for(let i=o.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [o[i],o[j]]=[o[j],o[i]]; } starts.push(o); }
-  let best = null;
-  for (const s of starts){ const r = improve(D, s, endIdx); if (!best || r.cost < best.cost) best = r; }
-  return best;
+  { const left = new Set(nodes), o = []; let cur = 0; while(left.size){ let b=null,bc=Infinity; for(const k of left){ if(w(cur,k)<bc){bc=w(cur,k);b=k;} } o.push(b); left.delete(b); cur=b; } starts.push(o); }
+  { const P = [0, S]; for (const k of nodes){ let bp = 1, bc = Infinity; for (let p = 1; p < P.length; p++){ const c = w(P[p-1],k) + w(k,P[p]) - w(P[p-1],P[p]); if (c < bc){ bc = c; bp = p; } } P.splice(bp, 0, k); } starts.push(P.slice(1,-1)); }
+  const small = m <= 15, t0 = Date.now(), budget = budgetMs != null ? budgetMs : (small ? 400 : Math.min(3000, 600 + m*12));
+  if (small) for (let t = 0; t < 30; t++){ const o = nodes.slice(); for(let i=o.length-1;i>0;i--){ const j=ri(i+1); [o[i],o[j]]=[o[j],o[i]]; } starts.push(o); }
+  let best = null, bestC = Infinity;
+  for (const o of starts){ const P = localSearch([0, ...o, S]); const c = pathCost(P); if (c < bestC - 1e-9){ best = P; bestC = c; } }
+  // iterated local search: random "double-bridge" kicks from the best tour, keep improvements
+  let it = 0;
+  while (m >= 8 && Date.now() - t0 < budget && it < 20000){
+    it++;
+    const L = best.length, cut = [1+ri(L-2), 1+ri(L-2), 1+ri(L-2)].sort((x,y)=>x-y);
+    if (cut[0] === cut[1] || cut[1] === cut[2]) continue;
+    const P = best.slice(0,cut[0]).concat(best.slice(cut[1],cut[2]), best.slice(cut[0],cut[1]), best.slice(cut[2]));
+    localSearch(P); const c = pathCost(P);
+    if (c < bestC - 1e-9){ best = P; bestC = c; }
+  }
+  return {order: best.slice(1,-1), cost: bestC, iterations: it, ms: Date.now()-t0};
+}
+
+async function travelMatrix(pts, onProgress){
+  const n = pts.length, D = pts.map(()=>new Array(n).fill(null)), Dist = pts.map(()=>new Array(n).fill(null));
+  const est = (i,j) => { const d = hav(pts[i],pts[j])*1.35; return [i===j?0:d/(35/3.6), d]; };
+  const fillEst = (I,J) => { for (const i of I) for (const j of J){ const [t,d] = est(i,j); D[i][j] = t; Dist[i][j] = d; } };
+  const req = async (idx, src, dst) => {
+    const coords = idx.map(i => pts[i].lon.toFixed(6)+","+pts[i].lat.toFixed(6)).join(";");
+    let url = OSRM+"/table/v1/driving/"+coords+"?annotations=duration,distance";
+    if (src) url += "&sources="+src.join(";")+"&destinations="+dst.join(";");
+    const j = await fetchJSON(url, 25000); if (!j || j.code !== "Ok" || !j.durations) throw new Error((j && j.code) || "table failed"); return j;
+  };
+  if (n <= TABLE_MAX){
+    const all = pts.map((_,i)=>i);
+    try{ const j = await req(all); for (let a=0;a<n;a++) for (let b=0;b<n;b++){ D[a][b] = j.durations[a][b]; Dist[a][b] = j.distances ? j.distances[a][b] : est(a,b)[1]; } onProgress && onProgress(1);
+      return {D, Dist, road:n*n, estimated:0}; }
+    catch(e){ fillEst(all, all); return {D, Dist, road:0, estimated:n*n}; }
+  }
+  const C = Math.floor(TABLE_MAX/2), chunks = [];
+  for (let i = 0; i < n; i += C) chunks.push(pts.map((_,k)=>k).slice(i, i+C));
+  let doneB = 0, road = 0, estd = 0; const totalB = chunks.length*chunks.length;
+  for (const I of chunks) for (const J of chunks){
+    const idx = I === J ? I : I.concat(J);
+    const src = I.map((_,k)=>k), dst = I === J ? src : J.map((_,k)=>I.length+k);
+    let ok = false;
+    for (let attempt = 0; attempt < 2 && !ok; attempt++){
+      try{ const j = await req(idx, src, dst);
+        I.forEach((gi,a) => J.forEach((gj,b) => { D[gi][gj] = j.durations[a][b]; Dist[gi][gj] = j.distances ? j.distances[a][b] : est(gi,gj)[1]; }));
+        ok = true; road += I.length*J.length; }
+      catch(e){ await sleep(1500); }
+    }
+    if (!ok){ fillEst(I, J); estd += I.length*J.length; }
+    doneB++; onProgress && onProgress(doneB/totalB);
+    await sleep(300);
+  }
+  return {D, Dist, road, estimated:estd};
 }
 
 async function optimise(){
-  const btn = $("btnOpt"), msg = $("optMsg");
-  const done = route.stops.filter(s => s.status !== "pending"), pend = route.stops.filter(s => s.status === "pending");
-  if (pend.length < 2){ showMsg("Add at least 2 pending stops to optimise.", true); return; }
-  const startPt = route.start || null;
-  const origin = done.length ? done[done.length-1] : startPt;
-  if (!origin){ showMsg("Set a start address first, so the planner knows where the run begins.", true); return; }
+  if (busy){ toast("Still finding locations. Try again in a moment."); return; }
+  const btn = $("btnOpt");
+  const done = route.stops.filter(s => s.status !== "pending");
+  const pend = route.stops.filter(s => s.status === "pending" && has(s));
+  const noLoc = route.stops.filter(s => s.status === "pending" && !has(s));
+  if (pend.length < 2){ showMsg("Add at least 2 pending stops with a location to optimise.", true); return; }
+  const startPt = has(route.start) ? route.start : null;
+  const lastDone = [...done].reverse().find(has);
+  const liveOk = has(myLoc) && Date.now() - myLoc.at < 180000 && hav(myLoc, pend[0]) < 150000;
+  const origin = done.length && liveOk ? {lat:myLoc.lat, lon:myLoc.lon, id:"__me"} : (lastDone || startPt);
+  if (!origin){ showMsg("Set a start address or tap \"Use my location as start\" first.", true); return; }
   const closed = route.returnToStart && startPt;
   const pts = [origin].concat(pend); let endIdx = null;
   if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
-  btn.disabled = true; btn.textContent = "Optimising…";
-  let D, Dist, method = "road";
-  try{
-    const coords = pts.map(p => p.lon.toFixed(6)+","+p.lat.toFixed(6)).join(";");
-    const j = await fetchJSON(OSRM+"/table/v1/driving/"+coords+"?annotations=duration,distance", 20000);
-    if (j.code !== "Ok" || !j.durations) throw new Error(j.message || "table failed");
-    D = j.durations.map(r => r.map(v => v == null ? 1e7 : v)); Dist = j.distances;
-  }catch(e){
-    method = "estimate";
-    D = pts.map(a => pts.map(b => hav(a,b)*1.35/ (35/3.6))); // straight line x1.35 at 35 km/h
-    Dist = pts.map(a => pts.map(b => hav(a,b)*1.35));
-  }
+  btn.disabled = true; btn.textContent = "Getting road times…"; const bar = $("optBar"); bar.hidden = false; bar.firstElementChild.style.width = "0";
+  const M = await travelMatrix(pts, f => { bar.firstElementChild.style.width = Math.round(f*90)+"%"; });
+  btn.textContent = "Optimising…"; await sleep(30);
+  const method = M.estimated === 0 ? "road" : (M.road === 0 ? "estimate" : "partial");
+  const D = M.D.map(r => r.map(v => v == null ? 1e7 : v)), Dist = M.Dist;
   const before = tourCost(D, pend.map((_,i)=>i+1), endIdx);
-  const t0 = performance.now(); const res = solve(D, endIdx); const ms = Math.round(performance.now()-t0);
+  const res = solve(D, endIdx);
+  bar.firstElementChild.style.width = "100%";
   const ordered = res.order.map(k => pts[k]);
-  if (new Set(ordered.map(s=>s.id)).size !== pend.length) { showMsg("Optimisation failed a safety check. Your order was not changed.", true); btn.disabled=false; btn.textContent="Optimise route"; return; }
-  route.stops = done.concat(ordered);
+  if (new Set(ordered.map(s=>s.id)).size !== pend.length){ showMsg("Optimisation failed a safety check. Your order was not changed.", true); btn.disabled=false; btn.textContent="Optimise route"; bar.hidden = true; return; }
+  route.stops = done.concat(ordered, noLoc);
   let distSum = 0, prev = 0; for (const k of res.order){ distSum += Dist[prev][k]; prev = k; } if (endIdx!=null) distSum += Dist[prev][endIdx];
-  route.opt = {method, duration:res.cost, distance:distSum, before, stops:pend.length, matrix:pts.length, solveMs:ms, at:Date.now(), stale:false, geometry:null, legs:null, closed:!!closed};
+  route.opt = {method, duration:res.cost, distance:distSum, before, stops:pend.length, matrix:pts.length, solveMs:res.ms, at:Date.now(), stale:false, geometry:null, legs:null, closed:!!closed, origin:{lat:origin.lat, lon:origin.lon}};
   persist(); render();
   const saved = before - res.cost;
-  showMsg((method==="road" ? "Optimised all "+pend.length+" pending stops together using road travel times ("+pts.length+"×"+pts.length+" = "+(pts.length*pts.length)+" pairs)." :
-    "Routing service unavailable, so all "+pend.length+" stops were optimised using straight-line estimates.") +
-    (saved > 30 ? " Saves about "+fmtTime(saved)+" ("+Math.round(saved/before*100)+"%) versus the previous order." : " The previous order was already close to the best found."), method!=="road");
-  btn.disabled = false; btn.textContent = "Optimise route";
+  const fromTxt = origin.id === "__me" ? " starting from your current location" : (lastDone && origin === lastDone ? " starting from your last finished stop" : "");
+  let t = method === "road" ? "Optimised all "+pend.length+" pending stops together using road travel times"+fromTxt+"."
+        : method === "partial" ? "Optimised all "+pend.length+" pending stops together. Some road times were unavailable, so part of the plan uses straight-line estimates."
+        : "Routing service unavailable, so all "+pend.length+" stops were optimised using straight-line estimates.";
+  t += saved > 30 ? " Saves about "+fmtTime(saved)+" ("+Math.round(saved/before*100)+"%) versus the previous order." : " The previous order was already close to the best found.";
+  if (noLoc.length) t += " "+noLoc.length+" stop"+(noLoc.length>1?"s":"")+" without a location were left at the end.";
+  showMsg(t, method !== "road");
+  btn.disabled = false; btn.textContent = "Re-optimise"; bar.hidden = true;
   await drawRoad();
 }
 async function drawRoad(){
-  if (!route.opt || route.opt.method !== "road") return;
-  const done = route.stops.filter(s => s.status !== "pending"), pend = route.stops.filter(s => s.status === "pending");
-  const origin = done.length ? done[done.length-1] : route.start; if(!origin || !pend.length) return;
-  const pts = [origin].concat(pend); if (route.opt.closed && route.start) pts.push(route.start);
+  if (!route.opt || route.opt.method === "estimate") return;
+  const pend = route.stops.filter(s => s.status === "pending" && has(s));
+  const origin = route.opt.origin; if(!has(origin) || !pend.length) return;
+  const pts = [origin].concat(pend); if (route.opt.closed && has(route.start)) pts.push(route.start);
+  const legs = [], geom = []; let dur = 0, dist = 0;
   try{
-    const coords = pts.map(p => p.lon.toFixed(6)+","+p.lat.toFixed(6)).join(";");
-    const j = await fetchJSON(OSRM+"/route/v1/driving/"+coords+"?overview=full&geometries=geojson&steps=false", 20000);
-    if (j.code !== "Ok") throw new Error("route failed");
-    const r = j.routes[0];
-    route.opt.geometry = r.geometry.coordinates.map(c => [+(c[1].toFixed(5)), +(c[0].toFixed(5))]);
-    route.opt.legs = {}; pend.forEach((st,i) => { route.opt.legs[st.id] = r.legs[i].duration; }); route.opt.duration = r.duration; route.opt.distance = r.distance;
+    for (let i = 0; i < pts.length - 1; i += 60){
+      const part = pts.slice(i, Math.min(i + 61, pts.length));
+      const coords = part.map(p => p.lon.toFixed(6)+","+p.lat.toFixed(6)).join(";");
+      const j = await fetchJSON(OSRM+"/route/v1/driving/"+coords+"?overview=full&geometries=geojson&steps=false", 25000);
+      if (!j || j.code !== "Ok") throw new Error("route failed");
+      const r = j.routes[0]; dur += r.duration; dist += r.distance; r.legs.forEach(l => legs.push(l.duration));
+      r.geometry.coordinates.forEach(c => geom.push([+(c[1].toFixed(5)), +(c[0].toFixed(5))]));
+      if (i + 60 < pts.length - 1) await sleep(300);
+    }
+    if (!route.opt || route.opt.stale) return;
+    route.opt.geometry = geom; route.opt.legs = {}; pend.forEach((st,i) => { route.opt.legs[st.id] = legs[i]; });
+    if (route.opt.method === "road"){ route.opt.duration = dur; route.opt.distance = dist; }
     persist(); render();
   }catch(e){ /* keep straight connector lines */ }
 }
@@ -485,38 +688,63 @@ function showMsg(t, warn){ const m = $("optMsg"); m.textContent = t; m.hidden = 
 async function loadSample(){
   route = blankRoute(); route.name = "Parramatta test run";
   route.start = Object.assign({}, SAMPLE_START);
-  route.stops = SAMPLE.map(([label,lat,lon]) => ({id:uid(), label, lat, lon, status:"pending", reason:"", approx:true}));
+  route.stops = SAMPLE.map(([label,lat,lon]) => ({id:uid(), label, query:label, lat, lon, geo:"street", approx:true, status:"pending", reason:"", parcels:[]}));
   selId = expandedId = null; $("optMsg").hidden = true;
   persist(); render(); fitAll(); toast("Loaded 25 test stops. Checking their exact locations…");
   let fixed = 0;
   for (const s of route.stops){
-    try{
-      const r = (await geocode(s.label, 1))[0];
-      if (r && hav(r, s) < 2500){ s.lat = r.lat; s.lon = r.lon; s.approx = false; fixed++; }
-    }catch(e){}
-    await new Promise(r => setTimeout(r, 250));
+    try{ const r = (await geocode(s.label, 1))[0];
+      if (r && hav(r, s) < 2500){ s.lat = r.lat; s.lon = r.lon; s.approx = false; s.geo = "exact"; fixed++; } }catch(e){}
+    await sleep(250);
   }
   persist(); render();
   toast(fixed === route.stops.length ? "All 25 test stops located." : fixed+" of 25 test stops located exactly; the rest use approximate pins.");
 }
 
+/* ---------- my location ---------- */
+function startLocation(){
+  if (!navigator.geolocation){ toast("This browser cannot share your location."); return; }
+  $("btnMyLoc").disabled = true; $("btnMyLoc").textContent = "Finding you…";
+  let first = true;
+  if (watchId != null) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(p => {
+    myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()};
+    if (first){ first = false;
+      route.start = {label:"My location at "+new Date().toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}), lat:myLoc.lat, lon:myLoc.lon};
+      markStale(); persist(); render(); map.setView([myLoc.lat, myLoc.lon], Math.max(map.getZoom(), 14));
+      $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Update start to my location";
+      toast("Start set to your location (accuracy about "+Math.round(myLoc.acc)+" m)"); }
+    drawMe();
+  }, err => {
+    $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Use my location as start";
+    toast(err.code === 1 ? "Location is blocked. In Chrome, tap the icon left of the web address and allow Location." : "Could not get your location. Try again outdoors.");
+  }, {enableHighAccuracy:true, maximumAge:10000, timeout:20000});
+}
+
 /* ---------- map ---------- */
 const map = L.map("map", {zoomControl:true, attributionControl:true}).setView(PARRA, 13);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
-const layer = L.layerGroup().addTo(map);
+const layer = L.layerGroup().addTo(map), meLayer = L.layerGroup().addTo(map);
 function pin(cls, txt){ return L.divIcon({className:"", html:'<div class="pin '+cls+'"><span>'+txt+'</span></div>', iconSize:[28,28], iconAnchor:[14,28]}); }
+function drawMe(){ meLayer.clearLayers(); if (!has(myLoc)) return;
+  L.circle([myLoc.lat, myLoc.lon], {radius:Math.min(myLoc.acc||30, 300), color:"#1a73e8", weight:1, fillOpacity:.12, interactive:false}).addTo(meLayer);
+  L.circleMarker([myLoc.lat, myLoc.lon], {radius:8, color:"#ffffff", weight:3, fillColor:"#1a73e8", fillOpacity:1, interactive:false}).addTo(meLayer); }
 function drawMap(){
   layer.clearLayers();
-  if (route.start) L.marker([route.start.lat, route.start.lon], {icon:pin("start","S"), zIndexOffset:1000, title:"Start"}).addTo(layer).bindTooltip("Start: "+route.start.label);
-  route.stops.forEach((s,i) => {
+  if (has(route.start)) L.marker([route.start.lat, route.start.lon], {icon:pin("start","S"), zIndexOffset:1000, title:"Start"}).addTo(layer).bindTooltip("Start: "+route.start.label).on("click", ev => { if (placingId) map.fire("click", {latlng:ev.latlng}); });
+  route.stops.forEach((s,i) => { if (!has(s)) return;
     const m = L.marker([s.lat, s.lon], {icon:pin(s.status+(s.id===selId?" sel":""), i+1), title:(i+1)+". "+s.label}).addTo(layer);
-    m.on("click", () => { selId = expandedId = s.id; render(); const el = document.querySelector('[data-id="'+s.id+'"]'); if(el) el.scrollIntoView({block:"center", behavior:"smooth"}); });
+    m.on("click", ev => { if (placingId){ map.fire("click", {latlng:ev.latlng}); return; } selId = expandedId = s.id; render(); const el = document.querySelector('[data-id="'+s.id+'"]'); if(el) el.scrollIntoView({block:"center", behavior:"smooth"}); });
   });
   if (route.opt && !route.opt.stale && route.opt.geometry) L.polyline(route.opt.geometry, {color:"#0f5c5a", weight:5, opacity:.8}).addTo(layer);
-  else if (route.stops.length){ const line = (route.start ? [[route.start.lat, route.start.lon]] : []).concat(route.stops.map(s => [s.lat, s.lon]));
-    L.polyline(line, {color:"#55636a", weight:2, dashArray:"6 6", opacity:.7}).addTo(layer); }
+  else { const line = (has(route.start) ? [[route.start.lat, route.start.lon]] : []).concat(route.stops.filter(has).map(s => [s.lat, s.lon]));
+    if (line.length > 1) L.polyline(line, {color:"#55636a", weight:2, dashArray:"6 6", opacity:.7}).addTo(layer); }
 }
-function fitAll(){ const ll = route.stops.map(s=>[s.lat,s.lon]); if(route.start) ll.push([route.start.lat,route.start.lon]); if(ll.length) map.fitBounds(ll, {padding:[30,30], maxZoom:15}); }
+function fitAll(){ const pts = route.stops.filter(has).map(s=>[s.lat,s.lon]); if(has(route.start)) pts.push([route.start.lat,route.start.lon]); if(pts.length) map.fitBounds(pts, {padding:[30,30], maxZoom:15}); }
+map.on("click", e => {
+  if (!placingId) return; const s = route.stops.find(x => x.id === placingId); placingId = null; document.body.classList.remove("placing");
+  if (!s) return; s.lat = e.latlng.lat; s.lon = e.latlng.lng; s.geo = "manual"; s.approx = false; markStale(); persist(); render(); toast("Pin moved for stop "+(route.stops.indexOf(s)+1));
+});
 
 /* ---------- render ---------- */
 const REASONS = ["No one home","Address not found","Refused","Unsafe access","Other"];
@@ -530,23 +758,27 @@ function render(){
     if (o.stale){ b.className = "badge stale"; b.textContent = "Order changed"; }
     else if (o.method === "road"){ b.className = "badge live"; b.textContent = "Optimised"; }
     else { b.className = "badge est"; b.textContent = "Estimate"; } }
-  $("btnOpt").textContent = o && !o.stale ? "Re-optimise" : "Optimise route";
+  if (!busy) $("btnOpt").textContent = o && !o.stale ? "Re-optimise" : "Optimise route";
   if (document.activeElement !== $("startIn")) $("startIn").value = route.start ? route.start.label : "";
   $("retStart").checked = !!route.returnToStart;
   $("emptyHint").hidden = st.length > 0;
 
-  // next stop card
+  const nPend = st.filter(s => s.geo === "pending").length, nMiss = st.filter(s => s.geo === "missing").length, nChk = st.filter(s => s.geo === "street").length;
+  $("geoAlert").hidden = !(nPend || nMiss || nChk);
+  if (!busy) $("geoAlertTxt").textContent = nPend ? nPend+" stops still need a location." : [nMiss ? nMiss+" stops have no location" : "", nChk ? nChk+" pins found only to street level" : ""].filter(Boolean).join(" · ")+". Open a stop and tap \"Move pin\" to fix it.";
+  $("btnLocate").hidden = !nPend;
+
   const nextIdx = st.findIndex(s => s.status === "pending"), nx = st[nextIdx];
   $("nextCard").hidden = !nx || !(o && !o.stale) && cnt.delivered+cnt.failed+cnt.skipped === 0;
   if (nx){ $("nextNum").textContent = "· #"+(nextIdx+1)+" of "+st.length; $("nextAddr").textContent = nx.label;
     const leg = o && !o.stale && o.legs ? o.legs[nx.id] : null;
-    $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + (nx.approx ? "Approximate pin" : "Located on map");
+    $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + parcelLine(nx);
+    $("nextChips").innerHTML = chipsFor(nx) + parcels(nx).filter(p => p.size).map(p => '<span class="chip pending" style="text-transform:none">'+esc((p.seq!=null?"#"+p.seq+" ":"")+p.size+" cm")+'</span>').join("");
     $("nextNav").href = gmaps(nx, prevPoint(nextIdx)); $("nextPin").href = geoLink(nx); $("nextCard").dataset.id = nx.id;
     const rs = $("nextReasons"); rs.hidden = failPickId !== nx.id;
     rs.innerHTML = '<span class="label" style="width:100%">Why did it fail?</span>' + REASONS.map(r => '<button class="btn" data-nreason="'+esc(r)+'">'+esc(r)+'</button>').join("");
   }
 
-  // list
   let elapsed = 0;
   $("stops").innerHTML = st.map((s,i) => {
     let eta = "";
@@ -554,7 +786,7 @@ function render(){
     const exp = expandedId === s.id;
     return '<li class="stop'+(s.id===selId?" sel":"")+'" data-id="'+s.id+'">' +
       '<div class="num '+s.status+'">'+(i+1)+'</div>' +
-      '<div class="txt" data-tap="'+s.id+'"><div class="a">'+esc(s.label)+'</div><div class="m"><span class="chip '+s.status+'">'+s.status+'</span>'+(s.reason?" "+esc(s.reason):"")+(s.approx?" · approx. pin":"")+eta+'</div></div>' +
+      '<div class="txt" data-tap="'+s.id+'"><div class="a">'+esc(s.label)+'</div><div class="m"><span class="chip '+s.status+'">'+s.status+'</span>'+(s.reason?" "+esc(s.reason):"")+" · "+esc(parcelLine(s))+eta+'</div><div class="chips">'+chipsFor(s)+'</div></div>' +
       '<div class="row" style="gap:0;flex-wrap:nowrap"><button class="handle" aria-label="Move up" data-up="'+s.id+'">▲</button><button class="handle" aria-label="Move down" data-down="'+s.id+'">▼</button><button class="handle drag" aria-label="Drag to reorder">☰</button></div>' +
       (exp ? '<div class="more">' +
         (s.status!=="delivered" ? '<button class="btn act-d" data-st="delivered" data-sid="'+s.id+'">Delivered</button>' : '') +
@@ -563,7 +795,9 @@ function render(){
         (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') +
         '<a class="btn ghost" style="text-decoration:none" href="'+gmaps(s, prevPoint(i))+'">Google Maps ↗</a>' +
         '<a class="btn ghost" style="text-decoration:none" href="'+geoLink(s)+'">Show pin</a>' +
+        '<button class="btn ghost" data-place="'+s.id+'">Move pin</button>' +
         '<button class="btn ghost" data-rm="'+s.id+'">Remove</button>' +
+        (parcels(s).some(p => p.size) ? '<div class="m" style="width:100%">'+parcels(s).map(p => esc((p.seq!=null?"#"+p.seq+": ":"")+(p.size ? p.size+" cm" : "size not listed"))).join(" · ")+'</div>' : '') +
         (failPickId===s.id ? '<div class="reasons"><span class="label" style="width:100%">Why did it fail?</span>'+REASONS.map(r=>'<button class="btn" data-reason="'+esc(r)+'" data-sid="'+s.id+'">'+esc(r)+'</button>').join("")+'</div>' : '') +
         '</div>' : '') +
       '</li>';
@@ -578,6 +812,8 @@ $("retStart").addEventListener("change", e => { route.returnToStart = e.target.c
 $("btnOpt").addEventListener("click", optimise);
 $("btnFit").addEventListener("click", fitAll);
 $("btnSample").addEventListener("click", loadSample);
+$("btnMyLoc").addEventListener("click", startLocation);
+$("btnLocate").addEventListener("click", locatePending);
 $("btnClear").addEventListener("click", () => $("clearConfirm").hidden = false);
 $("clearNo").addEventListener("click", () => $("clearConfirm").hidden = true);
 $("clearYes").addEventListener("click", () => { const keep = route.start; route = blankRoute(); route.start = keep; $("clearConfirm").hidden = true; $("optMsg").hidden = true; persist(); render(); });
@@ -586,16 +822,27 @@ $("stops").addEventListener("click", e => {
   if (t.dataset.up){ move(t.dataset.up, -1); return; }
   if (t.dataset.down){ move(t.dataset.down, 1); return; }
   if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
+  if (t.dataset.place){ placingId = t.dataset.place; document.body.classList.add("placing"); window.scrollTo({top:0, behavior:"smooth"}); toast("Tap the map where this stop is."); return; }
   if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
   if (t.dataset.st){ if (t.dataset.st === "failed"){ failPickId = t.dataset.sid; render(); return; } setStatus(t.dataset.sid, t.dataset.st); return; }
   const tap = t.closest("[data-tap]"); if (tap){ const id = tap.dataset.tap; expandedId = expandedId === id ? null : id; selId = id; failPickId = null; render();
-    const s = route.stops.find(x=>x.id===id); if (s) map.panTo([s.lat, s.lon]); }
+    const s = route.stops.find(x=>x.id===id); if (has(s)) map.panTo([s.lat, s.lon]); }
 });
 document.querySelector("#nextCard .acts").addEventListener("click", e => { const st = e.target.dataset.next; if(!st) return; const id = $("nextCard").dataset.id;
   if (st === "failed"){ failPickId = failPickId === id ? null : id; render(); return; } setStatus(id, st); toast(st === "delivered" ? "Marked delivered" : "Skipped"); });
 $("nextReasons").addEventListener("click", e => { const r = e.target.dataset.nreason; if(!r) return; setStatus($("nextCard").dataset.id, "failed", r); toast("Marked failed: "+r); });
 if (window.Sortable) Sortable.create($("stops"), {handle:".drag", animation:150, onEnd: ev => {
   if (ev.oldIndex === ev.newIndex) return; const [s] = route.stops.splice(ev.oldIndex, 1); route.stops.splice(ev.newIndex, 0, s); markStale(); persist(); render(); }});
+
+/* import sheet */
+$("btnImport").addEventListener("click", () => { $("importSheet").hidden = false; });
+$("closeImport").addEventListener("click", () => $("importSheet").hidden = true);
+$("impGo").addEventListener("click", () => { const t = $("impText").value; if (!t.trim()){ impStatus("Paste at least one address first.", 0, true); return; } importText(t); });
+$("impFile").addEventListener("change", e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
+  rd.onload = () => { const txt = String(rd.result);
+    if (/^\s*\{/.test(txt)){ try{ const r = JSON.parse(txt); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0; route = r; route.id = uid(); persist(); render(); fitAll(); impStatus("Imported a saved route with "+r.stops.length+" stops.", 1); }catch(err){ impStatus("That file is not a Dropline route.", 0, true); } return; }
+    importText(txt); };
+  rd.readAsText(f); e.target.value = ""; });
 
 /* saved routes */
 function renderSaved(){
@@ -623,8 +870,8 @@ $("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
 document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
 
 render(); if (route.stops.length) fitAll();
-if (route.opt && !route.opt.stale && route.opt.method === "road" && !route.opt.geometry) drawRoad();
-window.RP = {solve, tourCost, get route(){ return route; }};
+if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
+window.RP = {solve, tourCost, parseList, get route(){ return route; }};
 })();
 </script>
 </body>

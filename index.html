@@ -146,7 +146,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v2.2</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v2.3</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -160,12 +160,12 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
         <div class="s-k"><b id="cK">0</b><span>Skipped</span></div>
       </div>
       <div class="metrics">
-        <div><div class="label">Stops</div><div class="v"><span id="nStops">0</span>/200</div></div>
+        <div><div class="label">Stops</div><div class="v"><span id="nStops">0</span>/200</div><div id="nParcels" style="font-size:12px;color:var(--muted)"></div></div>
         <div><div class="label">Drive time</div><div class="v" id="mTime">–</div></div>
         <div><div class="label">Distance</div><div class="v" id="mDist">–</div></div>
         <div style="align-self:center"><span class="badge" id="optBadge">Not optimised</span></div>
       </div>
-      <div class="alert" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:36px;padding:6px 10px">Find locations</button></div>
+      <div class="alert" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:36px;padding:6px 10px">Find locations</button><button class="btn" id="btnShowProb" style="min-height:36px;padding:6px 10px">Show next</button></div>
       <div class="row" style="margin-top:12px">
         <button class="btn primary grow" id="btnOpt">Optimise route</button>
         <button class="btn ghost" id="btnFit" title="Show all stops on map">Fit map</button>
@@ -411,7 +411,10 @@ async function geocode(q, limit){
 function grader(q){
   const pc = (q.match(/\b(\d{4})\s*$/) || [])[1], num = (q.match(/^\s*(\d+)/) || [])[1];
   const grade = r => { const h = String(r.housenumber || "").match(/^\d+/); return (num && h && h[0] === num) ? "exact" : "street"; };
-  const pick = list => { const ok = list.filter(r => !pc || !r.postcode || String(r.postcode) === pc); return ok.length ? Object.assign(ok[0], {geo:grade(ok[0])}) : null; };
+  const pick = list => { const ok = list.filter(r => !pc || !r.postcode || String(r.postcode) === pc);
+    if (ok.length) return Object.assign(ok[0], {geo:grade(ok[0])});
+    const near = list.find(r => pc && r.postcode && String(r.postcode)[0] === pc[0]);   // same state, neighbouring postcode
+    return near ? Object.assign(near, {geo:"street"}) : null; };
   return pick;
 }
 /* Returns a result, null when the address is not known, or undefined when the service was busy or unreachable. */
@@ -774,8 +777,11 @@ function drawMe(){ meLayer.clearLayers(); if (!has(myLoc)) return;
 function drawMap(){
   layer.clearLayers();
   if (has(route.start)) L.marker([route.start.lat, route.start.lon], {icon:pin("start","S"), zIndexOffset:1000, title:"Start"}).addTo(layer).bindTooltip("Start: "+route.start.label).on("click", ev => { if (placingId) map.fire("click", {latlng:ev.latlng}); });
+  const seen = {};
   route.stops.forEach((s,i) => { if (!has(s)) return;
-    const m = L.marker([s.lat, s.lon], {icon:pin(s.status+(s.id===selId?" sel":""), i+1), title:(i+1)+". "+s.label}).addTo(layer);
+    const key = s.lat.toFixed(5)+","+s.lon.toFixed(5), k = seen[key] = (seen[key] || 0) + 1;
+    const a = k * 2.4, r = k > 1 ? 0.00012 * Math.sqrt(k) : 0;
+    const m = L.marker([s.lat + r*Math.sin(a), s.lon + r*Math.cos(a)], {icon:pin(s.status+(s.id===selId?" sel":""), i+1), title:(i+1)+". "+s.label}).addTo(layer);
     m.on("click", ev => { if (placingId){ map.fire("click", {latlng:ev.latlng}); return; } selId = expandedId = s.id; render(); const el = document.querySelector('[data-id="'+s.id+'"]'); if(el) el.scrollIntoView({block:"center", behavior:"smooth"}); });
   });
   if (route.opt && !route.opt.stale && route.opt.geometry) L.polyline(route.opt.geometry, {color:"#0f5c5a", weight:5, opacity:.8}).addTo(layer);
@@ -794,6 +800,7 @@ function render(){
   const st = route.stops, cnt = {pending:0,delivered:0,failed:0,skipped:0}; st.forEach(s => cnt[s.status]++);
   $("cP").textContent = cnt.pending; $("cD").textContent = cnt.delivered; $("cF").textContent = cnt.failed; $("cK").textContent = cnt.skipped;
   $("nStops").textContent = st.length;
+  const nParc = st.reduce((a,s) => a + parcels(s).length, 0); $("nParcels").textContent = nParc !== st.length ? nParc+" parcels" : "";
   const o = route.opt, b = $("optBadge");
   if (!o){ b.className = "badge"; b.textContent = "Not optimised"; $("mTime").textContent = "–"; $("mDist").textContent = "–"; }
   else { $("mTime").textContent = fmtTime(o.duration); $("mDist").textContent = fmtDist(o.distance);
@@ -808,7 +815,7 @@ function render(){
   const nSearch = st.filter(s => s.geo === "searching").length, nPend = st.filter(s => s.geo === "pending").length, nMiss = st.filter(s => s.geo === "missing").length, nChk = st.filter(s => s.geo === "street").length;
   $("geoAlert").hidden = !(nPend || nMiss || nChk || nSearch || refining);
   if (!busy && !refining) $("geoAlertTxt").textContent = nPend ? nPend+" stops still need a location." : [nMiss ? nMiss+" stops have no location" : "", nChk ? nChk+" pins found only to street level" : ""].filter(Boolean).join(" · ")+". Open a stop and tap \"Move pin\" to fix it.";
-  $("btnLocate").hidden = !nPend;
+  $("btnLocate").hidden = !nPend; $("btnShowProb").hidden = !(nMiss || nChk);
 
   const nextIdx = st.findIndex(s => s.status === "pending"), nx = st[nextIdx];
   $("nextCard").hidden = !nx || !(o && !o.stale) && cnt.delivered+cnt.failed+cnt.skipped === 0;
@@ -856,6 +863,12 @@ $("btnFit").addEventListener("click", fitAll);
 $("btnSample").addEventListener("click", loadSample);
 $("btnMyLoc").addEventListener("click", startLocation);
 $("btnLocate").addEventListener("click", locatePending);
+let probIdx = -1;
+$("btnShowProb").addEventListener("click", () => {
+  const probs = route.stops.filter(s => s.geo === "missing" || s.geo === "street"); if (!probs.length) return;
+  probIdx = (probIdx + 1) % probs.length; const s = probs[probIdx]; selId = expandedId = s.id; render();
+  const el = document.querySelector('[data-id="'+s.id+'"]'); if (el) el.scrollIntoView({block:"center", behavior:"smooth"});
+  if (has(s)) map.setView([s.lat, s.lon], 17); toast((probIdx+1)+" of "+probs.length+": "+(s.geo === "missing" ? "no location. Tap Move pin, then tap the map." : "check this pin. Tap Move pin if it is wrong.")); });
 $("btnClear").addEventListener("click", () => $("clearConfirm").hidden = false);
 $("clearNo").addEventListener("click", () => $("clearConfirm").hidden = true);
 $("clearYes").addEventListener("click", () => { const keep = route.start; route = blankRoute(); route.start = keep; $("clearConfirm").hidden = true; $("optMsg").hidden = true; persist(); render(); });
@@ -913,7 +926,7 @@ document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click"
 
 render(); if (route.stops.length) fitAll();
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
-window.RP = {solve, tourCost, parseList, get route(){ return route; }};
+window.RP = {solve, tourCost, parseList, grader, get route(){ return route; }};
 })();
 </script>
 </body>

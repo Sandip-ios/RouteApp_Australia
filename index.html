@@ -146,7 +146,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v2.0</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v2.1</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -342,6 +342,7 @@ const uid = () => Math.random().toString(36).slice(2,10);
 const blankRoute = () => ({id:uid(), name:"", start:null, returnToStart:false, stops:[], opt:null, updatedAt:Date.now()});
 let route = loadJSON(STORE_CUR) || blankRoute();
 if (!Array.isArray(route.stops)) route = blankRoute();
+route.stops.forEach(s => { if (s.geo === "searching") s.geo = "pending"; });
 let selId = null, expandedId = null, failPickId = null, placingId = null, myLoc = null, watchId = null, busy = false;
 
 function loadJSON(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
@@ -365,13 +366,13 @@ function gmaps(s, from){
 function geoLink(s){ return has(s) ? "geo:"+ll(s)+"?q="+ll(s)+"("+encodeURIComponent(s.label.split(",")[0])+")" : "geo:0,0?q="+encodeURIComponent(s.query || s.label); }
 function prevPoint(i){ for (let k = i-1; k >= 0; k--) if (has(route.stops[k])) return route.stops[k]; return route.start; }
 async function fetchJSON(url, ms){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms||12000);
-  try{ const r = await fetch(url,{signal:c.signal}); const j = await r.json().catch(()=>null); if(!r.ok){ const e = new Error("HTTP "+r.status); e.body = j; throw e; } return j; } finally{ clearTimeout(t); } }
+  try{ const r = await fetch(url,{signal:c.signal}); const j = await r.json().catch(()=>null); if(!r.ok){ const e = new Error("HTTP "+r.status); e.status = r.status; e.body = j; throw e; } return j; } finally{ clearTimeout(t); } }
 function parcels(s){ return s.parcels && s.parcels.length ? s.parcels : [{seq:null, size:"", note:""}]; }
 function isBig(size){ const n = String(size||"").match(/[\d.]+/g); return !!n && Math.max(...n.map(Number)) >= 60; }
 function chipsFor(s){
   const ps = parcels(s), out = [];
   if (s.geo === "missing") out.push('<span class="chip miss">No location</span>');
-  else if (s.geo === "pending") out.push('<span class="chip warn">Finding location…</span>');
+  else if (s.geo === "pending" || s.geo === "searching") out.push('<span class="chip warn">Finding location…</span>');
   else if (s.geo === "street" || s.approx) out.push('<span class="chip warn">Check pin</span>');
   if (ps.some(p => isBig(p.size))) out.push('<span class="chip big">Large parcel</span>');
   const notes = [...new Set(ps.map(p => p.note).filter(Boolean))]; notes.forEach(n => out.push('<span class="chip mark">★ '+esc(n)+'</span>'));
@@ -406,19 +407,28 @@ async function geocode(q, limit){
   try{ const out = await photon(q, limit); if (out.length) return out; }catch(e){}
   return nominatim(q, limit);
 }
-/* Locate one imported address: prefer a result with the same postcode; "exact" when the house number matched. */
-async function locateOne(q, bias){
-  const pc = (q.match(/\b(\d{4})\s*$/) || [])[1];
-  const num = (q.match(/^\s*(\d+)/) || [])[1];
-  const grade = r => (num && r.housenumber && String(r.housenumber).match(/^\d+/) && String(r.housenumber).match(/^\d+/)[0] === num) ? "exact" : "street";
-  const pick = list => { const ok = list.filter(r => !pc || !r.postcode || String(r.postcode) === pc); return ok.length ? ok[0] : null; };
-  let best = null;
-  try{ const r = pick(await photon(q, 3, bias)); if (r) best = Object.assign(r, {geo:grade(r)}); }catch(e){}
-  if (!best || best.geo !== "exact"){
-    try{ const r = pick(await nominatim(q, 3)); if (r && (!best || grade(r) === "exact")) best = Object.assign(r, {geo:grade(r)}); }catch(e){}
-  }
-  return best;
+/* Locate imported addresses: prefer a result with the same postcode; "exact" when the house number matched. */
+function grader(q){
+  const pc = (q.match(/\b(\d{4})\s*$/) || [])[1], num = (q.match(/^\s*(\d+)/) || [])[1];
+  const grade = r => { const h = String(r.housenumber || "").match(/^\d+/); return (num && h && h[0] === num) ? "exact" : "street"; };
+  const pick = list => { const ok = list.filter(r => !pc || !r.postcode || String(r.postcode) === pc); return ok.length ? Object.assign(ok[0], {geo:grade(ok[0])}) : null; };
+  return pick;
 }
+async function photonLocate(q, bias){
+  for (let tries = 0; ; tries++){
+    try{ return grader(q)(await photon(q, 3, bias)); }
+    catch(e){ if (e.status === 429 && tries < 3){ await sleep(2000*(tries+1)); continue; } return null; }
+  }
+}
+async function nominatimLocate(q){ try{ return grader(q)(await nominatim(q, 3)); }catch(e){ return null; } }
+/* Locations found before are remembered on this phone, so a repeat address imports instantly. */
+const STORE_GEO = "dropline.geocache.v1";
+let geoCache = loadJSON(STORE_GEO) || {};
+const gkey = q => String(q||"").toLowerCase().replace(/\s+/g," ").trim();
+function cachePut(q, r){ geoCache[gkey(q)] = {lat:r.lat, lon:r.lon, geo:r.geo, t:Date.now()}; }
+function cacheSave(){ const ks = Object.keys(geoCache);
+  if (ks.length > 3000) ks.sort((a,b) => geoCache[a].t - geoCache[b].t).slice(0, ks.length-3000).forEach(k => delete geoCache[k]);
+  saveJSON(STORE_GEO, geoCache); }
 function wireSearch(input, box, onPick){
   let timer, seq = 0, results = [];
   const close = () => { box.hidden = true; box.innerHTML = ""; };
@@ -499,25 +509,51 @@ async function importText(text){
   await locatePending();
 }
 function impStatus(t, frac, err){ $("impStatus").hidden = false; const m = $("impStatusTxt"); m.textContent = t; m.classList.toggle("err", !!err); $("impBar").style.width = Math.round((frac||0)*100)+"%"; }
+let refining = null;
 async function locatePending(){
   if (busy) return; busy = true; $("btnLocate").disabled = true;
   const todo = route.stops.filter(s => s.geo === "pending");
-  let done = 0, bias = null;
-  for (const s of todo){
-    if (!route.stops.includes(s)) continue;
-    const r = await locateOne(s.query || s.label, bias || undefined);
-    if (r){ s.lat = r.lat; s.lon = r.lon; s.geo = r.geo; bias = r; } else { s.geo = "missing"; }
-    done++;
-    const msg = "Finding locations: "+done+" of "+todo.length;
-    impStatus(msg, done/todo.length); $("geoAlertTxt").textContent = msg;
-    if (done % 10 === 0) persist();
-    render();
-    if (done < todo.length) await sleep(250);
-  }
+  const need = [], refine = []; let done = 0, fromCache = 0, bias = null;
+  for (const s of todo){ const c = geoCache[gkey(s.query || s.label)];
+    if (c){ s.lat = c.lat; s.lon = c.lon; s.geo = c.geo; done++; fromCache++; } else need.push(s); }
+  const progress = () => { const msg = "Finding locations: "+done+" of "+todo.length; impStatus(msg, todo.length ? done/todo.length : 1); $("geoAlertTxt").textContent = msg; };
+  progress(); render();
+  let next = 0, lastRender = 0;
+  const worker = async () => {
+    while (next < need.length){
+      const s = need[next++]; if (!route.stops.includes(s)) continue;
+      const r = await photonLocate(s.query || s.label, bias || undefined);
+      if (r){ s.lat = r.lat; s.lon = r.lon; s.geo = r.geo; bias = r; if (r.geo === "exact") cachePut(s.query || s.label, r); else refine.push(s); }
+      else { s.geo = "searching"; refine.push(s); }
+      done++; progress();
+      if (Date.now() - lastRender > 400){ lastRender = Date.now(); render(); }
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);   // three lookups at a time
   busy = false; $("btnLocate").disabled = false;
-  persist(); render(); fitAll();
-  const miss = route.stops.filter(s => s.geo === "missing").length, chk = route.stops.filter(s => s.geo === "street").length;
-  impStatus("Done. "+(todo.length - miss)+" of "+todo.length+" located"+(chk ? "; "+chk+" only to street level (marked Check pin)" : "")+(miss ? "; "+miss+" not found (marked No location)" : "")+".", 1);
+  cacheSave(); persist(); render(); fitAll();
+  const located = todo.filter(s => has(s)).length;
+  impStatus("Done. "+located+" of "+todo.length+" located"+(fromCache ? " ("+fromCache+" remembered from before)" : "")+"."+
+    (refine.length ? " Improving "+refine.length+" approximate pins in the background; you can optimise now." : ""), 1);
+  if (refine.length) refineInBackground(refine);
+}
+/* Second pass with the backup address service (limited to one lookup per second), without blocking the driver. */
+async function refineInBackground(list){
+  const my = refining = {}; let improved = 0, k = 0;
+  for (const s of list){
+    if (refining !== my) return;
+    k++; $("geoAlertTxt").textContent = "Improving approximate pins: "+k+" of "+list.length;
+    if (!route.stops.includes(s) || s.geo === "manual") continue;
+    const r = await nominatimLocate(s.query || s.label);
+    if (r && (r.geo === "exact" || !has(s))){
+      s.lat = r.lat; s.lon = r.lon; s.geo = r.geo; improved++;
+      if (r.geo === "exact") cachePut(s.query || s.label, r);
+      if (s.status === "pending") markStale();
+    } else if (!has(s)) s.geo = "missing";
+    persist(); render();
+  }
+  refining = null; cacheSave(); persist(); render();
+  if (improved) toast(improved+" pin"+(improved>1?"s":"")+" improved."+(route.opt && route.opt.stale ? " Tap Re-optimise to update the order." : ""));
 }
 
 /* ---------- optimisation ----------
@@ -743,7 +779,7 @@ function drawMap(){
 function fitAll(){ const pts = route.stops.filter(has).map(s=>[s.lat,s.lon]); if(has(route.start)) pts.push([route.start.lat,route.start.lon]); if(pts.length) map.fitBounds(pts, {padding:[30,30], maxZoom:15}); }
 map.on("click", e => {
   if (!placingId) return; const s = route.stops.find(x => x.id === placingId); placingId = null; document.body.classList.remove("placing");
-  if (!s) return; s.lat = e.latlng.lat; s.lon = e.latlng.lng; s.geo = "manual"; s.approx = false; markStale(); persist(); render(); toast("Pin moved for stop "+(route.stops.indexOf(s)+1));
+  if (!s) return; s.lat = e.latlng.lat; s.lon = e.latlng.lng; s.geo = "manual"; s.approx = false; cachePut(s.query || s.label, s); cacheSave(); markStale(); persist(); render(); toast("Pin moved for stop "+(route.stops.indexOf(s)+1));
 });
 
 /* ---------- render ---------- */
@@ -763,9 +799,9 @@ function render(){
   $("retStart").checked = !!route.returnToStart;
   $("emptyHint").hidden = st.length > 0;
 
-  const nPend = st.filter(s => s.geo === "pending").length, nMiss = st.filter(s => s.geo === "missing").length, nChk = st.filter(s => s.geo === "street").length;
-  $("geoAlert").hidden = !(nPend || nMiss || nChk);
-  if (!busy) $("geoAlertTxt").textContent = nPend ? nPend+" stops still need a location." : [nMiss ? nMiss+" stops have no location" : "", nChk ? nChk+" pins found only to street level" : ""].filter(Boolean).join(" · ")+". Open a stop and tap \"Move pin\" to fix it.";
+  const nSearch = st.filter(s => s.geo === "searching").length, nPend = st.filter(s => s.geo === "pending").length, nMiss = st.filter(s => s.geo === "missing").length, nChk = st.filter(s => s.geo === "street").length;
+  $("geoAlert").hidden = !(nPend || nMiss || nChk || nSearch || refining);
+  if (!busy && !refining) $("geoAlertTxt").textContent = nPend ? nPend+" stops still need a location." : [nMiss ? nMiss+" stops have no location" : "", nChk ? nChk+" pins found only to street level" : ""].filter(Boolean).join(" · ")+". Open a stop and tap \"Move pin\" to fix it.";
   $("btnLocate").hidden = !nPend;
 
   const nextIdx = st.findIndex(s => s.status === "pending"), nx = st[nextIdx];

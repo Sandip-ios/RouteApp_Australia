@@ -144,6 +144,20 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 .nextstep b{display:block;font:700 20px/1.2 var(--f-display);color:var(--ok)}
 .nextstep p{margin:6px 0 10px;font-size:14px}
 .ns-acts{display:flex;flex-direction:column;gap:8px}
+.nav{position:fixed;inset:0;z-index:1500;background:var(--bg);display:flex;flex-direction:column}
+.nav-top{display:flex;gap:12px;align-items:center;background:#0f5c5a;color:#fff;padding:12px max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left));padding-top:max(12px,env(safe-area-inset-top))}
+.nav-arrow{font:700 46px/1 var(--f-display);width:56px;text-align:center}
+.nav-txt{min-width:0}
+.nav-dist{font:700 30px/1 var(--f-display)}
+.nav-instr{font:600 19px/1.2 var(--f-body);margin-top:2px;overflow-wrap:anywhere}
+.nav-then{font-size:13px;opacity:.85;margin-top:3px}
+#navMap{flex:1;min-height:200px}
+.nav-bottom{background:var(--surface);border-top:1px solid var(--line);padding:10px max(14px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+.nav-eta{display:flex;gap:10px;align-items:baseline}
+.nav-eta b{font:700 24px/1 var(--f-display);color:var(--ok)}
+.nav-eta span{color:var(--muted);font-size:14px}
+.nav-stop{font-size:14px;margin-top:4px;overflow-wrap:anywhere}
+.nav-arrive{margin-top:8px}
 .slist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .sprogress{margin:0 0 10px;font-size:14px;color:var(--muted)}
 .sresult{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:10px;margin-top:4px}
@@ -170,7 +184,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v4.0</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v4.1</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -219,6 +233,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
         <button class="btn act-k" data-next="skipped">Skip</button>
       </div>
       <div class="reasons" id="nextReasons" hidden style="margin-top:8px"></div>
+      <button class="btn primary" id="nextGo" style="width:100%;margin-top:8px">▶ Navigate (voice)</button>
       <div class="row" style="margin-top:8px;flex-wrap:nowrap"><a class="btn ghost grow" id="nextNav" style="text-align:center;text-decoration:none">Directions in Google Maps ↗</a><a class="btn ghost" id="nextPin" style="text-decoration:none">Show pin</a></div>
     </section>
 
@@ -352,18 +367,40 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
     <ul>
       <li>Free public map services: no guaranteed uptime, no live traffic</li>
       <li>If road times are unavailable, the plan uses straight-line estimates (marked "Estimate")</li>
-      <li>Directions are handed to Google Maps for each stop</li>
+      <li>In-app voice navigation works while the app is open and the screen is on; no live traffic. Google Maps is still available for each stop</li>
       <li>Location tracking only while this page is open and the screen is on</li>
     </ul>
     <h4 style="color:var(--fail)">Not built yet</h4>
     <ul>
-      <li>Built-in voice turn-by-turn navigation and automatic rerouting (planned for the Android app)</li>
+      <li>Navigation with the screen off or in the background, and live traffic</li>
       <li>Reading a paper run sheet from a photo</li>
       <li>Delivery time windows, multiple drivers, proof of delivery</li>
       <li>Accounts, cloud sync and business dashboard</li>
     </ul>
     <p class="hint">Map data © OpenStreetMap contributors. Address points from G-NAF © Geoscape Australia, licensed under CC BY 4.0 (South Australia). Other address search by Photon (komoot) and Nominatim. Routing by the OSRM public demo server. Addresses you import are sent to these services to find their locations.</p>
     <button class="btn" id="closeAbout" style="width:100%;margin-top:10px">Close</button>
+  </div>
+</div>
+<div class="nav" id="navScreen" hidden>
+  <div class="nav-top">
+    <div class="nav-arrow" id="navArrow">↑</div>
+    <div class="nav-txt"><div class="nav-dist" id="navDist"></div><div class="nav-instr" id="navInstr"></div><div class="nav-then" id="navThen"></div></div>
+  </div>
+  <div id="navMap"></div>
+  <div class="nav-bottom">
+    <div class="nav-eta"><b id="navEta"></b><span id="navRemain"></span></div>
+    <div class="nav-stop" id="navStop"></div>
+    <div id="navArriveBox" class="nav-arrive" hidden>
+      <div class="acts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <button class="btn act-d" id="navDelivered">Delivered</button><button class="btn act-f" id="navFailed">Failed</button><button class="btn act-k" id="navSkip">Skip</button>
+      </div>
+      <div class="reasons" id="navReasons" hidden style="margin-top:6px"><button class="btn" data-nr="No one home">No one home</button><button class="btn" data-nr="Address not found">Address not found</button><button class="btn" data-nr="Refused">Refused</button><button class="btn" data-nr="Unsafe access">Unsafe access</button><button class="btn" data-nr="Other">Other</button></div>
+    </div>
+    <div class="row" style="margin-top:8px;flex-wrap:nowrap">
+      <button class="btn ghost grow" id="navVoice">🔊 Voice on</button>
+      <button class="btn" id="navExit">Exit</button>
+    </div>
+    <label class="toggle" style="margin-top:6px;font-size:13px"><input type="checkbox" id="navSim"> Simulate driving (for testing at a desk)</label>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -1608,6 +1645,172 @@ async function finishScan(btn){
 }
 $("scanFinish").addEventListener("click", e => finishScan(e.currentTarget));
 $("scanFinishIdle").addEventListener("click", e => finishScan(e.currentTarget));
+
+/* ---------- in-app turn-by-turn navigation with voice (foreground only; free routing, no live traffic) ---------- */
+const nav = {on:false, stop:null, coords:[], cum:[], steps:[], stepIdx:0, said:{}, off:0, lastPos:null, map:null, me:null, line:null, dest:null,
+  voice:true, sim:false, simTimer:null, simDist:0, rerouting:false, watch:null, arrived:false, wake:null};
+const lcFirst = t => t.charAt(0).toLowerCase() + t.slice(1);
+const ORD = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
+function speak(text){
+  (window.__spoken = window.__spoken || []).push(text);
+  if (!nav.voice) return;
+  try{
+    const T = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech;
+    if (T && T.speak){ T.speak({text, lang:"en-AU", rate:1.0}).catch(() => {}); return; }
+    if (window.speechSynthesis){ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-AU"; u.rate = 1.0; speechSynthesis.speak(u); }
+  }catch(e){}
+}
+function arrowFor(st){
+  const t = st.maneuver.type, m = st.maneuver.modifier || "";
+  if (t === "arrive") return "⚑"; if (t === "roundabout" || t === "rotary" || t === "roundabout turn") return "⟳";
+  return ({"left":"←","sharp left":"↙","slight left":"↖","right":"→","sharp right":"↘","slight right":"↗","uturn":"↶","straight":"↑"})[m] || "↑";
+}
+function stepText(st){
+  const t = st.maneuver.type, m = st.maneuver.modifier || "", name = st.name || st.ref || "", onto = name ? " onto " + name : "";
+  switch (t){
+    case "depart": return "Head off" + (name ? " along " + name : "");
+    case "arrive": return "You have arrived";
+    case "turn": case "end of road": return (m === "straight" ? "Continue" : m === "uturn" ? "Make a U-turn" : "Turn " + m) + onto;
+    case "new name": case "continue": return (m && m !== "straight" ? "Keep " + m.replace("slight ", "") : "Continue") + onto;
+    case "merge": return "Merge" + (m ? " " + m.replace("slight ", "") : "") + onto;
+    case "on ramp": return "Take the ramp" + (m ? " on the " + m.replace("slight ", "").replace("sharp ", "") : "") + onto;
+    case "off ramp": return "Take the exit" + (m ? " on the " + m.replace("slight ", "").replace("sharp ", "") : "") + onto;
+    case "fork": return "Keep " + (m.includes("left") ? "left" : "right") + onto;
+    case "roundabout": case "rotary": return "At the roundabout, take the " + (ORD[st.maneuver.exit || 1] || st.maneuver.exit + "th") + " exit" + onto;
+    case "roundabout turn": return "At the roundabout, turn " + m + onto;
+    default: return (m && m !== "straight" ? "Go " + m : "Continue") + onto;
+  }
+}
+function sayDist(m){ return m >= 1000 ? "In " + (Math.round(m/100)/10) + " kilometres" : "In " + Math.max(50, Math.round(m/50)*50) + " metres"; }
+function showDist(m){ return m >= 1000 ? (Math.round(m/100)/10) + " km" : Math.max(10, Math.round(m/10)*10) + " m"; }
+// local flat projection (metres) for snapping to the route line
+function toXY(p, lat0){ const k = Math.PI/180, R = 6371000; return [p[1]*k*R*Math.cos(lat0*k), p[0]*k*R]; }
+function snap(pos){
+  const lat0 = pos.lat, P = toXY([pos.lat, pos.lon], lat0);
+  let best = {d:Infinity, along:0, i:0};
+  for (let i = 0; i < nav.coords.length - 1; i++){
+    const A = toXY(nav.coords[i], lat0), B = toXY(nav.coords[i+1], lat0), dx = B[0]-A[0], dy = B[1]-A[1], L2 = dx*dx + dy*dy;
+    let t = L2 ? ((P[0]-A[0])*dx + (P[1]-A[1])*dy) / L2 : 0; t = Math.max(0, Math.min(1, t));
+    const X = A[0] + t*dx, Y = A[1] + t*dy, d = Math.hypot(P[0]-X, P[1]-Y);
+    if (d < best.d) best = {d, along: nav.cum[i] + t*(nav.cum[i+1]-nav.cum[i]), i, pt:[nav.coords[i][0] + t*(nav.coords[i+1][0]-nav.coords[i][0]), nav.coords[i][1] + t*(nav.coords[i+1][1]-nav.coords[i][1])]};
+  }
+  return best;
+}
+async function navRoute(from){
+  const to = nav.stop;
+  const j = await fetchJSON(OSRM + "/route/v1/driving/" + from.lon.toFixed(6) + "," + from.lat.toFixed(6) + ";" + to.lon.toFixed(6) + "," + to.lat.toFixed(6) + "?overview=full&geometries=geojson&steps=true", 20000);
+  if (!j || j.code !== "Ok") throw new Error("route");
+  const r = j.routes[0];
+  nav.coords = r.geometry.coordinates.map(c => [c[1], c[0]]);
+  nav.cum = [0]; for (let i = 1; i < nav.coords.length; i++) nav.cum.push(nav.cum[i-1] + hav({lat:nav.coords[i-1][0], lon:nav.coords[i-1][1]}, {lat:nav.coords[i][0], lon:nav.coords[i][1]}));
+  // where each manoeuvre sits along the route
+  let from_i = 0;
+  nav.steps = r.legs[0].steps.map(st => {
+    const loc = {lat: st.maneuver.location[1], lon: st.maneuver.location[0]};
+    let bi = from_i, bd = Infinity;
+    for (let i = from_i; i < nav.coords.length; i++){ const d = hav(loc, {lat:nav.coords[i][0], lon:nav.coords[i][1]}); if (d < bd){ bd = d; bi = i; } }
+    from_i = bi; return Object.assign(st, {at: nav.cum[bi]});
+  });
+  nav.total = r.distance; nav.duration = r.duration; nav.stepIdx = 1; nav.said = {}; nav.off = 0; nav.arrived = false;
+  if (nav.line) nav.line.remove();
+  nav.line = L.polyline(nav.coords, {color:"#1a73e8", weight:7, opacity:.85}).addTo(nav.map);
+  if (nav.dest) nav.dest.remove();
+  nav.dest = L.marker([to.lat, to.lon], {icon: pin("pending", route.stops.indexOf(to) + 1)}).addTo(nav.map);
+}
+function navUpdate(pos){
+  if (!nav.on || !nav.coords.length) return;
+  nav.lastPos = pos;
+  const s = snap(pos);
+  nav.me.setLatLng([pos.lat, pos.lon]);
+  nav.map.setView([pos.lat, pos.lon], Math.max(nav.map.getZoom(), 16), {animate:false});
+  // off the route? find a new one
+  if (s.d > 45 && (pos.acc == null || pos.acc < 60)){ nav.off++; if (nav.off >= 2 && !nav.rerouting) navReroute(pos); }
+  else nav.off = 0;
+  const along = s.along, remaining = Math.max(0, nav.total - along);
+  while (nav.stepIdx < nav.steps.length - 1 && nav.steps[nav.stepIdx].at < along - 10) nav.stepIdx++;
+  const st = nav.steps[nav.stepIdx], toStep = Math.max(0, st.at - along);
+  $("navArrow").textContent = arrowFor(st);
+  $("navDist").textContent = showDist(toStep);
+  $("navInstr").textContent = stepText(st) + (st.maneuver.type === "arrive" ? ": " + nav.stop.label.split(",")[0] : "");
+  const nx = nav.steps[nav.stepIdx + 1]; $("navThen").textContent = nx && nx.maneuver.type !== "arrive" ? "Then " + lcFirst(stepText(nx)) : "";
+  const mins = Math.max(1, Math.round(remaining / Math.max(1, nav.total) * nav.duration / 60));
+  $("navEta").textContent = mins + " min"; $("navRemain").textContent = showDist(remaining) + " · arrive " + new Date(Date.now() + mins*60000).toLocaleTimeString("en-AU", {hour:"numeric", minute:"2-digit"});
+  // spoken prompts: early warning, then at the turn
+  const key = nav.stepIdx + ":";
+  if (st.maneuver.type === "arrive"){
+    if (remaining < 30 && !nav.arrived){ nav.arrived = true; speak("You have arrived. " + nav.stop.label.split(",")[0] + "."); $("navArriveBox").hidden = false; }
+    else if (remaining < 250 && !nav.said[key+"far"]){ nav.said[key+"far"] = 1; speak(sayDist(remaining) + ", you will arrive at " + nav.stop.label.split(",")[0]); }
+    return;
+  }
+  const far = pos.speed && pos.speed > 22 ? 800 : 300;
+  if (toStep <= far && toStep > 120 && !nav.said[key+"far"]){ nav.said[key+"far"] = 1; speak(sayDist(toStep) + ", " + lcFirst(stepText(st))); }
+  if (toStep <= 45 && !nav.said[key+"now"]){ nav.said[key+"now"] = 1; nav.said[key+"far"] = 1; speak(stepText(st) + (nx && nx.maneuver.type !== "arrive" && nx.at - st.at < 120 ? ", then " + lcFirst(stepText(nx)) : "")); }
+}
+async function navReroute(pos){
+  nav.rerouting = true; $("navInstr").textContent = "Finding a new route…"; speak("Rerouting");
+  try{ await navRoute(pos); nav.simDist = 0; }catch(e){ toast("No route found. Check your internet connection."); }
+  nav.rerouting = false; nav.off = 0;
+}
+async function navStart(stop){
+  const from = has(myLoc) && Date.now() - myLoc.at < 120000 ? myLoc : (prevPoint(route.stops.indexOf(stop)) || route.start);
+  if (!has(stop)){ toast("This stop has no map location yet."); return; }
+  if (!has(from)){ toast("Tap \"Use my location as start\" first."); return; }
+  nav.on = true; nav.stop = stop; nav.sim = $("navSim").checked;
+  $("navScreen").hidden = false; $("navArriveBox").hidden = true; $("navStop").textContent = "#" + (route.stops.indexOf(stop) + 1) + " · " + stop.label + " · " + parcelLine(stop);
+  if (!nav.map){
+    nav.map = L.map("navMap", {zoomControl:false, attributionControl:true}).setView([from.lat, from.lon], 16);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:"© OpenStreetMap"}).addTo(nav.map);
+    nav.me = L.circleMarker([from.lat, from.lon], {radius:9, color:"#fff", weight:3, fillColor:"#1a73e8", fillOpacity:1}).addTo(nav.map);
+  }
+  setTimeout(() => nav.map.invalidateSize(), 50);
+  $("navInstr").textContent = "Finding the route…"; $("navDist").textContent = ""; $("navThen").textContent = "";
+  try{ await navRoute(from); }catch(e){ $("navInstr").textContent = "No route found. Check your internet connection."; return; }
+  try{ if (navigator.wakeLock) nav.wake = await navigator.wakeLock.request("screen"); }catch(e){}
+  const first = nav.steps[1] || nav.steps[0];
+  speak("Starting route to " + stop.label.split(",")[0] + ". " + stepText(nav.steps[0]) + (first ? ", then " + lcFirst(stepText(first)) : ""));
+  navUpdate({lat: from.lat, lon: from.lon});
+  if (nav.sim) navSimulate(); else navWatch();
+}
+function navWatch(){
+  if (nav.watch != null || !navigator.geolocation) return;
+  nav.watch = navigator.geolocation.watchPosition(p => {
+    myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()};
+    navUpdate({lat:myLoc.lat, lon:myLoc.lon, acc:p.coords.accuracy, speed:p.coords.speed});
+  }, () => toast("Location is not available. Allow location for Dropline."), {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
+}
+/* Test mode: drives along the route at about 40 km/h so the voice and turn prompts can be checked from a desk. */
+function navSimulate(){
+  clearInterval(nav.simTimer); nav.simDist = 0;
+  nav.simTimer = setInterval(() => {
+    if (!nav.on || nav.rerouting) return;
+    nav.simDist = Math.min(nav.total, nav.simDist + 11 * (window.__simSpeed || 1));
+    let i = 0; while (i < nav.cum.length - 2 && nav.cum[i+1] < nav.simDist) i++;
+    const t = (nav.simDist - nav.cum[i]) / Math.max(1, nav.cum[i+1] - nav.cum[i]);
+    navUpdate({lat: nav.coords[i][0] + t*(nav.coords[i+1][0]-nav.coords[i][0]), lon: nav.coords[i][1] + t*(nav.coords[i+1][1]-nav.coords[i][1]), acc: 5, speed: 11});
+  }, 1000);
+}
+function navStop(){
+  nav.on = false; clearInterval(nav.simTimer);
+  if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; }
+  try{ window.speechSynthesis && speechSynthesis.cancel(); }catch(e){}
+  try{ nav.wake && nav.wake.release(); }catch(e){}
+  $("navScreen").hidden = true; render();
+}
+function navDone(status, reason){
+  setStatus(nav.stop.id, status, reason);
+  const next = route.stops.find(s => s.status === "pending" && has(s));
+  if (!next){ speak("All deliveries are done."); navStop(); toast("All deliveries done"); return; }
+  speak((status === "delivered" ? "Delivered. " : "") + "Next stop: " + next.label.split(",")[0]);
+  navStart(next);
+}
+$("navExit").addEventListener("click", navStop);
+$("navVoice").addEventListener("click", () => { nav.voice = !nav.voice; $("navVoice").textContent = nav.voice ? "🔊 Voice on" : "🔇 Voice off"; if (!nav.voice) try{ speechSynthesis.cancel(); }catch(e){} });
+$("navSim").addEventListener("change", e => { nav.sim = e.target.checked; if (!nav.on) return; if (nav.sim){ if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; } navSimulate(); } else { clearInterval(nav.simTimer); navWatch(); } });
+$("navDelivered").addEventListener("click", () => navDone("delivered"));
+$("navSkip").addEventListener("click", () => navDone("skipped"));
+$("navFailed").addEventListener("click", () => { $("navReasons").hidden = !$("navReasons").hidden; });
+$("navReasons").addEventListener("click", e => { const r = e.target.dataset.nr; if (r) navDone("failed", r); });
+$("nextGo").addEventListener("click", () => { const id = $("nextCard").dataset.id; const s = route.stops.find(x => x.id === id); if (s) navStart(s); });
 
 /* import sheet */
 $("btnImport").addEventListener("click", () => { $("importSheet").hidden = false; });

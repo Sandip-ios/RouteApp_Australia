@@ -52,7 +52,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cd ios-results 2>/dev/null || mkdir -p ios-results && cd ios-results
+          mkdir -p ios-results && cd ios-results
           rm -f vision_lines
           zip -q -r ../ios-results.zip .
           cd ..

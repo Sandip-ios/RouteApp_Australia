@@ -149,6 +149,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 .nav{position:fixed;inset:0;z-index:1500;background:var(--bg);display:flex;flex-direction:column}
 .nav-top{display:flex;gap:12px;align-items:center;background:#0f5c5a;color:#fff;padding:12px max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left));padding-top:max(12px,env(safe-area-inset-top))}
 .nav-arrow{font:700 46px/1 var(--f-display);width:56px;text-align:center}
+.nav-back{background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.6);border-radius:10px;padding:8px 10px;font-weight:600;min-height:44px;align-self:flex-start}
 .nav-txt{min-width:0}
 .nav-dist{font:700 30px/1 var(--f-display)}
 .nav-instr{font:600 19px/1.2 var(--f-body);margin-top:2px;overflow-wrap:anywhere}
@@ -186,7 +187,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v4.3</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v4.4</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -220,7 +221,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
         <div><div class="label">Distance</div><div class="v" id="mDist">–</div></div>
         <div style="align-self:center"><span class="badge" id="optBadge">Not optimised</span></div>
       </div>
-      <div class="alert" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:36px;padding:6px 10px">Find locations</button><button class="btn" id="btnShowProb" style="min-height:36px;padding:6px 10px">Show next</button></div>
+      <div class="alert" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:36px;padding:6px 10px">Find locations</button><button class="btn" id="btnShowProb" style="min-height:36px;padding:6px 10px">Check pins</button></div>
       <div class="row" style="margin-top:12px">
         <button class="btn primary grow" id="btnOpt">Optimise route</button>
         <button class="btn ghost" id="btnFit" title="Show all stops on map">Fit map</button>
@@ -390,6 +391,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 </div>
 <div class="nav" id="navScreen" hidden>
   <div class="nav-top">
+    <button class="nav-back" id="navBack" aria-label="Back to the stop list">‹ Back</button>
     <div class="nav-arrow" id="navArrow">↑</div>
     <div class="nav-txt"><div class="nav-dist" id="navDist"></div><div class="nav-instr" id="navInstr"></div><div class="nav-then" id="navThen"></div></div>
   </div>
@@ -985,7 +987,15 @@ function addStop(r){
   route.stops.push({id:uid(), label:r.label, query:r.label, lat:r.lat, lon:r.lon, geo:"exact", status:"pending", reason:"", parcels:[]});
   markStale(); persist(); render(); toast("Added stop "+route.stops.length);
 }
-function setStart(r){ route.start = {label:r.label, lat:r.lat, lon:r.lon}; markStale(); persist(); render(); }
+function farFromStops(p){ const st = route.stops.filter(has); if (!st.length || !has(p)) return false; return Math.min(...st.map(x => hav(p, x))) > 150000; }
+function startChanged(){
+  markStale(); persist(); render();
+  if (!$("nextStep").hidden && !route.opt) showNextStep(lastStepPages);
+  if (route.opt && route.stops.filter(s => s.status === "pending" && has(s)).length >= 2){ toast("Start changed. Updating the route…"); optimise(); }
+}
+function setStart(r){
+  if (farFromStops(r)){ toast("That start is more than 150 km from your stops. Choose a start near the deliveries."); render(); return; }
+  route.start = {label:r.label, lat:r.lat, lon:r.lon}; startChanged(); }
 function markStale(){ if (route.opt) route.opt.stale = true; }
 function move(id, dir){ const i = route.stops.findIndex(s=>s.id===id), j = i+dir; if(i<0||j<0||j>=route.stops.length) return;
   [route.stops[i], route.stops[j]] = [route.stops[j], route.stops[i]]; markStale(); persist(); render(); }
@@ -1211,6 +1221,7 @@ async function optimise(){
   const liveOk = has(myLoc) && Date.now() - myLoc.at < 180000 && hav(myLoc, pend[0]) < 150000;
   const origin = done.length && liveOk ? {lat:myLoc.lat, lon:myLoc.lon, id:"__me"} : (lastDone || startPt);
   if (!origin){ showMsg("Set a start address or tap \"Use my location as start\" first.", true); return; }
+  if (hav(origin, pend[0]) > 150000 && pend.every(p => hav(origin, p) > 150000)){ showMsg("The start is more than 150 km from the stops. Choose a start near the deliveries.", true); return; }
   const closed = route.returnToStart && startPt;
   const pts = [origin].concat(pend); let endIdx = null;
   if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
@@ -1281,7 +1292,9 @@ async function loadSample(){
 }
 
 /* ---------- my location ---------- */
+let lastStepPages = 0;
 function showNextStep(pages, busyText){
+  if (pages != null) lastStepPages = pages;
   const box = $("nextStep"), st = route.stops, np = st.reduce((a,x) => a + parcels(x).length, 0);
   box.hidden = false; $("app-main").scrollTop = 0;
   if (busyText){ $("nsTitle").textContent = busyText; $("nsText").textContent = "Finding map locations…"; ["nsOpt","nsLocOpt","nsStart"].forEach(id => $(id).hidden = true); return; }
@@ -1305,15 +1318,23 @@ function startLocation(then){
   watchId = navigator.geolocation.watchPosition(p => {
     myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()};
     if (first){ first = false;
+      $("btnMyLoc").disabled = false; drawMe();
+      if (farFromStops(myLoc)){
+        afterLocate = null; $("btnMyLoc").textContent = "Use my location as start"; $("nsLocOpt").textContent = "Start from my location and optimise";
+        const msg = "You are more than 150 km from these stops, so your location can't be the start. Type a start address near the deliveries (for example the depot).";
+        toast(msg); if (!$("nextStep").hidden) $("nsText").textContent = msg;
+        return; }
       route.start = {label:"My location at "+new Date().toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}), lat:myLoc.lat, lon:myLoc.lon};
-      markStale(); persist(); render(); map.setView([myLoc.lat, myLoc.lon], Math.max(map.getZoom(), 14));
-      $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Update start to my location";
+      $("btnMyLoc").textContent = "Update start to my location";
       toast("Start set to your location (accuracy about "+Math.round(myLoc.acc)+" m)");
-      if (afterLocate){ const f = afterLocate; afterLocate = null; f(); } }
+      if (afterLocate){ const f = afterLocate; afterLocate = null; markStale(); persist(); render(); f(); }
+      else startChanged();
+      map.setView([myLoc.lat, myLoc.lon], Math.max(map.getZoom(), 14)); }
     drawMe();
   }, err => {
-    $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Use my location as start";
-    toast(err.code === 1 ? "Location is blocked. In Chrome, tap the icon left of the web address and allow Location." : "Could not get your location. Try again outdoors.");
+    $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Use my location as start"; $("nsLocOpt").textContent = "Start from my location and optimise"; afterLocate = null;
+    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Open the iPhone Settings app → Dropline → Location → \"While Using the App\", then come back." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
+    toast(err.code === 1 ? "Location is off. Type a start address instead, or turn location on." : "Could not get your location. Try again outdoors.");
   }, {enableHighAccuracy:true, maximumAge:10000, timeout:20000});
 }
 
@@ -1354,8 +1375,8 @@ function render(){
   const nParc = st.reduce((a,s) => a + parcels(s).length, 0); $("nParcels").textContent = nParc !== st.length ? nParc+" parcels" : "";
   const o = route.opt, b = $("optBadge");
   if (!o){ b.className = "badge"; b.textContent = "Not optimised"; $("mTime").textContent = "–"; $("mDist").textContent = "–"; }
-  else { $("mTime").textContent = fmtTime(o.duration); $("mDist").textContent = fmtDist(o.distance);
-    if (o.stale){ b.className = "badge stale"; b.textContent = "Order changed"; }
+  else { $("mTime").textContent = o.stale ? "–" : fmtTime(o.duration); $("mDist").textContent = o.stale ? "–" : fmtDist(o.distance);
+    if (o.stale){ b.className = "badge stale"; b.textContent = "Needs re-optimise"; $("optMsg").hidden = true; }
     else if (o.method === "road"){ b.className = "badge live"; b.textContent = "Optimised"; }
     else { b.className = "badge est"; b.textContent = "Estimate"; } }
   if (!busy) $("btnOpt").textContent = o && !o.stale ? "Re-optimise" : "Optimise route";
@@ -1365,7 +1386,7 @@ function render(){
 
   const nSearch = st.filter(s => s.geo === "searching").length, nPend = st.filter(s => s.geo === "pending").length, nMiss = st.filter(s => s.geo === "missing").length, nChk = st.filter(s => s.geo === "street").length;
   $("geoAlert").hidden = !(nPend || nMiss || nChk || nSearch || refining);
-  if (!busy && !refining) $("geoAlertTxt").textContent = nPend ? nPend+" stops still need a location." : [nMiss ? nMiss+" stops have no location" : "", nChk ? nChk+" pins found only to street level" : ""].filter(Boolean).join(" · ")+". Open a stop and tap \"Move pin\" to fix it.";
+  if (!busy && !refining) $("geoAlertTxt").textContent = nPend ? nPend+" stops still need a location." : [nMiss ? nMiss+" stop"+(nMiss>1?"s have":" has")+" no map pin" : "", nChk ? nChk+" stop"+(nChk>1?"s have":" has")+" an approximate map pin" : ""].filter(Boolean).join(" and ")+". Tap Check pins to look at "+((nMiss+nChk)>1?"them one by one":"it")+"; this does not start a trip.";
   $("btnLocate").hidden = !nPend; $("btnShowProb").hidden = !(nMiss || nChk);
 
   const nextIdx = st.findIndex(s => s.status === "pending"), nx = st[nextIdx];
@@ -1421,7 +1442,7 @@ $("btnShowProb").addEventListener("click", () => {
   const probs = route.stops.filter(s => s.geo === "missing" || s.geo === "street"); if (!probs.length) return;
   probIdx = (probIdx + 1) % probs.length; const s = probs[probIdx]; selId = expandedId = s.id; render();
   const el = document.querySelector('[data-id="'+s.id+'"]'); if (el) el.scrollIntoView({block:"center", behavior:"smooth"});
-  if (has(s)) map.setView([s.lat, s.lon], 17); toast((probIdx+1)+" of "+probs.length+": "+(s.geo === "missing" ? "no location. Tap Move pin, then tap the map." : "check this pin. Tap Move pin if it is wrong.")); });
+  if (has(s)) map.setView([s.lat, s.lon], 17); toast("Pin check "+(probIdx+1)+" of "+probs.length+" — stop #"+(route.stops.indexOf(s)+1)+": "+(s.geo === "missing" ? "no map pin yet. Tap Move pin, then tap the map." : "is the pin in the right place? If not, tap Move pin.")); });
 $("btnClear").addEventListener("click", () => $("clearConfirm").hidden = false);
 $("clearNo").addEventListener("click", () => $("clearConfirm").hidden = true);
 $("clearYes").addEventListener("click", () => { const keep = route.start; route = blankRoute(); route.start = keep; $("clearConfirm").hidden = true; $("optMsg").hidden = true; persist(); render(); });
@@ -1759,9 +1780,11 @@ async function navReroute(pos){
   nav.rerouting = false; nav.off = 0;
 }
 async function navStart(stop){
-  const from = has(myLoc) && Date.now() - myLoc.at < 120000 ? myLoc : (prevPoint(route.stops.indexOf(stop)) || route.start);
-  if (!has(stop)){ toast("This stop has no map location yet."); return; }
-  if (!has(from)){ toast("Tap \"Use my location as start\" first."); return; }
+  if (!has(stop)){ toast("This stop has no map location yet. Open it in the list and tap Move pin."); return; }
+  const near = has(myLoc) && Date.now() - myLoc.at < 300000 && hav(myLoc, stop) < 100000;
+  const from = near ? myLoc : (prevPoint(route.stops.indexOf(stop)) || route.start);
+  if (!has(from)){ toast("Set a start address first."); return; }
+  if (!near && !$("navSim").checked){ $("navSim").checked = true; toast(has(myLoc) ? "You are far from this stop, so this is a demo drive from the previous stop." : "Your location is not available, so this is a demo drive from the previous stop."); }
   nav.on = true; nav.stop = stop; nav.sim = $("navSim").checked;
   $("navScreen").hidden = false; $("navArriveBox").hidden = true; $("navStop").textContent = "#" + (route.stops.indexOf(stop) + 1) + " · " + stop.label + " · " + parcelLine(stop);
   if (!nav.map){
@@ -1771,7 +1794,7 @@ async function navStart(stop){
   }
   setTimeout(() => nav.map.invalidateSize(), 50);
   $("navInstr").textContent = "Finding the route…"; $("navDist").textContent = ""; $("navThen").textContent = "";
-  try{ await navRoute(from); }catch(e){ $("navInstr").textContent = "No route found. Check your internet connection."; return; }
+  try{ await navRoute(from); }catch(e){ $("navArrow").textContent = "!"; $("navInstr").textContent = "No road route found to this stop. Check your internet connection, or tap Back."; return; }
   try{ if (navigator.wakeLock) nav.wake = await navigator.wakeLock.request("screen"); }catch(e){}
   const first = nav.steps[1] || nav.steps[0];
   speak("Starting route to " + stop.label.split(",")[0] + ". " + stepText(nav.steps[0]) + (first ? ", then " + lcFirst(stepText(first)) : ""));
@@ -1811,6 +1834,7 @@ function navDone(status, reason){
   navStart(next);
 }
 $("navExit").addEventListener("click", navStop);
+$("navBack").addEventListener("click", navStop);
 $("navVoice").addEventListener("click", () => { nav.voice = !nav.voice; $("navVoice").textContent = nav.voice ? "🔊 Voice on" : "🔇 Voice off"; if (!nav.voice) try{ speechSynthesis.cancel(); }catch(e){} });
 $("navSim").addEventListener("change", e => { nav.sim = e.target.checked; if (!nav.on) return; if (nav.sim){ if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; } navSimulate(); } else { clearInterval(nav.simTimer); navWatch(); } });
 $("navDelivered").addEventListener("click", () => navDone("delivered"));

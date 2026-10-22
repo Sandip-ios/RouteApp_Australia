@@ -154,7 +154,7 @@ try:
     except Exception as e: say("TTS languages: error", e)
     # real navigation from the emulator's GPS position
     ev("window.__spoken = []; document.getElementById('nextGo').click(); true")
-    try: wait_for("(window.__spoken || []).length > 0 || /km from|location/i.test(document.getElementById('navInstr').textContent)", 60)
+    try: wait_for("(window.__spoken || []).length > 0 || /km from|Turn on location/i.test(document.getElementById('navInstr').textContent)", 60)
     except Exception: pass
     time.sleep(3); say("navigation:", text("#navInstr"), "|", text("#navDist"), "|", text("#navEta"), "| spoken:", ev("JSON.stringify(window.__spoken)")[:200], "| simulate ticked:", ev("document.getElementById('navSim').checked"))
     screencap("09-navigation.png")

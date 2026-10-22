@@ -209,6 +209,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 .srow.check{border-color:var(--skip);background:var(--skip-soft)}
 .srow.missing{border-color:var(--fail);background:var(--fail-soft)}
 .srow.edited{border-color:var(--accent)}
+.ssug{width:100%;margin-top:6px;text-align:left;white-space:normal;font-weight:500}
 .srow-h{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
 .sprob{font-size:12px;color:var(--muted)}
 .sthumb{display:block;width:100%;height:auto;max-height:70px;object-fit:contain;object-position:left;margin-top:6px;border-radius:4px;background:#fff}
@@ -348,7 +349,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <div class="home" id="home" hidden>
   <header class="top">
-    <div class="brand">Dropline<small>Your routes · prototype v5.1</small></div>
+    <div class="brand">Dropline<small>Your routes · prototype v5.2</small></div>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
   <div class="hlist">
@@ -985,8 +986,8 @@ async function gnafSuggest(q){
   const digits = (fullDigits.match(/^\d+/) || [""])[0];
   if (!digits) return null;
   const nums = Object.keys(S.nums).filter(n => /^\d+[A-Z]?$/.test(n));
-  // 2. a glued level or unit number in front: "1213" → "213"
-  for (let k = 1; k < digits.length - 0 && digits.length - k >= 1; k++){ const v = digits.slice(k); if (has(v) && digits.length >= 3) return out(v, false); }
+  // 2. a glued level number in front: "1213" → "213" (only 4+ digits, only one digit dropped; 238 is never turned into 8)
+  if (digits.length >= 4 && has(digits.slice(1))) return out(digits.slice(1), false);
   // 3. exactly one real number on this street that is one digit away
   const near = nums.filter(n => lev(n.replace(/[A-Z]$/,""), digits) === 1);
   if (near.length === 1) return out(near[0], false);
@@ -1674,7 +1675,7 @@ function flagFromLookup(q, r){
       if (!scanPage || !scanPage.rows.includes(row) || row.status === "confirmed" || row.status === "fixed") return;
       if (sug && sug.sure){ row.address = sug.official; row.search = sug.official; row.autofixed = true;
         if (!/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; } }
-      else if (sug){ row.address = sug.official; row.search = sug.official; row.status = "check"; row.problem = "Suggested from the official address list — compare with the photo"; }
+      else if (sug){ row.suggest = sug.official; row.status = "check"; row.problem = "Not in the official address list — check the house number"; }   // keep what was read; the guess is only offered
       else { row.status = "check"; row.problem = r ? "Not in the official address list — check the house number" : "Address not found — check it"; }
       prefetch(row.search);
       if (!(document.activeElement && document.activeElement.classList.contains("sinput"))) renderScan();
@@ -1716,6 +1717,7 @@ function rowCard(r, i, compact){
   return '<div class="srow '+r.status+'" data-row="'+i+'"><div class="srow-h"><b>#'+(r.seq != null ? r.seq : "?")+'</b>'+tag+(look && r.problem ? '<span class="sprob">'+esc(r.problem)+'</span>' : '')+'</div>' +
     (thumbs[r.seq] && !compact ? '<img class="sthumb" alt="Photo of row '+r.seq+'" src="'+thumbs[r.seq]+'">' : '') +
     '<textarea class="sinput" rows="1" enterkeyhint="done" data-i="'+i+'" placeholder="Type the address shown in the photo" aria-label="Address for row '+r.seq+'">'+esc(r.address)+'</textarea>' +
+    (look && r.suggest && r.suggest !== r.address ? '<button class="btn ghost ssug" data-sug="'+i+'">Did you mean <b>'+esc(r.suggest)+'</b>? Tap to use it</button>' : '') +
     (look ? '<button class="btn act-d sok" data-ok="'+i+'">'+(r.status === "missing" ? "Save this address" : "Looks right ✓")+'</button>' : '') + '</div>';
 }
 function renderScan(){
@@ -1753,7 +1755,10 @@ function onRowEdit(e){ const i = e.target.dataset.i; if (i == null || !scanPage)
   const r = scanPage.rows[+i]; r.address = e.target.value;
   const c = DroplineScan.cleanAddress(r.address.replace(/,/g," "));
   r.search = c.search || r.address; }
-function onRowOk(e){ const i = e.target.dataset.ok; if (i == null || !scanPage) return;
+function onRowOk(e){
+  const sb = e.target.closest && e.target.closest("[data-sug]");
+  if (sb && scanPage){ const r = scanPage.rows[+sb.dataset.sug]; r.address = r.search = r.suggest; r.autofixed = true; r.wasLook = true; r.status = "fixed"; prefetch(r.search); renderScan(); return; }
+  const i = e.target.dataset.ok; if (i == null || !scanPage) return;
   const r = scanPage.rows[+i];
   if (!r.address.trim()){ toast("Type the address from the photo first."); return; }
   r.wasLook = true; r.status = r.status === "missing" ? "fixed" : "confirmed"; prefetch(r.search || r.address); renderScan(); }
@@ -1931,7 +1936,8 @@ async function navStart(stop){
   // real navigation always starts from where the phone is now
   let from = null;
   if (!sim){
-    if (!has(myLoc) || Date.now() - myLoc.at > 30000){ $("navInstr").textContent = "Getting your location…"; await freshFix(); }
+    // use the location we already have (up to 5 minutes old) so directions appear at once; live GPS then corrects it and reroutes if needed
+    if (!has(myLoc) || Date.now() - myLoc.at > 300000){ $("navInstr").textContent = "Getting your location…"; await freshFix(); }
     if (!nav.on || nav.stop !== stop) return;
     if (!has(myLoc)){ $("navArrow").textContent = "!"; $("navInstr").textContent = "Turn on location for Dropline to navigate from where you are (phone Settings → Dropline → Location). Or tap Back."; return; }
     const km = hav(myLoc, stop) / 1000;
@@ -2153,7 +2159,7 @@ setTimeout(() => {
     if (r.state === "granted") askLocation(false); else showLocBanner("Turn on location so the app can suggest nearby addresses and start routes from where you are.", false); }).catch(() => {});
 }, 600);
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
-window.RP = {solve, tourCost, parseList, grader, loadSample, render, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {solve, tourCost, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

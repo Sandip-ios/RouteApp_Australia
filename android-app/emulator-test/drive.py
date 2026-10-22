@@ -63,7 +63,7 @@ try:
     say("running as Android app:", ev("!!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())"))
     files = sorted(f for f in os.listdir(PAGES) if f.endswith(".jpg"))
     # 1. raw text recognition per page, same image size the app uses
-    for size, f in [(sz, f) for sz in (2400, 1600) for f in files]:
+    for size, f in [(sz, f) for sz in (1800,) for f in files]:
         im = Image.open(os.path.join(PAGES, f)).convert("RGB"); k = min(1, size / max(im.size))
         im = im.resize((round(im.width*k), round(im.height*k))); buf = io.BytesIO(); im.save(buf, "JPEG", quality=92)
         uri = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()

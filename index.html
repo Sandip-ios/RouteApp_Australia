@@ -155,7 +155,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v3.1</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v3.2</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -559,6 +559,11 @@ function readPage(lines, prevMaxSeq){
       if (d === e && /^\d/.test(m[2])) r.text = m[2];
       else if (d.length > e.length && d.startsWith(e) && /^[A-Za-z]/.test(m[2])) r.text = d.slice(e.length) + " " + m[2]; }
   }
+  // a tracking ID glued in front of the address: "00393580940175303872139145B Godfrey Terrace" → strip it, then the row number, and ask
+  for (const r of out){ const m = r.text.match(/^\s*(?:DRNFLY\s*[\dOolI]{12}|[\dOolI]{20})([\dOolI]*)\s*(.*)$/);
+    if (!m) continue; let rest = m[1]; r.glued = true;
+    if (r.seq != null && rest.startsWith(String(r.seq))) rest = rest.slice(String(r.seq).length);
+    r.text = (rest + (rest && /^[A-Za-z]$/.test(m[2][0]||"") && !/^[A-Za-z]\s/.test(m[2]) ? "" : " ") + m[2]).trim(); }
   // the row's own number merged into the address: "26 19 TAMINGA AVENUE" (strip), "112 Allendale Grove" (strip and ask)
   for (const r of out){ const m = r.text.match(/^([\dOolI]{1,3})\s+(.*)$/); if (!m || r.seq == null || +digitsOf(m[1]) !== r.seq) continue;
     r.text = m[2]; if (!/^\d/.test(m[2])) r.numberLost = true; }
@@ -574,6 +579,9 @@ function readPage(lines, prevMaxSeq){
     else if (seen.has(r.seq)) problems.push("number appears twice");
     if (!c.ok) problems.push(c.reason);
     if (r.numberLost) problems.push("house number may be missing");
+    if (r.glued) problems.push("numbers were joined: check the house number");
+    if ((r.text.match(/S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/g) || []).length > 1) problems.push("two addresses joined: keep only this row's");
+    if (/^\d{4,}/.test(c.search || "")) problems.push("house number unclear");
     if (/^0\b/.test(c.search || "")) problems.push("house number unclear");
     if (/\blevel\s?1\d{1,3}\b/i.test(r.text)) problems.push("level and house number may be joined");
     if (r.seq != null) seen.add(r.seq);
@@ -1211,7 +1219,7 @@ async function photoToCanvas(file){
   let bmp;
   try{ bmp = await createImageBitmap(file, {imageOrientation:"from-image"}); }
   catch(e){ bmp = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = URL.createObjectURL(file); }); }
-  const W = bmp.width, H = bmp.height, k = Math.min(1, 2400 / Math.max(W, H));
+  const W = bmp.width, H = bmp.height, k = Math.min(1, 1800 / Math.max(W, H));
   const c = document.createElement("canvas"); c.width = Math.round(W*k); c.height = Math.round(H*k);
   c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
   return c;

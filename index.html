@@ -212,7 +212,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 .srow-h{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
 .sprob{font-size:12px;color:var(--muted)}
 .sthumb{display:block;width:100%;height:auto;max-height:70px;object-fit:contain;object-position:left;margin-top:6px;border-radius:4px;background:#fff}
-.sinput{width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);font:16px var(--f-body);color:var(--ink)}
+.sinput{display:block;width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);font:16px/1.35 var(--f-body);color:var(--ink);resize:none;overflow:hidden;min-height:44px;white-space:pre-wrap;overflow-wrap:anywhere}
 /* routes home */
 .home{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column}
 .home .hlist{flex:1;overflow:auto;padding:14px max(14px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px;max-width:640px;width:100%;margin:0 auto}
@@ -348,7 +348,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <div class="home" id="home" hidden>
   <header class="top">
-    <div class="brand">Dropline<small>Your routes · prototype v5.0</small></div>
+    <div class="brand">Dropline<small>Your routes · prototype v5.1</small></div>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
   <div class="hlist">
@@ -1715,7 +1715,7 @@ function rowCard(r, i, compact){
   const tag = r.status === "missing" ? '<span class="chip failed">Not read</span>' : look ? '<span class="chip skipped">Check</span>' : done ? '<span class="chip delivered">✓ Checked</span>' : r.autofixed ? '<span class="chip delivered">Corrected from official list</span>' : '';
   return '<div class="srow '+r.status+'" data-row="'+i+'"><div class="srow-h"><b>#'+(r.seq != null ? r.seq : "?")+'</b>'+tag+(look && r.problem ? '<span class="sprob">'+esc(r.problem)+'</span>' : '')+'</div>' +
     (thumbs[r.seq] && !compact ? '<img class="sthumb" alt="Photo of row '+r.seq+'" src="'+thumbs[r.seq]+'">' : '') +
-    '<input class="sinput" data-i="'+i+'" value="'+esc(r.address)+'" placeholder="Type the address shown in the photo" aria-label="Address for row '+r.seq+'">' +
+    '<textarea class="sinput" rows="1" enterkeyhint="done" data-i="'+i+'" placeholder="Type the address shown in the photo" aria-label="Address for row '+r.seq+'">'+esc(r.address)+'</textarea>' +
     (look ? '<button class="btn act-d sok" data-ok="'+i+'">'+(r.status === "missing" ? "Save this address" : "Looks right ✓")+'</button>' : '') + '</div>';
 }
 function renderScan(){
@@ -1745,7 +1745,11 @@ function acceptPage(){
   scanPage = null; scanSave();
   if (empty.length) toast("Left out (no address typed): #"+empty.map(r=>r.seq).join(", #"));
 }
+function fitBox(el){ el.style.height = "auto"; el.style.height = (el.scrollHeight + 3) + "px"; }
+function fitAllBoxes(){ document.querySelectorAll("textarea.sinput").forEach(fitBox); }
 function onRowEdit(e){ const i = e.target.dataset.i; if (i == null || !scanPage) return;
+  if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " ");
+  fitBox(e.target);
   const r = scanPage.rows[+i]; r.address = e.target.value;
   const c = DroplineScan.cleanAddress(r.address.replace(/,/g," "));
   r.search = c.search || r.address; }
@@ -1753,7 +1757,10 @@ function onRowOk(e){ const i = e.target.dataset.ok; if (i == null || !scanPage) 
   const r = scanPage.rows[+i];
   if (!r.address.trim()){ toast("Type the address from the photo first."); return; }
   r.wasLook = true; r.status = r.status === "missing" ? "fixed" : "confirmed"; prefetch(r.search || r.address); renderScan(); }
-["scanList","scanAllList"].forEach(id => { $(id).addEventListener("input", onRowEdit); $(id).addEventListener("click", onRowOk); });
+["scanList","scanAllList"].forEach(id => { $(id).addEventListener("input", onRowEdit); $(id).addEventListener("click", onRowOk);
+  $(id).addEventListener("keydown", e => { if (e.key === "Enter" && e.target.classList.contains("sinput")){ e.preventDefault(); e.target.blur(); } }); });
+new MutationObserver(() => requestAnimationFrame(fitAllBoxes)).observe($("scanSheet"), {childList:true, subtree:true});
+window.addEventListener("resize", () => requestAnimationFrame(fitAllBoxes));
 $("scanShowAll").addEventListener("click", () => { if (scanPage){ scanPage.showAll = !scanPage.showAll; renderScan(); } });
 $("btnScan").addEventListener("click", () => {
   const native = !!nativeScanner();
@@ -1858,7 +1865,7 @@ async function navRoute(from){
   const j = await fetchJSON(OSRM + "/route/v1/driving/" + from.lon.toFixed(6) + "," + from.lat.toFixed(6) + ";" + to.lon.toFixed(6) + "," + to.lat.toFixed(6) + "?overview=full&geometries=geojson&steps=true", 20000);
   if (!j || j.code !== "Ok") throw new Error("route");
   const r = j.routes[0];
-  nav.coords = r.geometry.coordinates.map(c => [c[1], c[0]]);
+  nav.coords = r.geometry.coordinates.map(c => [c[1], c[0]]); nav.coordsFor = to;
   nav.cum = [0]; for (let i = 1; i < nav.coords.length; i++) nav.cum.push(nav.cum[i-1] + hav({lat:nav.coords[i-1][0], lon:nav.coords[i-1][1]}, {lat:nav.coords[i][0], lon:nav.coords[i][1]}));
   // where each manoeuvre sits along the route
   let from_i = 0;
@@ -1910,25 +1917,43 @@ async function navReroute(pos){
 }
 async function navStart(stop){
   if (!has(stop)){ toast("This stop has no map location yet. Open it in the list and tap Move pin."); return; }
-  const near = has(myLoc) && Date.now() - myLoc.at < 300000 && hav(myLoc, stop) < 100000;
-  const from = near ? myLoc : (prevPoint(route.stops.indexOf(stop)) || route.start);
-  if (!has(from)){ toast("Set a start address first."); return; }
-  if (!near && !$("navSim").checked){ $("navSim").checked = true; toast(has(myLoc) ? "You are far from this stop, so this is a demo drive from the previous stop." : "Your location is not available, so this is a demo drive from the previous stop."); }
-  nav.on = true; nav.stop = stop; nav.sim = $("navSim").checked;
+  const sim = $("navSim").checked;
+  nav.on = true; nav.stop = stop; nav.sim = sim; nav.coords = []; nav.coordsFor = null; clearInterval(nav.simTimer);
+  if (!sim && nav.watch == null) navWatch();
   $("navScreen").hidden = false; $("navArriveBox").hidden = true; $("navStop").textContent = "#" + (route.stops.indexOf(stop) + 1) + " · " + stop.label + " · " + (isPick(stop) ? "PICKUP · " : "") + parcelLine(stop); $("navDelivered").textContent = isPick(stop) ? "Picked up" : "Delivered";
   if (!nav.map){
-    nav.map = L.map("navMap", {zoomControl:false, attributionControl:true}).setView([from.lat, from.lon], 16);
+    nav.map = L.map("navMap", {zoomControl:false, attributionControl:true}).setView([stop.lat, stop.lon], 16);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:"© OpenStreetMap"}).addTo(nav.map);
-    nav.me = L.circleMarker([from.lat, from.lon], {radius:9, color:"#fff", weight:3, fillColor:"#1a73e8", fillOpacity:1}).addTo(nav.map);
+    nav.me = L.circleMarker([stop.lat, stop.lon], {radius:9, color:"#fff", weight:3, fillColor:"#1a73e8", fillOpacity:1}).addTo(nav.map);
   }
   setTimeout(() => nav.map.invalidateSize(), 50);
-  $("navInstr").textContent = "Finding the route…"; $("navDist").textContent = ""; $("navThen").textContent = "";
+  $("navArrow").textContent = "↑"; $("navDist").textContent = ""; $("navThen").textContent = ""; $("navEta").textContent = ""; $("navRemain").textContent = "";
+  // real navigation always starts from where the phone is now
+  let from = null;
+  if (!sim){
+    if (!has(myLoc) || Date.now() - myLoc.at > 30000){ $("navInstr").textContent = "Getting your location…"; await freshFix(); }
+    if (!nav.on || nav.stop !== stop) return;
+    if (!has(myLoc)){ $("navArrow").textContent = "!"; $("navInstr").textContent = "Turn on location for Dropline to navigate from where you are (phone Settings → Dropline → Location). Or tap Back."; return; }
+    const km = hav(myLoc, stop) / 1000;
+    if (km > 1500){ $("navArrow").textContent = "!"; $("navInstr").textContent = "You are about " + Math.round(km).toLocaleString("en-AU") + " km from this stop, so there is no road route. Navigation starts from your location when you are near the stops. (To try it at a desk, tick Simulate driving below.)"; return; }
+    from = myLoc;
+  } else {
+    const near = has(myLoc) && hav(myLoc, stop) < 100000;
+    from = near ? myLoc : (prevPoint(route.stops.indexOf(stop)) || route.start);
+    if (!has(from)){ $("navInstr").textContent = "Simulation needs a start address."; return; }
+  }
+  nav.me.setLatLng([from.lat, from.lon]); nav.map.setView([from.lat, from.lon], 16);
+  $("navInstr").textContent = "Finding the route…";
   try{ await navRoute(from); }catch(e){ $("navArrow").textContent = "!"; $("navInstr").textContent = "No road route found to this stop. Check your internet connection, or tap Back."; return; }
   try{ if (navigator.wakeLock) nav.wake = await navigator.wakeLock.request("screen"); }catch(e){}
   const first = nav.steps[1] || nav.steps[0];
   speak("Starting route to " + stop.label.split(",")[0] + ". " + stepText(nav.steps[0]) + (first ? ", then " + lcFirst(stepText(first)) : ""));
   navUpdate({lat: from.lat, lon: from.lon});
   if (nav.sim) navSimulate(); else navWatch();
+}
+function freshFix(){
+  return new Promise(res => { if (!navigator.geolocation) return res();
+    navigator.geolocation.getCurrentPosition(p => { myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; res(); }, () => res(), {enableHighAccuracy:true, maximumAge:10000, timeout:12000}); });
 }
 function navWatch(){
   if (nav.watch != null || !navigator.geolocation) return;
@@ -1949,7 +1974,7 @@ function navSimulate(){
   }, 1000);
 }
 function navStop(){
-  nav.on = false; clearInterval(nav.simTimer);
+  nav.on = false; clearInterval(nav.simTimer); $("navSim").checked = false; nav.sim = false;
   if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; }
   try{ window.speechSynthesis && speechSynthesis.cancel(); }catch(e){}
   try{ nav.wake && nav.wake.release(); }catch(e){}
@@ -1970,7 +1995,8 @@ function navDone(status, reason){
 $("navExit").addEventListener("click", navStop);
 $("navBack").addEventListener("click", navStop);
 $("navVoice").addEventListener("click", () => { nav.voice = !nav.voice; $("navVoice").textContent = nav.voice ? "🔊 Voice on" : "🔇 Voice off"; if (!nav.voice) try{ speechSynthesis.cancel(); }catch(e){} });
-$("navSim").addEventListener("change", e => { nav.sim = e.target.checked; if (!nav.on) return; if (nav.sim){ if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; } navSimulate(); } else { clearInterval(nav.simTimer); navWatch(); } });
+$("navSim").addEventListener("change", e => { nav.sim = e.target.checked; if (!nav.on) return;
+  if (!nav.coords.length || nav.coordsFor !== nav.stop){ navStart(nav.stop); return; } if (nav.sim){ if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; } navSimulate(); } else { clearInterval(nav.simTimer); navWatch(); } });
 $("navDelivered").addEventListener("click", () => navDone("delivered"));
 $("navSkip").addEventListener("click", () => navDone("skipped"));
 $("navFailed").addEventListener("click", () => { $("navReasons").hidden = !$("navReasons").hidden; });
@@ -2127,7 +2153,7 @@ setTimeout(() => {
     if (r.state === "granted") askLocation(false); else showLocBanner("Turn on location so the app can suggest nearby addresses and start routes from where you are.", false); }).catch(() => {});
 }, 600);
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
-window.RP = {solve, tourCost, parseList, grader, loadSample, render, get route(){ return route; }};
+window.RP = {solve, tourCost, parseList, grader, loadSample, render, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

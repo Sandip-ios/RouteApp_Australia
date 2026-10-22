@@ -166,7 +166,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v3.5</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v3.6</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -349,7 +349,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
       <li>Delivery time windows, multiple drivers, proof of delivery</li>
       <li>Accounts, cloud sync and business dashboard</li>
     </ul>
-    <p class="hint">Map data © OpenStreetMap contributors. Address search by Photon (komoot) and Nominatim. Routing by the OSRM public demo server. Addresses you import are sent to these services to find their locations.</p>
+    <p class="hint">Map data © OpenStreetMap contributors. Address points from G-NAF © Geoscape Australia, licensed under CC BY 4.0 (South Australia). Other address search by Photon (komoot) and Nominatim. Routing by the OSRM public demo server. Addresses you import are sent to these services to find their locations.</p>
     <button class="btn" id="closeAbout" style="width:100%;margin-top:10px">Close</button>
   </div>
 </div>
@@ -422,18 +422,18 @@ function cleanAddress(raw){
   if (suburb === "Saint Georges") suburb = "St Georges";
   // postcode cross-check with the suburb
   let fixedPc = false;
-  if (SUBURB_PC[suburb] && SUBURB_PC[suburb] !== pc){ if (lev(SUBURB_PC[suburb], pc) <= 1){ pc = SUBURB_PC[suburb]; fixedPc = true; } }
+  // (postcodes are checked against the official address list later; no guessing here)
   street = titleCase(street).replace(/\s+/g," ").trim();
   street = street.replace(/^[Il|](?=[0-9]*[A-Za-z]?\s)/, "1").replace(/^(\d+)[Il|](?=\d*[A-Za-z]?\s)/, "$11").replace(/^(\d*)[Oo](?=\d+[A-Za-z]?\s)/, "$10");
   // search address: first "number + street name + street type", skipping unit prefixes
-  const re = new RegExp("(\\d+)[A-Za-z]?(?:\\s*[-–]\\s*\\d+[A-Za-z]?)?\\s+((?:[A-Za-z'’]+\\s+){0,4}?(?:"+STREET_TYPES+"))\\b", "i");
+  const re = new RegExp("(\\d+)([A-Za-z]?)(?:\\s*[-–]\\s*\\d+[A-Za-z]?)?\\s+((?:[A-Za-z'’]+\\s+){0,4}?(?:"+STREET_TYPES+"))\\b", "i");
   const m = street.match(re);
-  const search = (m ? m[1]+" "+m[2] : street) + ", " + suburb + " SA " + pc;
+  const search = (m ? m[1]+m[2].toUpperCase()+" "+m[3] : street) + ", " + suburb + " SA " + pc;
   const display = street + ", " + suburb + " SA " + pc;
   const problems = [];
   if (!/^5\d{3}$/.test(pc)) problems.push("Postcode unclear");
   if (!SUBURB_PC[suburb]) problems.push("Suburb unclear");
-  else if (SUBURB_PC[suburb] !== pc) problems.push("Postcode and suburb don't match");
+
   if (street.replace(/[^A-Za-z]/g,"").length < 4) problems.push("Street unclear");
   const firstTok = (street.match(/^\S+/) || [""])[0];
   if (/^[A-Za-z]{1,2}[\d/]/.test(firstTok) || /^\d+[^\dA-Za-z/,]/.test(firstTok)) problems.push("House number unclear");
@@ -765,6 +765,68 @@ const STORE_GEO = "dropline.geocache.v1";
 let geoCache = loadJSON(STORE_GEO) || {};
 const gkey = q => String(q||"").toLowerCase().replace(/\s+/g," ").trim();
 function cachePut(q, r){ geoCache[gkey(q)] = {lat:r.lat, lon:r.lon, geo:r.geo, t:Date.now()}; }
+/* ---------- official address lookup (G-NAF, © Geoscape Australia, CC BY 4.0) ----------
+   One small file per postcode, published with the app. Exact points for every listed address, no rate limits. */
+const GEO_BASE = /github\.io$/.test(location.hostname) ? "geo/" : "https://sandip-ios.github.io/RouteApp_Australia/geo/";
+const STATE_DIR = {"5":"sa"};                       // states available so far, by first postcode digit
+const geoFiles = {};
+const ST_FULL = {ST:"STREET",RD:"ROAD",AVE:"AVENUE",AV:"AVENUE",TCE:"TERRACE",TER:"TERRACE",DR:"DRIVE",DVE:"DRIVE",CT:"COURT",CRT:"COURT",CRES:"CRESCENT",CR:"CRESCENT",
+  GR:"GROVE",GRV:"GROVE",PL:"PLACE",SQ:"SQUARE",LN:"LANE",PDE:"PARADE",CL:"CLOSE",CCT:"CIRCUIT",BVD:"BOULEVARD",BLVD:"BOULEVARD",HWY:"HIGHWAY",WK:"WALK",WY:"WAY",
+  ESP:"ESPLANADE",MWS:"MEWS",RISE:"RISE",HTS:"HEIGHTS",GDNS:"GARDENS",PKWY:"PARKWAY",RDGE:"RIDGE",VW:"VIEW",VSTA:"VISTA",TRL:"TRAIL",LOOP:"LOOP",END:"END"};
+const gnorm = s => String(s||"").toUpperCase().replace(/[’']/g,"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
+function streetNorm(s){ const w = gnorm(s).split(" "); if (w.length > 1 && ST_FULL[w[w.length-1]]) w[w.length-1] = ST_FULL[w[w.length-1]]; return w.join(" "); }
+function locNorm(s){ return gnorm(s).replace(/^SAINT /,"ST ").replace(/^MOUNT /,"MOUNT "); }
+function gnafFile(pc){
+  const dir = STATE_DIR[String(pc)[0]]; if (!dir || !/^\d{4}$/.test(pc)) return Promise.resolve(null);
+  if (!(pc in geoFiles)) geoFiles[pc] = fetchJSON(GEO_BASE + dir + "/" + pc + ".json", 15000).then(f => {
+    const idx = {}; for (const k of Object.keys(f.s)){ const [st, loc] = k.split("|"); idx[k] = {st, loc, nums:f.s[k], c:f.c[k]}; } return idx; }).catch(() => null);
+  return geoFiles[pc];
+}
+/* "502 Glynburn Road, Burnside SA 5066" → official point. Returns null when the postcode is not covered. */
+async function gnafLocate(q){
+  const m = String(q).match(/^\s*(\d+)\s*([A-Za-z]?)\s+(.+?),\s*(.+?)\s+(?:SA|NSW|VIC|QLD|WA|TAS|ACT|NT)\s+(\d{4})\s*$/i)
+         || (String(q).match(/^\s*()()([A-Za-z][^,]*?),\s*(.+?)\s+(?:SA|NSW|VIC|QLD|WA|TAS|ACT|NT)\s+(\d{4})\s*$/i));
+  if (!m) return null;
+  const [, n, suf, stRaw, locRaw, pc] = m;
+  const idx = await gnafFile(pc); if (!idx) return null;
+  const st = streetNorm(stRaw), loc = locNorm(locRaw), num = n + suf.toUpperCase();
+  const cands = Object.values(idx);
+  // 1. same street (exact spelling), same suburb first; 2. close spelling (misread letters)
+  const base = x => x.st.replace(/ [A-Z]+$/, "");
+  let pool = cands.filter(x => x.st === st), corrected = false;
+  if (!pool.length){
+    let best = 3, hits = [];
+    for (const x of cands){ const d = lev(x.st, st); if (d < best){ best = d; hits = [x]; } else if (d === best) hits.push(x); }
+    if (best <= 2 && hits.length && new Set(hits.map(x => x.st)).size === 1){ pool = hits; corrected = true; }
+    else { pool = cands.filter(x => base(x) === st.replace(/ [A-Z]+$/, "")); }   // street type misread (St vs Ave)
+    if (!pool.length){ const w = st.split(" ");                                    // a name in front: "SISSI JIA KATHERINE STREET"
+      for (let k = Math.min(3, w.length - 1); k >= 2 && !pool.length; k--){ const tail = w.slice(-k).join(" "); pool = cands.filter(x => x.st === tail); } }
+    if (pool.length) corrected = true;
+  }
+  if (!pool.length) return {found:false};
+  pool.sort((a,b) => (b.loc === loc) - (a.loc === loc) || lev(a.loc, loc) - lev(b.loc, loc));
+  for (const x of pool){
+    const p = n ? (x.nums[num] || x.nums[n] || x.nums[n+"A"] || x.nums[n+"B"]) : null;
+    if (p) return {found:true, lat:p[0], lon:p[1], geo:"exact", official: (x.nums[num] ? num : n) + " " + titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, corrected: corrected || x.loc !== loc};
+  }
+  const x = pool[0];
+  return {found:false, streetOnly:true, lat:x.c[0], lon:x.c[1], geo:"street", official: titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, corrected};
+}
+function titleCaseWords(s){ return String(s).toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()); }
+function lev(a, b){ if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  let prev = Array.from({length:n+1}, (_,j)=>j);
+  for (let i = 1; i <= m; i++){ const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1]===b[j-1]?0:1)); prev = cur; }
+  return prev[n]; }
+/* Official list first; the open-map search only for addresses outside it. */
+async function smartLocate(q, bias){
+  const g = await gnafLocate(q);
+  if (g && g.found) return {lat:g.lat, lon:g.lon, geo:"exact", official:g.official, corrected:g.corrected, source:"gnaf"};
+  const r = await photonLocate(q, bias);
+  if (r && r.geo === "exact") return Object.assign(r, {source:"osm", notOfficial: !!g});
+  if (g && g.streetOnly) return {lat:g.lat, lon:g.lon, geo:"street", official:g.official, source:"gnaf", notOfficial:true};
+  return r === undefined ? undefined : (r ? Object.assign(r, {notOfficial: !!g}) : null);
+}
+
 function cacheSave(){ const ks = Object.keys(geoCache);
   if (ks.length > 3000) ks.sort((a,b) => geoCache[a].t - geoCache[b].t).slice(0, ks.length-3000).forEach(k => delete geoCache[k]);
   saveJSON(STORE_GEO, geoCache); }
@@ -873,8 +935,8 @@ async function locatePending(){
     while (next < need.length){
       const s = need[next++]; if (!route.stops.includes(s)) continue;
       if (Date.now() - photonSlow < 3000) await sleep(1500);      // service asked us to slow down
-      let r = await photonLocate(s.query || s.label, bias || undefined);
-      if (r === undefined){ await sleep(1500); r = await photonLocate(s.query || s.label, bias || undefined); }   // one retry, not the slow service
+      let r = await smartLocate(s.query || s.label, bias || undefined);
+      if (r === undefined){ await sleep(1500); r = await smartLocate(s.query || s.label, bias || undefined); }   // one retry, not the slow service
       if (r){ s.lat = r.lat; s.lon = r.lon; s.geo = r.geo; bias = r; if (r.geo === "exact") cachePut(s.query || s.label, r); else refine.push(s); }
       else { s.geo = "searching"; refine.push(s); }
       done++; progress();
@@ -1278,15 +1340,29 @@ function pumpPrefetch(){
   while (preBusy < 3 && preQueue.length){
     const q = preQueue.shift(); preBusy++;
     (async () => {
-      let r = await photonLocate(q, biasPoint());
-      if (r === undefined){ await sleep(1500); r = await photonLocate(q, biasPoint()); }
+      let r = await smartLocate(q, biasPoint());
+      if (r === undefined){ await sleep(1500); r = await smartLocate(q, biasPoint()); }
       prefetched[gkey(q)] = r || null;
+      flagFromLookup(q, r);
       if (r && r.geo === "exact"){ cachePut(q, r); }
       preDone++; preBusy--; showPrefetch(); pumpPrefetch();
       if (!preQueue.length && !preBusy) cacheSave();
     })();
   }
   showPrefetch();
+}
+function flagFromLookup(q, r){
+  if (!scanPage) return; let changed = false;
+  for (const row of scanPage.rows){
+    if ((row.search || row.address) !== q || row.status === "confirmed" || row.status === "fixed") continue;
+    let why = "";
+    if (!r) why = "Address not found — check it";
+    else if (r.notOfficial) why = "Not in the official address list — check the house number";
+    else if (r.corrected && r.official) why = "Matched to the official address " + r.official + " — check";
+    if (why && row.status !== "missing"){ row.status = "check"; row.problem = why; changed = true; }
+    if (r && r.source === "gnaf" && r.official && r.geo === "exact") row.official = r.official;
+  }
+  if (changed && !(document.activeElement && document.activeElement.classList.contains("sinput"))) renderScan();
 }
 function showPrefetch(){
   const el = $("scanLocating"); if (!el) return;

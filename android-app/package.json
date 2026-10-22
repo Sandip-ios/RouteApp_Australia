@@ -4,6 +4,7 @@
   "private": true,
   "description": "Android app shell for the Dropline route planner",
   "dependencies": {
+    "@capacitor-community/text-to-speech": "4.1.1",
     "@capacitor/android": "6.1.2",
     "@capacitor/core": "6.1.2",
     "@capacitor/ios": "^6.1.2"

@@ -86,7 +86,8 @@ try:
         ev("""(async () => { const b = await (await fetch('data:image/jpeg;base64,' + %s)).blob();
             const dt = new DataTransfer(); dt.items.add(new File([b], 'page.jpg', {type:'image/jpeg'}));
             const inp = document.getElementById('scanGallery'); inp.files = dt.files; inp.dispatchEvent(new Event('change', {bubbles:true})); return true; })()""" % json.dumps(data))
-        wait_for("document.querySelectorAll('.srow').length > 0 || /Could not|No delivery|needs the/.test(document.getElementById('scanMsg').textContent)", 90)
+        wait_for("!document.getElementById('scanResult').hidden || /could not|No addresses|needs the/.test(document.getElementById('scanMsg').textContent)", 90)
+        if ev("!document.getElementById('scanShowAll').hidden && !document.getElementById('scanAllList').innerHTML"): click("#scanShowAll")
         secs = round(time.time() - t0, 1)
         rows = ev("[...document.querySelectorAll('.srow')].map(e => ({cls: e.className, head: e.querySelector('.srow-h').innerText, value: e.querySelector('.sinput').value}))")
         msg = text("#scanMsg")
@@ -96,10 +97,13 @@ try:
             screencap("02-page1-review.png")
             ev("document.querySelector('#scanSheet .sheet').scrollTop = 1100"); time.sleep(1); screencap("03-page1-review-lower.png")
         if i < len(files) - 1:
-            click("#scanNext"); wait_for("document.querySelectorAll('.srow').length === 0", 10)
-    click("#scanFinish"); time.sleep(1)
+            click("#scanNext"); time.sleep(0.5)
+            if not ev("document.getElementById('scanResult').hidden"): click("#scanNext")
+            wait_for("document.getElementById('scanResult').hidden", 10)
+    click("#scanFinish"); time.sleep(0.5)
+    if not visible("#importSheet") and not ev("document.getElementById('scanResult').hidden"): click("#scanFinish"); time.sleep(0.5)
     if not visible("#importSheet"):
-        say("finish check:", text("#scanMsg")); screencap("04-finish-check.png"); click("#scanFinish")
+        say("finish check:", text("#scanMsg")); screencap("04-finish-check.png"); click("#scanFinishIdle")
     try: wait_for("document.getElementById('impStatusTxt').textContent.startsWith('Done')", 300)
     except Exception: say("locations not finished in time")
     say("import:", text("#impStatusTxt"))

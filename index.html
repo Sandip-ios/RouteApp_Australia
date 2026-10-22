@@ -141,6 +141,17 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 .alert{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--skip-soft);color:var(--ink);margin-top:10px}
 .alert span{flex:1;min-width:0}
 .slist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sprogress{margin:0 0 10px;font-size:14px;color:var(--muted)}
+.sresult{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:10px;margin-top:4px}
+.sresult b{font:700 20px/1.2 var(--f-display)}
+.sresult.good{background:var(--ok-soft);color:var(--ok)}
+.sresult.warn{background:var(--skip-soft);color:var(--ink)}
+.sresult span{font-size:14px}
+.srow.ok,.srow.confirmed,.srow.fixed{border-color:var(--line)}
+.srow.confirmed,.srow.fixed{background:var(--ok-soft);border-color:var(--ok)}
+.sok{margin-top:6px;width:100%}
+.smore{margin-top:12px;font-size:14px;color:var(--muted)}
+.smore summary{cursor:pointer;padding:6px 0}
 .srow{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface)}
 .srow.check{border-color:var(--skip);background:var(--skip-soft)}
 .srow.missing{border-color:var(--fail);background:var(--fail-soft)}
@@ -155,7 +166,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v3.3</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v3.5</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -240,26 +251,40 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <div class="sheet-bg" id="scanSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Scan run sheet" style="max-height:94vh">
-    <h3 id="scanTitle">Page 1</h3>
+    <h3 id="scanTitle">Scan page 1</h3>
     <div id="scanNoApp">
       <p class="hint" style="margin-top:0">Photo scanning uses Google's on-device text recognition, which works in the Dropline Android app.</p>
       <a class="btn primary" style="display:block;text-align:center;text-decoration:none" href="https://github.com/Sandip-ios/RouteApp_Australia/releases/download/app-latest/dropline.apk">Download the Android app (test version)</a>
       <p class="hint">After downloading, open the file to install. Android may ask you to allow installs from your browser.</p>
     </div>
     <div id="scanApp">
-      <p class="hint" style="margin-top:0" id="scanSummary"></p>
-      <label class="btn primary" style="display:block;text-align:center"><span id="scanTake">Take photo of page 1</span><input type="file" id="scanCam" accept="image/*" capture="environment" hidden></label>
-      <label class="btn ghost" style="display:block;text-align:center;margin-top:8px">Choose an existing photo<input type="file" id="scanGallery" hidden></label>
-      <p class="hint">Hold the phone flat above the page, fill the screen with the table, good light, no shadow.</p>
-      <p class="msg" id="scanMsg" hidden></p>
-      <div id="scanList" class="slist"></div>
-      <div id="scanActs" hidden class="row" style="margin-top:10px"><button class="btn primary grow" id="scanNext">Save page, scan next</button></div>
-      <button class="btn act-d" id="scanFinish" style="width:100%;margin-top:8px" hidden>Finish — add stops and find locations</button>
-      <div class="row" style="margin-top:10px">
-        <button class="btn ghost grow" id="scanRestart">Start over</button>
-        <button class="btn ghost grow" id="scanCopy">Copy scan details</button>
+      <p class="sprogress" id="scanSummary"></p>
+      <p class="sprogress" id="scanLocating" hidden></p>
+      <div id="scanShoot">
+        <label class="btn primary" style="display:block;text-align:center"><span id="scanTake">Take photo of page 1</span><input type="file" id="scanCam" accept="image/*" capture="environment" hidden></label>
+        <label class="btn ghost" style="display:block;text-align:center;margin-top:8px">Choose a saved photo<input type="file" id="scanGallery" hidden></label>
+        <p class="hint">Hold the phone flat above the page so the whole table fills the screen. Good light, no shadow.</p>
       </div>
-      <div class="row" id="scanRestartConfirm" hidden style="margin-top:8px"><span style="flex:1">Discard all scanned pages?</span><button class="btn" id="scanRestartNo">Keep</button><button class="btn act-f" id="scanRestartYes">Discard</button></div>
+      <p class="msg" id="scanMsg" hidden></p>
+      <div id="scanResult" hidden>
+        <div class="sresult" id="scanResultBox"><b id="scanResultTitle"></b><span id="scanResultSub"></span></div>
+        <p class="hint" id="scanHowTo"></p>
+        <div id="scanList" class="slist"></div>
+        <button class="btn ghost" id="scanShowAll" style="width:100%;margin-top:8px"></button>
+        <div id="scanAllList" class="slist" hidden></div>
+        <div class="msg err" id="scanNextWarn" hidden></div>
+        <button class="btn primary" id="scanNext" style="width:100%;margin-top:12px">Next page ›</button>
+        <button class="btn act-d" id="scanFinish" style="width:100%;margin-top:8px">Done — all pages scanned</button>
+        <label class="btn ghost" style="display:block;text-align:center;margin-top:8px">Retake this page<input type="file" id="scanRetake" accept="image/*" capture="environment" hidden></label>
+      </div>
+      <button class="btn act-d" id="scanFinishIdle" style="width:100%;margin-top:8px" hidden>Done — all pages scanned</button>
+      <details class="smore"><summary>More options</summary>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost grow" id="scanRestart">Start over</button>
+          <button class="btn ghost grow" id="scanCopy">Copy scan details</button>
+        </div>
+        <div class="row" id="scanRestartConfirm" hidden style="margin-top:8px"><span style="flex:1">Discard all scanned pages?</span><button class="btn" id="scanRestartNo">Keep</button><button class="btn act-f" id="scanRestartYes">Discard</button></div>
+      </details>
     </div>
     <button class="btn" id="scanClose" style="width:100%;margin-top:14px">Close</button>
   </div>
@@ -376,7 +401,7 @@ function cleanAddress(raw){
   a = a.replace(/\bNone\b/gi,"").replace(/\s+,/g,",");
   // postcode block: "SA 5066 AU", allowing common misreads (SAS066AU, SA SOG8 AU ...)
   const pm = a.match(/\bS\s?A\s?[,.]?\s?([5S$][\dOolIGSsB]{3})\s*(A\s?U\w*|Al|AL)?\s*[^A-Za-z]*$/) || a.match(/\bS\s?A\s?[,.]?\s?([5S$][\dOolIGSsB]{3})\b/);
-  if (!pm) return {ok:false, reason:"No postcode found", display:titleCase(a)};
+  if (!pm) return {ok:false, reason:"Postcode not read", display:titleCase(a)};
   let pc = digitsOf(pm[1]);
   let body = a.slice(0, pm.index).replace(/[ ,.]+$/,"").trim();
   // suburb: exact or close match against known suburbs at the end of the text
@@ -399,17 +424,20 @@ function cleanAddress(raw){
   let fixedPc = false;
   if (SUBURB_PC[suburb] && SUBURB_PC[suburb] !== pc){ if (lev(SUBURB_PC[suburb], pc) <= 1){ pc = SUBURB_PC[suburb]; fixedPc = true; } }
   street = titleCase(street).replace(/\s+/g," ").trim();
+  street = street.replace(/^[Il|](?=[0-9]*[A-Za-z]?\s)/, "1").replace(/^(\d+)[Il|](?=\d*[A-Za-z]?\s)/, "$11").replace(/^(\d*)[Oo](?=\d+[A-Za-z]?\s)/, "$10");
   // search address: first "number + street name + street type", skipping unit prefixes
   const re = new RegExp("(\\d+)[A-Za-z]?(?:\\s*[-–]\\s*\\d+[A-Za-z]?)?\\s+((?:[A-Za-z'’]+\\s+){0,4}?(?:"+STREET_TYPES+"))\\b", "i");
   const m = street.match(re);
   const search = (m ? m[1]+" "+m[2] : street) + ", " + suburb + " SA " + pc;
   const display = street + ", " + suburb + " SA " + pc;
   const problems = [];
-  if (!/^5\d{3}$/.test(pc)) problems.push("postcode unclear");
-  if (!SUBURB_PC[suburb]) problems.push("suburb not recognised");
-  else if (SUBURB_PC[suburb] !== pc) problems.push("postcode does not match suburb");
-  if (street.replace(/[^A-Za-z]/g,"").length < 4) problems.push("street unclear");
-  if (!m && !/school|post office|lpo|hospital|centre|college/i.test(street)) problems.push("no house number");
+  if (!/^5\d{3}$/.test(pc)) problems.push("Postcode unclear");
+  if (!SUBURB_PC[suburb]) problems.push("Suburb unclear");
+  else if (SUBURB_PC[suburb] !== pc) problems.push("Postcode and suburb don't match");
+  if (street.replace(/[^A-Za-z]/g,"").length < 4) problems.push("Street unclear");
+  const firstTok = (street.match(/^\S+/) || [""])[0];
+  if (/^[A-Za-z]{1,2}[\d/]/.test(firstTok) || /^\d+[^\dA-Za-z/,]/.test(firstTok)) problems.push("House number unclear");
+  else if (!m && !/school|post office|lpo|hospital|centre|college/i.test(street)) problems.push("No house number");
   return {ok: problems.length === 0, reason: problems.join(", "), display, search, suburb, postcode: pc, fixedPc};
 }
 
@@ -575,23 +603,24 @@ function readPage(lines, prevMaxSeq){
     if (r.seq != null && r.seq <= prevMaxSeq && prevMaxSeq > 0) { r.guessed = true; }
     const c = cleanAddress(r.text);
     const problems = [];
-    if (r.seq == null || r.guessed) problems.push("run-sheet number unclear");
-    else if (seen.has(r.seq)) problems.push("number appears twice");
+    if (r.seq == null || r.guessed) problems.push("Row number unclear");
+    else if (seen.has(r.seq)) problems.push("Row number appears twice");
     if (!c.ok) problems.push(c.reason);
-    if (r.numberLost) problems.push("house number may be missing");
-    if (r.glued) problems.push("numbers were joined: check the house number");
-    if ((r.text.match(/S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/g) || []).length > 1) problems.push("two addresses joined: keep only this row's");
-    if (/^\d{4,}/.test(c.search || "")) problems.push("house number unclear");
-    if (/^0\b/.test(c.search || "")) problems.push("house number unclear");
-    if (/\blevel\s?1\d{1,3}\b/i.test(r.text)) problems.push("level and house number may be joined");
+    // the row number was glued to the address and nothing that looks like a house number is left
+    if (r.numberLost && !/^\d|\b\d+[A-Za-z]?\s+\S+/.test(c.display || "") && !/No house number/.test(c.reason || "")) problems.push("No house number");
+    if (r.glued) problems.push("House number unclear");
+    if ((r.text.match(/S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/g) || []).length > 1) problems.push("Two addresses joined — keep only this row's");
+    if (/^\d{4,}/.test(c.search || "") || /^0\b/.test(c.search || "")) problems.push("House number unclear");
+    if (/\blevel\s?1\d{1,3}\b/i.test(r.text)) problems.push("Level and house number may be joined");
     if (r.seq != null) seen.add(r.seq);
-    rowsOut.push({seq: r.seq, address: c.display, search: c.search || c.display, size: r.size, box: r.box, status: problems.length ? "check" : "ok", problem: problems.join("; ")});
+    const uniq = [...new Set(problems.join(", ").split(", ").filter(Boolean))];
+    rowsOut.push({seq: r.seq, address: c.display, search: c.search || c.display, size: r.size, box: r.box, status: uniq.length ? "check" : "ok", problem: uniq.join(" · ")});
   }
   rowsOut.sort((a,b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
   const nums = rowsOut.map(r => r.seq).filter(s => s != null);
   const lo = Math.min(prevMaxSeq + 1, ...(nums.length ? nums : [prevMaxSeq + 1])), hi = nums.length ? Math.max(...nums) : prevMaxSeq;
   const missing = []; for (let s = lo; s <= hi; s++) if (!seen.has(s)) missing.push(s);
-  missing.forEach(s => rowsOut.push({seq: s, address: "", search: "", size: "", status: "missing", problem: "Row not read — type this address"}));
+  missing.forEach(s => rowsOut.push({seq: s, address: "", search: "", size: "", status: "missing", problem: "Not read — type the address from the photo"}));
   rowsOut.sort((a,b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
   return {rows: rowsOut, total, firstSeq: lo, lastSeq: hi, lineCount: L.length};
 }
@@ -826,8 +855,14 @@ async function locatePending(){
   if (busy) return; busy = true; $("btnLocate").disabled = true;
   const todo = route.stops.filter(s => s.geo === "pending");
   const need = [], refine = []; let done = 0, fromCache = 0, bias = null;
-  for (const s of todo){ const c = geoCache[gkey(s.query || s.label)];
-    if (c){ s.lat = c.lat; s.lon = c.lon; s.geo = c.geo; done++; fromCache++; } else need.push(s); }
+  // lookups still queued in the background are done here instead; wait briefly for ones already running
+  const pendingQ = new Set(todo.map(s => s.query || s.label)); for (let i = preQueue.length - 1; i >= 0; i--) if (pendingQ.has(preQueue[i])) { preQueue.splice(i, 1); preTotal--; }
+  for (let w = 0; w < 40 && preBusy; w++) await sleep(250);
+  for (const s of todo){ const k = gkey(s.query || s.label), c = geoCache[k], pre = prefetched[k];
+    if (c){ s.lat = c.lat; s.lon = c.lon; s.geo = c.geo; done++; fromCache++; }
+    else if (pre){ s.lat = pre.lat; s.lon = pre.lon; s.geo = pre.geo; done++; fromCache++; if (pre.geo !== "exact") refine.push(s); }
+    else if (pre === null){ s.geo = "searching"; done++; refine.push(s); }
+    else need.push(s); }
   const t0 = Date.now(), done0 = done;
   const progress = () => { const n = done - done0, left = todo.length - done;
     const eta = n >= 3 && left > 0 ? " · "+fmtLeft((Date.now()-t0)/1000/n*left) : "";
@@ -850,7 +885,7 @@ async function locatePending(){
   busy = false; $("btnLocate").disabled = false;
   cacheSave(); persist(); render(); fitAll();
   const located = todo.filter(s => has(s)).length;
-  impStatus("Done. "+located+" of "+todo.length+" located"+(fromCache ? " ("+fromCache+" remembered from before)" : "")+"."+
+  impStatus("Done. "+located+" of "+todo.length+" located"+(fromCache ? " ("+fromCache+" already found while scanning or remembered)" : "")+"."+
     (refine.length ? " Improving "+refine.length+" approximate pins in the background; you can optimise now." : ""), 1);
   if (refine.length) refineInBackground(refine);
 }
@@ -1232,59 +1267,113 @@ function cropRow(canvas, box){
   c.getContext("2d").drawImage(canvas, x, y, w, h, 0, 0, c.width, c.height);
   return c.toDataURL("image/jpeg", 0.7);
 }
+/* Background location finding while pages are being scanned, so Done is near-instant. */
+const prefetched = {};                // search key -> result object, or null when not found
+const preQueue = []; let preBusy = 0, preDone = 0, preTotal = 0;
+function prefetch(q){
+  const k = gkey(q); if (!q || k in prefetched || geoCache[k] || preQueue.includes(q)) return;
+  preQueue.push(q); preTotal++; pumpPrefetch();
+}
+function pumpPrefetch(){
+  while (preBusy < 3 && preQueue.length){
+    const q = preQueue.shift(); preBusy++;
+    (async () => {
+      let r = await photonLocate(q, biasPoint());
+      if (r === undefined){ await sleep(1500); r = await photonLocate(q, biasPoint()); }
+      prefetched[gkey(q)] = r || null;
+      if (r && r.geo === "exact"){ cachePut(q, r); }
+      preDone++; preBusy--; showPrefetch(); pumpPrefetch();
+      if (!preQueue.length && !preBusy) cacheSave();
+    })();
+  }
+  showPrefetch();
+}
+function showPrefetch(){
+  const el = $("scanLocating"); if (!el) return;
+  const left = preQueue.length + preBusy;
+  el.hidden = !preTotal;
+  el.textContent = left ? "Finding map locations in the background: "+preDone+" of "+preTotal+" done" : "✓ Map locations found for "+preDone+" addresses";
+}
+
 async function scanPhoto(file){
   const eng = nativeScanner(); if (!eng){ scanMsg("Photo scanning needs the Dropline Android app.", true); return; }
   const n = scan.pages.length + 1, t0 = performance.now();
-  scanMsg("Reading page "+n+"…"); $("scanList").innerHTML = ""; $("scanActs").hidden = true;
+  scanPage = null; renderScan(); scanMsg("Reading page "+n+"…");
   let canvas, res;
   try{
     canvas = await photoToCanvas(file);
     res = await eng.recognize({image: canvas.toDataURL("image/jpeg", 0.92)});
-  }catch(e){ scanMsg("Could not read that photo. "+((e && e.message) || "Try again."), true); return; }
+  }catch(e){ scanMsg("That photo could not be read. Try again, or choose a different photo.", true); return; }
   const page = DroplineScan.readPage(res.lines || [], scanLastSeq());
   if (page.total) scan.total = page.total;
   const secs = ((performance.now() - t0)/1000).toFixed(1);
-  const good = page.rows.filter(r => r.status === "ok").length, bad = page.rows.length - good;
-  if (!page.rows.length){ scanMsg("No delivery rows found in that photo ("+secs+" s). Hold the phone flat above the page, fill the screen with the table, and avoid shadows.", true); return; }
+  if (!page.rows.length){ scanMsg("No addresses found in that photo. Hold the phone flat above the page so the whole table fills the screen, with good light, and try again.", true); return; }
   page.rows.forEach(r => { thumbs[r.seq] = cropRow(canvas, r.box); delete r.box; });
-  scanPage = {rows: page.rows, lines: res.lines, ms: res.ms, secs};
-  scanMsg("Page "+n+": rows "+page.firstSeq+"–"+page.lastSeq+" read in "+secs+" s. "+(bad ? bad+" need a look (highlighted). Compare with the photo strip and fix the text." : "All rows look right. Compare a few with the photo strip."), false);
+  scanPage = {rows: page.rows, lines: res.lines, ms: res.ms, secs, first: page.firstSeq, last: page.lastSeq, showAll: false};
+  page.rows.forEach(r => { if (r.address) prefetch(r.search || r.address); });
+  $("scanMsg").hidden = true; $("scanNextWarn").hidden = true; delete $("scanNext").dataset.warned; delete $("scanFinish").dataset.warned;
   renderScan();
 }
 function scanMsg(t, err){ const m = $("scanMsg"); m.hidden = false; m.textContent = t; m.classList.toggle("err", !!err); }
+const needsLook = r => r.status === "check" || r.status === "missing";
+function rowCard(r, i, compact){
+  const look = needsLook(r), done = r.status === "confirmed" || r.status === "fixed";
+  const tag = r.status === "missing" ? '<span class="chip failed">Not read</span>' : look ? '<span class="chip skipped">Check</span>' : done ? '<span class="chip delivered">✓ Checked</span>' : '';
+  return '<div class="srow '+r.status+'" data-row="'+i+'"><div class="srow-h"><b>#'+(r.seq != null ? r.seq : "?")+'</b>'+tag+(look && r.problem ? '<span class="sprob">'+esc(r.problem)+'</span>' : '')+'</div>' +
+    (thumbs[r.seq] && !compact ? '<img class="sthumb" alt="Photo of row '+r.seq+'" src="'+thumbs[r.seq]+'">' : '') +
+    '<input class="sinput" data-i="'+i+'" value="'+esc(r.address)+'" placeholder="Type the address shown in the photo" aria-label="Address for row '+r.seq+'">' +
+    (look ? '<button class="btn act-d sok" data-ok="'+i+'">'+(r.status === "missing" ? "Save this address" : "Looks right ✓")+'</button>' : '') + '</div>';
+}
 function renderScan(){
-  const n = scan.pages.length + 1;
-  $("scanTitle").textContent = scanPage ? "Check page "+n : "Page "+n;
-  $("scanTake").textContent = scanPage ? "Retake page "+n : "Take photo of page "+n;
-  const sofar = scanCount(), last = scanLastSeq();
-  $("scanSummary").textContent = (sofar ? sofar+" rows saved from "+scan.pages.length+" page"+(scan.pages.length>1?"s":"")+" (up to #"+last+")" : "No pages saved yet") + (scan.total ? " · sheet total "+scan.total : "");
-  $("scanActs").hidden = !scanPage;
-  if (!scanPage){ $("scanList").innerHTML = ""; $("scanFinish").hidden = !sofar; return; }
-  $("scanFinish").hidden = false;
-  $("scanList").innerHTML = scanPage.rows.map((r,i) =>
-    '<div class="srow '+r.status+'"><div class="srow-h"><b>#'+(r.seq != null ? r.seq : "?")+'</b><span class="chip '+(r.status === "ok" ? "delivered" : r.status === "missing" ? "failed" : "skipped")+'">'+(r.status === "ok" ? "OK" : r.status === "missing" ? "Missing" : "Check")+'</span>'+(r.problem ? '<span class="sprob">'+esc(r.problem)+'</span>' : '')+'</div>' +
-    (thumbs[r.seq] ? '<img class="sthumb" alt="Photo of row '+r.seq+'" src="'+thumbs[r.seq]+'">' : '') +
-    '<input class="sinput" data-i="'+i+'" value="'+esc(r.address)+'" placeholder="Type the address for #'+r.seq+'" aria-label="Address for row '+r.seq+'"></div>').join("");
+  const n = scan.pages.length + 1, sofar = scanCount(), last = scanLastSeq();
+  $("scanTitle").textContent = scanPage ? "Page "+n+" — check" : "Scan page "+n;
+  $("scanSummary").textContent = sofar ? sofar+" addresses saved from "+scan.pages.length+" page"+(scan.pages.length>1?"s":"")+(scan.total ? " (sheet has "+scan.total+" parcels)" : "") : "Photograph each page of the run sheet, one at a time.";
+  $("scanTake").textContent = "Take photo of page "+n;
+  $("scanShoot").hidden = !!scanPage;
+  $("scanResult").hidden = !scanPage;
+  $("scanFinishIdle").hidden = !!scanPage || !sofar;
+  if (!scanPage){ $("scanList").innerHTML = ""; $("scanAllList").innerHTML = ""; return; }
+  const rows = scanPage.rows, look = rows.filter(needsLook).length, total = rows.filter(r => r.status !== "missing").length;
+  const box = $("scanResultBox"); box.className = "sresult " + (look ? "warn" : "good");
+  $("scanResultTitle").textContent = look ? "⚠ "+look+" need"+(look === 1 ? "s" : "")+" your check" : "✓ All "+total+" addresses look right";
+  $("scanResultSub").textContent = "Rows #"+scanPage.first+"–#"+scanPage.last+" · read in "+scanPage.secs+" s";
+  $("scanHowTo").textContent = look ? "Compare each row below with its photo. Fix the text if it is different, then tap Looks right." : "Tap Next page to photograph page "+(n+1)+", or Done if this was the last page.";
+  $("scanList").innerHTML = rows.map((r,i) => needsLook(r) || r.status === "fixed" || (r.status === "confirmed" && r.wasLook) ? rowCard(r, i) : "").join("");
+  $("scanShowAll").textContent = scanPage.showAll ? "Hide the other addresses" : "Show all "+rows.length+" addresses on this page";
+  $("scanAllList").hidden = !scanPage.showAll;
+  $("scanAllList").innerHTML = scanPage.showAll ? rows.map((r,i) => needsLook(r) || r.wasLook ? "" : rowCard(r, i)).join("") : "";
 }
 function acceptPage(){
-  if (!scanPage) return true;
+  if (!scanPage) return;
   const empty = scanPage.rows.filter(r => !r.address.trim());
-  scan.pages.push({rows: scanPage.rows.map(r => ({seq:r.seq, address:r.address.trim(), search:r.search || r.address.trim(), size:r.size || ""}))});
+  scanPage.rows.forEach(r => { if (r.address.trim()) prefetch(r.search || r.address.trim()); });
+  scan.pages.push({rows: scanPage.rows.filter(r => r.address.trim()).map(r => ({seq:r.seq, address:r.address.trim(), search:r.search || r.address.trim(), size:r.size || ""}))});
   scanPage = null; scanSave();
-  if (empty.length) toast(empty.length+" empty row"+(empty.length>1?"s were":" was")+" left out: #"+empty.map(r=>r.seq).join(", #"));
-  return true;
+  if (empty.length) toast("Left out (no address typed): #"+empty.map(r=>r.seq).join(", #"));
 }
-$("scanList").addEventListener("input", e => { const i = e.target.dataset.i; if (i == null || !scanPage) return;
+function onRowEdit(e){ const i = e.target.dataset.i; if (i == null || !scanPage) return;
   const r = scanPage.rows[+i]; r.address = e.target.value;
   const c = DroplineScan.cleanAddress(r.address.replace(/,/g," "));
-  r.search = c.search || r.address; r.status = "edited"; e.target.closest(".srow").className = "srow edited"; });
+  r.search = c.search || r.address; }
+function onRowOk(e){ const i = e.target.dataset.ok; if (i == null || !scanPage) return;
+  const r = scanPage.rows[+i];
+  if (!r.address.trim()){ toast("Type the address from the photo first."); return; }
+  r.wasLook = true; r.status = r.status === "missing" ? "fixed" : "confirmed"; prefetch(r.search || r.address); renderScan(); }
+["scanList","scanAllList"].forEach(id => { $(id).addEventListener("input", onRowEdit); $(id).addEventListener("click", onRowOk); });
+$("scanShowAll").addEventListener("click", () => { if (scanPage){ scanPage.showAll = !scanPage.showAll; renderScan(); } });
 $("btnScan").addEventListener("click", () => {
   const native = !!nativeScanner();
   $("scanNoApp").hidden = native; $("scanApp").hidden = !native;
   renderScan(); $("scanSheet").hidden = false; });
 $("scanClose").addEventListener("click", () => $("scanSheet").hidden = true);
-["scanCam","scanGallery"].forEach(id => $(id).addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) scanPhoto(f); }));
-$("scanNext").addEventListener("click", () => { acceptPage(); renderScan(); scanMsg("Saved. Now take a photo of page "+(scan.pages.length+1)+", or tap Finish if that was the last page."); $("scanTake").focus(); });
+["scanCam","scanGallery","scanRetake"].forEach(id => $(id).addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) scanPhoto(f); }));
+function unchecked(){ return scanPage ? scanPage.rows.filter(needsLook).length : 0; }
+$("scanNext").addEventListener("click", () => {
+  const u = unchecked();
+  if (u && !$("scanNext").dataset.warned){ $("scanNext").dataset.warned = "1"; const w = $("scanNextWarn"); w.hidden = false;
+    w.textContent = u+" yellow row"+(u>1?"s are":" is")+" not checked yet. Check "+(u>1?"them":"it")+", or tap Next page again to keep the text as read."; return; }
+  acceptPage(); renderScan(); scanMsg("Page saved. Now photograph page "+(scan.pages.length+1)+", or tap Done if that was the last page.");
+  document.querySelector("#scanSheet .sheet").scrollTop = 0; });
 $("scanRestart").addEventListener("click", () => { $("scanRestartConfirm").hidden = false; });
 $("scanRestartNo").addEventListener("click", () => { $("scanRestartConfirm").hidden = true; });
 $("scanRestartYes").addEventListener("click", () => { scan = {pages:[], total:null}; scanPage = null; scanSave(); $("scanRestartConfirm").hidden = true; $("scanMsg").hidden = true; renderScan(); });
@@ -1292,25 +1381,30 @@ $("scanCopy").addEventListener("click", async () => {
   const data = JSON.stringify({app:"dropline-scan", page:scan.pages.length+1, ms:scanPage && scanPage.ms, lines:scanPage ? scanPage.lines : []});
   try{ await navigator.clipboard.writeText(data); toast("Scan details copied. Paste them into the chat with Claude."); }
   catch(e){ toast("Copy is blocked on this phone."); } });
-$("scanFinish").addEventListener("click", async () => {
+async function finishScan(btn){
+  const u = unchecked();
+  if (u && !btn.dataset.warned){ btn.dataset.warned = "1"; const w = $("scanNextWarn"); w.hidden = false;
+    w.textContent = u+" yellow row"+(u>1?"s are":" is")+" not checked yet. Check "+(u>1?"them":"it")+", or tap Done again to keep the text as read."; return; }
   acceptPage();
   const rows = []; scan.pages.forEach(p => p.rows.forEach(r => { if (r.address) rows.push(r); }));
-  if (!rows.length){ scanMsg("No rows to add yet.", true); return; }
+  if (!rows.length){ scanMsg("No addresses saved yet.", true); renderScan(); return; }
   const have = new Set(rows.map(r => r.seq)), last = Math.max(...rows.map(r => r.seq || 0));
   const gaps = []; for (let s = 1; s <= (scan.total || last); s++) if (!have.has(s)) gaps.push(s);
-  if (gaps.length && !$("scanFinish").dataset.confirmed){
-    $("scanFinish").dataset.confirmed = "1";
-    scanMsg((scan.total && last < scan.total ? "The sheet lists "+scan.total+" parcels but rows stop at #"+last+". " : "") + gaps.length+" row"+(gaps.length>1?"s are":" is")+" missing (#"+gaps.slice(0,12).join(", #")+(gaps.length>12?"…":"")+"). Take another photo, or tap Finish again to continue without them.", true);
+  if (gaps.length && !$("scanFinishIdle").dataset.confirmed){
+    $("scanFinishIdle").dataset.confirmed = "1"; renderScan();
+    scanMsg((scan.total && last < scan.total ? "The sheet lists "+scan.total+" parcels but the scanned rows stop at #"+last+". " : "") + gaps.length+" row"+(gaps.length>1?"s are":" is")+" missing (#"+gaps.slice(0,12).join(", #")+(gaps.length>12?"…":"")+"). Photograph the missing page, or tap Done again to continue without "+(gaps.length>1?"them":"it")+".", true);
     return; }
-  delete $("scanFinish").dataset.confirmed;
+  delete $("scanFinishIdle").dataset.confirmed;
   const groups = new Map();
   rows.sort((a,b) => a.seq - b.seq).forEach(r => { const k = r.address.toLowerCase().replace(/\s+/g," ");
     if (!groups.has(k)) groups.set(k, {address:r.address, search:r.search || r.address, parcels:[]});
     groups.get(k).parcels.push({seq:r.seq, size:r.size || "", note:""}); });
-  $("scanSheet").hidden = true; $("importSheet").hidden = false;
+  $("scanSheet").hidden = true; $("importSheet").hidden = false; $("scanMsg").hidden = true;
   scan = {pages:[], total:null}; scanSave();
   await importGroups([...groups.values()], true);
-});
+}
+$("scanFinish").addEventListener("click", e => finishScan(e.currentTarget));
+$("scanFinishIdle").addEventListener("click", e => finishScan(e.currentTarget));
 
 /* import sheet */
 $("btnImport").addEventListener("click", () => { $("importSheet").hidden = false; });

@@ -27,14 +27,14 @@
   color-scheme:dark;
 }}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
 body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 [hidden]{display:none!important}
 
-.app{display:grid;grid-template-rows:auto auto 1fr;height:100%}
+.app{display:grid;grid-template-rows:auto auto 1fr;position:fixed;inset:0}
 header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));padding-top:max(10px,env(safe-area-inset-top));background:var(--accent);color:var(--accent-ink)}
 .brand{font:700 22px/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase;flex:1;min-width:0}
 .brand small{display:block;font:500 12px/1.2 var(--f-body);letter-spacing:.04em;text-transform:none;opacity:.85;margin-top:2px}
@@ -140,6 +140,8 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
 .alert{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--skip-soft);color:var(--ink);margin-top:10px}
 .alert span{flex:1;min-width:0}
+.locbanner{border:2px solid var(--accent);background:var(--accent-soft)}
+.locbanner p{margin:0 0 10px;font-size:14px}
 .nextstep{border:2px solid var(--ok);background:var(--ok-soft)}
 .nextstep b{display:block;font:700 20px/1.2 var(--f-display);color:var(--ok)}
 .nextstep p{margin:6px 0 10px;font-size:14px}
@@ -184,12 +186,17 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v4.1</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v4.2</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
   <div id="map" aria-label="Map of delivery stops"></div>
   <main class="main" id="app-main">
+    <section class="panel locbanner" id="locBanner" hidden>
+      <p id="locText">Turn on location so the app can suggest nearby addresses and start routes from where you are.</p>
+      <div class="row"><button class="btn primary grow" id="locBtn">Allow location</button><button class="btn ghost" id="locClose">Not now</button></div>
+    </section>
+
     <section class="panel nextstep" id="nextStep" hidden aria-live="polite">
       <b id="nsTitle"></b>
       <p id="nsText"></p>
@@ -1848,15 +1855,28 @@ $("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
 document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
 
 render(); if (route.stops.length) fitAll();
-(function locateQuietly(){
-  const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-  const go = () => navigator.geolocation && navigator.geolocation.getCurrentPosition(p => {
+/* Ask for the location when the app opens: nearby addresses first, start point, navigation. */
+function isNativeApp(){ const C = window.Capacitor; return !!(C && (C.isNativePlatform ? C.isNativePlatform() : C.isNative)) || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.bridge); }
+function askLocation(fromTap){
+  if (!navigator.geolocation){ showLocBanner("Location is not available on this device."); return; }
+  $("locBtn").textContent = "Finding you…";
+  navigator.geolocation.getCurrentPosition(p => {
     myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; drawMe();
+    $("locBanner").hidden = true;
     if (!route.stops.length && !has(route.start)) map.setView([myLoc.lat, myLoc.lon], 14);
-  }, () => {}, {enableHighAccuracy:false, maximumAge:300000, timeout:15000});
-  if (native) go();
-  else if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(r => { if (r.state === "granted") go(); }).catch(() => {});
-})();
+  }, err => {
+    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Open the iPhone Settings app → Dropline → Location → \"While Using the App\", then come back." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
+    else showLocBanner("Could not get your location yet. Try again outdoors or check that Location Services is on.", false);
+  }, {enableHighAccuracy:true, maximumAge:120000, timeout:20000});
+}
+function showLocBanner(text, blocked){ $("locBanner").hidden = false; $("locText").textContent = text; $("locBtn").textContent = blocked ? "Try again" : "Allow location"; }
+$("locBtn").addEventListener("click", () => askLocation(true));
+$("locClose").addEventListener("click", () => { $("locBanner").hidden = true; });
+setTimeout(() => {
+  if (isNativeApp()) askLocation(false);
+  else if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(r => {
+    if (r.state === "granted") askLocation(false); else showLocBanner("Turn on location so the app can suggest nearby addresses and start routes from where you are.", false); }).catch(() => {});
+}, 600);
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 window.RP = {solve, tourCost, parseList, grader, loadSample, get route(){ return route; }};
 })();

@@ -10,7 +10,7 @@
     "cleartext": false
   },
   "ios": {
-    "contentInset": "always",
+    "contentInset": "never",
     "backgroundColor": "#123b3a"
   }
 }

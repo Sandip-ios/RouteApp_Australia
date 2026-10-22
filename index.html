@@ -166,7 +166,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v3.7</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v3.8</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -805,12 +805,44 @@ async function gnafLocate(q){
   if (!pool.length) return {found:false};
   pool.sort((a,b) => (b.loc === loc) - (a.loc === loc) || lev(a.loc, loc) - lev(b.loc, loc));
   for (const x of pool){
-    const p = n ? (x.nums[num] || x.nums[n] || x.nums[n+"A"] || x.nums[n+"B"]) : null;
-    if (p) return {found:true, lat:p[0], lon:p[1], geo:"exact", official: (x.nums[num] ? num : n) + " " + titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, corrected: corrected || x.loc !== loc};
+    const dl = {O:"0",I:"1",L:"1",S:"5",B:"8",G:"6",Z:"2"}[suf.toUpperCase()];          // "2O" is 20, not 2O
+    const p = n ? ((dl && x.nums[n+dl]) || x.nums[num] || x.nums[n] || x.nums[n+"A"] || x.nums[n+"B"]) : null;
+    if (p) return {found:true, lat:p[0], lon:p[1], geo:"exact", official: ((dl && x.nums[n+dl]) ? n+dl : x.nums[num] ? num : n) + " " + titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, corrected: corrected || x.loc !== loc};
   }
   const x = pool[0];
   return {found:false, streetOnly:true, lat:x.c[0], lon:x.c[1], geo:"street", official: titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, corrected};
 }
+/* Suggest the official address for a misread one: letters read in place of digits ("AO" → 40, "l2" → 12),
+   a level number glued on ("1213" → 213), or one digit off when that is the only real number on the street. */
+const DIGIT_LOOK = {O:"0",o:"0",D:"0",Q:"0",U:"0",I:"1",l:"1",i:"1","|":"1",L:"1",Z:"2",z:"2",S:"5",s:"5",B:"8",G:"6",b:"6",A:"4",T:"7",g:"9",q:"9"};
+async function gnafSuggest(q){
+  const m = String(q).match(/^\s*([0-9A-Za-z|]{1,6})\s+(.+?),\s*(.+?)\s+SA\s+(\d{4})\s*$/i);
+  if (!m) return null;
+  const [, tok, stRaw, locRaw, pc] = m;
+  const idx = await gnafFile(pc); if (!idx) return null;
+  const st = streetNorm(stRaw), loc = locNorm(locRaw);
+  let streets = Object.values(idx).filter(x => x.st === st);
+  if (!streets.length){ let best = 3, hits = []; for (const x of Object.values(idx)){ const d = lev(x.st, st); if (d < best){ best = d; hits = [x]; } else if (d === best) hits.push(x); }
+    if (best <= 2 && new Set(hits.map(x => x.st)).size === 1) streets = hits; }
+  if (!streets.length) return null;
+  streets.sort((a,b) => (b.loc === loc) - (a.loc === loc));
+  const S = streets[0], has = n => S.nums[n] || S.nums[n.toUpperCase()];
+  const out = (n, sure) => ({official: n.toUpperCase() + " " + titleCaseWords(S.st) + ", " + titleCaseWords(S.loc) + " SA " + pc, sure});
+  // 1. letters that look like digits
+  const asDigits = tok.replace(/^([^0-9]*)/, p => p.split("").map(c => DIGIT_LOOK[c] || c).join("")).replace(/(\d)([^0-9]+)(?=\d)/g, (a,d,mid) => d + mid.split("").map(c => DIGIT_LOOK[c] || c).join(""));
+  const fullDigits = tok.split("").map((c,i) => (i < tok.length - 1 || /\d/.test(tok[i-1] || "") === false) ? (DIGIT_LOOK[c] || c) : c).join("");
+  for (const v of [asDigits, fullDigits]) if (v !== tok && /^\d+[A-Z]?$/i.test(v) && has(v)) return out(v, true);
+  const digits = (fullDigits.match(/^\d+/) || [""])[0];
+  if (!digits) return null;
+  const nums = Object.keys(S.nums).filter(n => /^\d+[A-Z]?$/.test(n));
+  // 2. a glued level or unit number in front: "1213" → "213"
+  for (let k = 1; k < digits.length - 0 && digits.length - k >= 1; k++){ const v = digits.slice(k); if (has(v) && digits.length >= 3) return out(v, false); }
+  // 3. exactly one real number on this street that is one digit away
+  const near = nums.filter(n => lev(n.replace(/[A-Z]$/,""), digits) === 1);
+  if (near.length === 1) return out(near[0], false);
+  return null;
+}
+
 function titleCaseWords(s){ return String(s).toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()); }
 function lev(a, b){ if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
   let prev = Array.from({length:n+1}, (_,j)=>j);
@@ -1352,13 +1384,33 @@ function pumpPrefetch(){
 function flagFromLookup(q, r){
   if (!scanPage) return; let changed = false;
   for (const row of scanPage.rows){
-    if ((row.search || row.address) !== q || row.status === "confirmed" || row.status === "fixed") continue;
-    let why = "";
-    if (!r) why = "Address not found — check it";
-    else if (r.notOfficial) why = "Not in the official address list — check the house number";
-    else if (r.corrected && r.official) why = "Matched to the official address " + r.official + " — check";
-    if (why && row.status !== "missing"){ row.status = "check"; row.problem = why; changed = true; }
-    if (r && r.source === "gnaf" && r.official && r.geo === "exact") row.official = r.official;
+    if ((row.search || row.address) !== q || row.status === "confirmed" || row.status === "fixed" || row.status === "missing") continue;
+    const exactOfficial = r && r.source === "gnaf" && r.geo === "exact" && !r.corrected;
+    if (exactOfficial){
+      row.official = r.official;
+      const readNum = (String(row.search || "").match(/^\s*(\S+)/) || [])[1] || "", offNum = (r.official.match(/^(\S+)/) || [])[1] || "";
+      if (readNum && offNum && readNum.toUpperCase() !== offNum.toUpperCase()){ row.address = r.official; row.search = r.official; row.autofixed = true; changed = true; }
+      // the address exists exactly in the official list: no need to ask, unless the row number itself is in doubt
+      if (row.status === "check" && !/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; changed = true; }
+      continue;
+    }
+    if (r && r.source === "gnaf" && r.geo === "exact" && r.corrected && r.official){
+      // only the spelling of the street or suburb differed ("Fiorence" → Florence): take the official spelling
+      const lead = (row.address.match(/^(.*?)(\d+[A-Za-z]?\s)/) || [])[1] || "";
+      row.address = r.official; row.search = r.official; row.autofixed = true;
+      if (!/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; }
+      changed = true; continue;
+    }
+    // not in the official list: try to work out what was meant
+    gnafSuggest(q).then(sug => {
+      if (!scanPage || !scanPage.rows.includes(row) || row.status === "confirmed" || row.status === "fixed") return;
+      if (sug && sug.sure){ row.address = sug.official; row.search = sug.official; row.autofixed = true;
+        if (!/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; } }
+      else if (sug){ row.address = sug.official; row.search = sug.official; row.status = "check"; row.problem = "Suggested from the official address list — compare with the photo"; }
+      else { row.status = "check"; row.problem = r ? "Not in the official address list — check the house number" : "Address not found — check it"; }
+      prefetch(row.search);
+      if (!(document.activeElement && document.activeElement.classList.contains("sinput"))) renderScan();
+    });
   }
   if (changed && !(document.activeElement && document.activeElement.classList.contains("sinput"))) renderScan();
 }
@@ -1392,7 +1444,7 @@ function scanMsg(t, err){ const m = $("scanMsg"); m.hidden = false; m.textConten
 const needsLook = r => r.status === "check" || r.status === "missing";
 function rowCard(r, i, compact){
   const look = needsLook(r), done = r.status === "confirmed" || r.status === "fixed";
-  const tag = r.status === "missing" ? '<span class="chip failed">Not read</span>' : look ? '<span class="chip skipped">Check</span>' : done ? '<span class="chip delivered">✓ Checked</span>' : '';
+  const tag = r.status === "missing" ? '<span class="chip failed">Not read</span>' : look ? '<span class="chip skipped">Check</span>' : done ? '<span class="chip delivered">✓ Checked</span>' : r.autofixed ? '<span class="chip delivered">Corrected from official list</span>' : '';
   return '<div class="srow '+r.status+'" data-row="'+i+'"><div class="srow-h"><b>#'+(r.seq != null ? r.seq : "?")+'</b>'+tag+(look && r.problem ? '<span class="sprob">'+esc(r.problem)+'</span>' : '')+'</div>' +
     (thumbs[r.seq] && !compact ? '<img class="sthumb" alt="Photo of row '+r.seq+'" src="'+thumbs[r.seq]+'">' : '') +
     '<input class="sinput" data-i="'+i+'" value="'+esc(r.address)+'" placeholder="Type the address shown in the photo" aria-label="Address for row '+r.seq+'">' +

@@ -8,5 +8,9 @@
   "server": {
     "url": "https://sandip-ios.github.io/RouteApp_Australia/",
     "cleartext": false
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#123b3a"
   }
 }

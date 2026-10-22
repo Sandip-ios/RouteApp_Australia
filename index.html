@@ -140,6 +140,10 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
 .alert{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--skip-soft);color:var(--ink);margin-top:10px}
 .alert span{flex:1;min-width:0}
+.nextstep{border:2px solid var(--ok);background:var(--ok-soft)}
+.nextstep b{display:block;font:700 20px/1.2 var(--f-display);color:var(--ok)}
+.nextstep p{margin:6px 0 10px;font-size:14px}
+.ns-acts{display:flex;flex-direction:column;gap:8px}
 .slist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .sprogress{margin:0 0 10px;font-size:14px;color:var(--muted)}
 .sresult{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:10px;margin-top:4px}
@@ -166,12 +170,22 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v3.8</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v3.9</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
   <div id="map" aria-label="Map of delivery stops"></div>
-  <main class="main">
+  <main class="main" id="app-main">
+    <section class="panel nextstep" id="nextStep" hidden aria-live="polite">
+      <b id="nsTitle"></b>
+      <p id="nsText"></p>
+      <div class="ns-acts">
+        <button class="btn primary" id="nsOpt">Optimise route</button>
+        <button class="btn primary" id="nsLocOpt">Start from my location and optimise</button>
+        <button class="btn ghost" id="nsStart">Type a start address instead</button>
+      </div>
+    </section>
+
     <section class="panel" aria-label="Route summary">
       <div class="summary">
         <div class="s-p"><b id="cP">0</b><span>Pending</span></div>
@@ -931,6 +945,7 @@ async function importText(text){
   const list = parseList(text);
   if (!list.length){ impStatus("No addresses found. Check the file has an \"address\" column or one address per line.", 0, true); return; }
   await importGroups(list, $("impReplace").checked);
+  $("importSheet").hidden = true; showNextStep(0);
 }
 async function importGroups(list, replace){
   const room = MAX_STOPS - (replace ? 0 : route.stops.length);
@@ -1183,7 +1198,23 @@ async function loadSample(){
 }
 
 /* ---------- my location ---------- */
-function startLocation(){
+function showNextStep(pages, busyText){
+  const box = $("nextStep"), st = route.stops, np = st.reduce((a,x) => a + parcels(x).length, 0);
+  box.hidden = false; $("app-main").scrollTop = 0;
+  if (busyText){ $("nsTitle").textContent = busyText; $("nsText").textContent = "Finding map locations…"; ["nsOpt","nsLocOpt","nsStart"].forEach(id => $(id).hidden = true); return; }
+  const miss = st.filter(x => !has(x)).length;
+  $("nsTitle").textContent = "✓ " + st.length + " stops added" + (np !== st.length ? " (" + np + " parcels)" : "") + (pages ? " from " + pages + " page" + (pages > 1 ? "s" : "") : "");
+  const hasStart = has(route.start);
+  $("nsText").textContent = (miss ? miss + " stop" + (miss > 1 ? "s" : "") + " still need a map location (shown at the end of the list). " : "") +
+    (hasStart ? "Next: optimise the delivery order from " + route.start.label + "." : "Next: choose where you start, then the app works out the best delivery order.");
+  $("nsOpt").hidden = !hasStart; $("nsLocOpt").hidden = false; $("nsStart").hidden = false;
+  $("nsLocOpt").textContent = hasStart ? "Start from my current location instead" : "Start from my location and optimise";
+  $("nsLocOpt").className = hasStart ? "btn ghost" : "btn primary";
+  fitAll();
+}
+let afterLocate = null;
+function startLocation(then){
+  afterLocate = typeof then === "function" ? then : null;
   if (!navigator.geolocation){ toast("This browser cannot share your location."); return; }
   $("btnMyLoc").disabled = true; $("btnMyLoc").textContent = "Finding you…";
   let first = true;
@@ -1194,7 +1225,8 @@ function startLocation(){
       route.start = {label:"My location at "+new Date().toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}), lat:myLoc.lat, lon:myLoc.lon};
       markStale(); persist(); render(); map.setView([myLoc.lat, myLoc.lon], Math.max(map.getZoom(), 14));
       $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Update start to my location";
-      toast("Start set to your location (accuracy about "+Math.round(myLoc.acc)+" m)"); }
+      toast("Start set to your location (accuracy about "+Math.round(myLoc.acc)+" m)");
+      if (afterLocate){ const f = afterLocate; afterLocate = null; f(); } }
     drawMe();
   }, err => {
     $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Use my location as start";
@@ -1296,7 +1328,10 @@ wireSearch($("startIn"), $("startSugg"), setStart);
 $("retStart").addEventListener("change", e => { route.returnToStart = e.target.checked; markStale(); persist(); render(); });
 $("btnOpt").addEventListener("click", optimise);
 $("btnFit").addEventListener("click", fitAll);
-$("btnMyLoc").addEventListener("click", startLocation);
+$("btnMyLoc").addEventListener("click", () => startLocation());
+$("nsOpt").addEventListener("click", () => { $("nextStep").hidden = true; optimise(); });
+$("nsLocOpt").addEventListener("click", () => { $("nsLocOpt").textContent = "Finding your location…"; startLocation(() => { $("nextStep").hidden = true; optimise(); }); });
+$("nsStart").addEventListener("click", () => { $("nextStep").hidden = true; const i = $("startIn"); i.scrollIntoView({block:"center", behavior:"smooth"}); setTimeout(() => i.focus(), 300); });
 $("btnLocate").addEventListener("click", locatePending);
 let probIdx = -1;
 $("btnShowProb").addEventListener("click", () => {
@@ -1525,9 +1560,12 @@ async function finishScan(btn){
   rows.sort((a,b) => a.seq - b.seq).forEach(r => { const k = r.address.toLowerCase().replace(/\s+/g," ");
     if (!groups.has(k)) groups.set(k, {address:r.address, search:r.search || r.address, parcels:[]});
     groups.get(k).parcels.push({seq:r.seq, size:r.size || "", note:""}); });
-  $("scanSheet").hidden = true; $("importSheet").hidden = false; $("scanMsg").hidden = true;
+  $("scanSheet").hidden = true; $("importSheet").hidden = true; $("scanMsg").hidden = true;
+  showNextStep(null, "Adding "+groups.size+" stops…");
+  const scanPagesDone = scan.pages.length;
   scan = {pages:[], total:null}; scanSave();
   await importGroups([...groups.values()], true);
+  showNextStep(scanPagesDone);
 }
 $("scanFinish").addEventListener("click", e => finishScan(e.currentTarget));
 $("scanFinishIdle").addEventListener("click", e => finishScan(e.currentTarget));

@@ -1654,6 +1654,11 @@ function flagFromLookup(q, r){
   if (!scanPage) return; let changed = false;
   for (const row of scanPage.rows){
     if ((row.search || row.address) !== q || row.status === "confirmed" || row.status === "fixed" || row.status === "missing") continue;
+    // "LEVEL14 Russell Ave": the level and the house number may have run together (Level 1, number 4?) — ask, never guess
+    if (/\bL(?:E?VE?)?L\s*\d{2,}\s+[A-Za-z]/i.test(row.address) && !/\bL(?:E?VE?)?L\s*\d+(?:\s*[,/-]\s*|\s+)\d+/i.test(row.address)){
+      if (row.status !== "check"){ row.status = "check"; row.problem = "Level and house number may be joined — check the number"; changed = true; }
+      continue;
+    }
     const exactOfficial = r && r.source === "gnaf" && r.geo === "exact" && !r.corrected;
     if (exactOfficial){
       row.official = r.official;

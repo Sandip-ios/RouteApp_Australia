@@ -140,13 +140,22 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
 .alert{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--skip-soft);color:var(--ink);margin-top:10px}
 .alert span{flex:1;min-width:0}
+.slist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.srow{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface)}
+.srow.check{border-color:var(--skip);background:var(--skip-soft)}
+.srow.missing{border-color:var(--fail);background:var(--fail-soft)}
+.srow.edited{border-color:var(--accent)}
+.srow-h{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+.sprob{font-size:12px;color:var(--muted)}
+.sthumb{display:block;width:100%;height:auto;max-height:70px;object-fit:contain;object-position:left;margin-top:6px;border-radius:4px;background:#fff}
+.sinput{width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);font:15px var(--f-body);color:var(--ink)}
 .placing #map{outline:4px solid var(--skip);outline-offset:-4px}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v2.3</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v3.0</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -205,7 +214,8 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
         <div class="sugg" id="addrSugg" hidden></div>
       </div>
       <p class="hint">Type at least 4 characters and pick a suggestion. Australian addresses only.</p>
-      <button class="btn primary" id="btnImport" style="width:100%;margin-top:8px">Import a run sheet or address list</button>
+      <button class="btn primary" id="btnScan" style="width:100%;margin-top:8px">Scan paper run sheet (photo)</button>
+      <button class="btn ghost" id="btnImport" style="width:100%;margin-top:8px">Import a file or address list</button>
       <div class="row" style="margin-top:8px">
         <button class="btn ghost grow" id="btnSample">Load 25 Parramatta test stops</button>
         <button class="btn ghost" id="btnClear">Clear</button>
@@ -226,6 +236,33 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
       <p class="hint" id="emptyHint">No stops yet. Add an address above, import a run sheet, or load the 25 test stops.</p>
     </section>
   </main>
+</div>
+
+<div class="sheet-bg" id="scanSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Scan run sheet" style="max-height:94vh">
+    <h3 id="scanTitle">Page 1</h3>
+    <div id="scanNoApp">
+      <p class="hint" style="margin-top:0">Photo scanning uses Google's on-device text recognition, which works in the Dropline Android app.</p>
+      <a class="btn primary" style="display:block;text-align:center;text-decoration:none" href="https://github.com/Sandip-ios/RouteApp_Australia/releases/download/app-latest/dropline.apk">Download the Android app (test version)</a>
+      <p class="hint">After downloading, open the file to install. Android may ask you to allow installs from your browser.</p>
+    </div>
+    <div id="scanApp">
+      <p class="hint" style="margin-top:0" id="scanSummary"></p>
+      <label class="btn primary" style="display:block;text-align:center"><span id="scanTake">Take photo of page 1</span><input type="file" id="scanCam" accept="image/*" capture="environment" hidden></label>
+      <label class="btn ghost" style="display:block;text-align:center;margin-top:8px">Choose an existing photo<input type="file" id="scanGallery" accept="image/*" hidden></label>
+      <p class="hint">Hold the phone flat above the page, fill the screen with the table, good light, no shadow.</p>
+      <p class="msg" id="scanMsg" hidden></p>
+      <div id="scanList" class="slist"></div>
+      <div id="scanActs" hidden class="row" style="margin-top:10px"><button class="btn primary grow" id="scanNext">Save page, scan next</button></div>
+      <button class="btn act-d" id="scanFinish" style="width:100%;margin-top:8px" hidden>Finish — add stops and find locations</button>
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost grow" id="scanRestart">Start over</button>
+        <button class="btn ghost grow" id="scanCopy">Copy scan details</button>
+      </div>
+      <div class="row" id="scanRestartConfirm" hidden style="margin-top:8px"><span style="flex:1">Discard all scanned pages?</span><button class="btn" id="scanRestartNo">Keep</button><button class="btn act-f" id="scanRestartYes">Discard</button></div>
+    </div>
+    <button class="btn" id="scanClose" style="width:100%;margin-top:14px">Close</button>
+  </div>
 </div>
 
 <div class="sheet-bg" id="importSheet" hidden>
@@ -295,6 +332,214 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script>
+/* Dropline run-sheet reader: turns recognised text lines (with positions) from one photographed page
+   into numbered delivery rows, and checks them. Works for tables with columns
+   Code | Tracking ID | Seq | Address (ending "<Suburb> SA 5xxx AU") | Dimensions. */
+(function(root){
+"use strict";
+const SUBURB_PC = {"Adelaide":"5000","North Adelaide":"5006","Parkside":"5063","Eastwood":"5063","Frewville":"5063","Fullarton":"5063","Highgate":"5063",
+ "Glenside":"5065","Toorak Gardens":"5065","Tusmore":"5065","Linden Park":"5065","Dulwich":"5065","Glenunga":"5064","Glen Osmond":"5064","Mount Osmond":"5064",
+ "St Georges":"5064","Saint Georges":"5064","Myrtle Bank":"5064","Urrbrae":"5064","Rose Park":"5067","Kent Town":"5067","Norwood":"5067","Beulah Park":"5067",
+ "Heathpool":"5068","Marryatville":"5068","Leabrook":"5068","Kensington Gardens":"5068","Kensington Park":"5068","Kensington":"5068","St Morris":"5068","Trinity Gardens":"5068",
+ "Erindale":"5066","Burnside":"5066","Beaumont":"5066","Hazelwood Park":"5066","Stonyfell":"5066","Wattle Park":"5066","Waterfall Gully":"5066",
+ "Auldana":"5072","Rosslyn Park":"5072","Magill":"5072","Skye":"5072","Woodforde":"5072","Teringie":"5072","Tranmere":"5073","Rostrevor":"5073","Hectorville":"5073",
+ "Glynde":"5070","Payneham":"5070","Felixstow":"5070","Unley":"5061","Unley Park":"5061","Malvern":"5061","Springfield":"5062","Kingswood":"5062","Netherby":"5062",
+ "Wayville":"5034","Goodwood":"5034","Black Forest":"5035","Mile End":"5031","Stepney":"5069","Maylands":"5069","St Peters":"5069","College Park":"5069","Hackney":"5069"};
+const SUBURBS = Object.keys(SUBURB_PC).sort((a,b) => b.length - a.length);
+const STREET_TYPES = "Street|St|Avenue|Ave|Av|Road|Rd|Terrace|Tce|Drive|Dr|Court|Ct|Crescent|Cres|Grove|Gr|Place|Pl|Walk|Square|Sq|Lane|Ln|Parade|Pde|Way|Close|Cl|Circuit|Cct|Boulevard|Bvd|Highway|Hwy|Mews|Rise|View";
+
+function lev(a, b){ if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  let prev = Array.from({length:n+1}, (_,j)=>j);
+  for (let i = 1; i <= m; i++){ const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1]===b[j-1]?0:1)); prev = cur; }
+  return prev[n]; }
+const digitsOf = s => s.replace(/[Oo]/g,"0").replace(/[lI|!]/g,"1").replace(/[Ss$]/g,"5").replace(/[B]/g,"8").replace(/[Z]/g,"2").replace(/G/g,"6");
+function titleCase(s){ return s.replace(/\b([A-Z][A-Z'’]{2,})\b/g, w => w[0] + w.slice(1).toLowerCase()).replace(/\bMc([a-z])/g, (m,c)=>"Mc"+c.toUpperCase()); }
+
+function classify(t){
+  const s = t.replace(/^[\[|({_\s]+|[\]|)}_\s]+$/g,"");
+  const compact = s.replace(/\s+/g,"");
+  if (/dragonfly|total\s*number|packages|route\s*-|from\s+20\d\d|tracking|dimensions|^code$|^seq$|^address$|^sig$/i.test(s)) return "header";
+  if (/^[DBO0][S5O0]?\d[\dOolI]{6,}$/.test(compact)) return "code";
+  if (/DRNFLY|DRNF|^[\dOolI]{14,}$/.test(compact)) return "track";
+  if (/CM/i.test(s) && /\bX\b|X\s*\d|\dX/i.test(s)) return "dims";
+  if (/^[\dOolI]{1,3}$/.test(compact)) return "seq";
+  if (/[A-Za-z]{2,}/.test(s)) return "addr";
+  return "junk";
+}
+
+/* Split the address text into display address, search address, suburb and postcode. */
+function cleanAddress(raw){
+  let a = raw.replace(/[|\[\]{}_~—]+/g," ").replace(/\s+/g," ").trim();
+  a = a.replace(/\bNone\b/gi,"").replace(/\s+,/g,",");
+  // postcode block: "SA 5066 AU", allowing common misreads (SAS066AU, SA SOG8 AU ...)
+  const pm = a.match(/\bS\s?A\s?[,.]?\s?([5S$][\dOolIGSsB]{3})\s*(A\s?U\w*|Al|AL)?\s*[^A-Za-z]*$/) || a.match(/\bS\s?A\s?[,.]?\s?([5S$][\dOolIGSsB]{3})\b/);
+  if (!pm) return {ok:false, reason:"No postcode found", display:titleCase(a)};
+  let pc = digitsOf(pm[1]);
+  let body = a.slice(0, pm.index).replace(/[ ,.]+$/,"").trim();
+  // suburb: exact or close match against known suburbs at the end of the text
+  let suburb = null, best = 9;
+  const lower = body.toLowerCase();
+  for (const s of SUBURBS){
+    const L = s.length, tail = lower.slice(-L), d = lev(tail, s.toLowerCase());
+    const lim = L >= 9 ? 2 : (L >= 6 ? 1 : 0);
+    if (d <= lim && d < best && (lower.length === L || /[\s,]/.test(lower[lower.length-L-1] || " "))){ best = d; suburb = s; }
+  }
+  let street;
+  if (suburb){ street = body.slice(0, body.length - suburb.length).replace(/[ ,]+$/,"").trim(); }
+  else { const w = body.split(" "); suburb = titleCase(w.slice(-1)[0] || ""); street = w.slice(0,-1).join(" "); }
+  // drop a repeated suburb before the real one ("GLENUNGA Glenunga", "Saint Georges St Georges")
+  for (let k = 0; k < 2; k++){ const ls = street.toLowerCase();
+    const rep = SUBURBS.find(s => ls.endsWith(" "+s.toLowerCase()) || ls === s.toLowerCase());
+    if (rep && (rep === suburb || SUBURB_PC[rep] === SUBURB_PC[suburb])) street = street.slice(0, street.length - rep.length).replace(/[ ,]+$/,"").trim(); }
+  if (suburb === "Saint Georges") suburb = "St Georges";
+  // postcode cross-check with the suburb
+  let fixedPc = false;
+  if (SUBURB_PC[suburb] && SUBURB_PC[suburb] !== pc){ if (lev(SUBURB_PC[suburb], pc) <= 1){ pc = SUBURB_PC[suburb]; fixedPc = true; } }
+  street = titleCase(street).replace(/\s+/g," ").trim();
+  // search address: first "number + street name + street type", skipping unit prefixes
+  const re = new RegExp("(\\d+)[A-Za-z]?(?:\\s*[-–]\\s*\\d+[A-Za-z]?)?\\s+((?:[A-Za-z'’]+\\s+){0,4}?(?:"+STREET_TYPES+"))\\b", "i");
+  const m = street.match(re);
+  const search = (m ? m[1]+" "+m[2] : street) + ", " + suburb + " SA " + pc;
+  const display = street + ", " + suburb + " SA " + pc;
+  const problems = [];
+  if (!/^5\d{3}$/.test(pc)) problems.push("postcode unclear");
+  if (!SUBURB_PC[suburb]) problems.push("suburb not recognised");
+  else if (SUBURB_PC[suburb] !== pc) problems.push("postcode does not match suburb");
+  if (street.replace(/[^A-Za-z]/g,"").length < 4) problems.push("street unclear");
+  if (!m && !/school|post office|lpo|hospital|centre|college/i.test(street)) problems.push("no house number");
+  return {ok: problems.length === 0, reason: problems.join(", "), display, search, suburb, postcode: pc, fixedPc};
+}
+
+function median(a){ const s = a.slice().sort((x,y)=>x-y); return s.length ? s[Math.floor(s.length/2)] : 0; }
+
+/* lines: [{text,x,y,w,h}] for one page. prevMaxSeq: last seq number from earlier pages (0 for page 1). */
+function readPage(lines, prevMaxSeq){
+  const L = lines.filter(l => l.text && l.text.trim()).map(l => Object.assign({}, l, {cy: l.y + l.h/2, kind: classify(l.text)}));
+  let total = null;
+  for (const l of L){ const m = l.text.match(/packages\s*[:;.]?\s*([\dOolI]{1,4})/i); if (m) total = +digitsOf(m[1]); }
+  const H = median(L.filter(l => l.kind !== "header" && l.kind !== "junk").map(l => l.h)) || 20;
+  const codeY = L.filter(l => l.kind === "code").map(l => l.cy).sort((a,b)=>a-b);
+  const gaps = codeY.slice(1).map((y,i) => y - codeY[i]).filter(g => g > 0.5*H);
+  const P = gaps.length >= 3 ? Math.min(median(gaps), 3*H) : 1.6*H;   // typical distance between table rows
+  // 1. row anchors: code / tracking / seq cells sit on the row's centre line
+  const cand = L.filter(l => l.kind === "code" || l.kind === "track" || l.kind === "seq").sort((a,b) => a.cy - b.cy);
+  const rows = [];
+  for (const l of cand){
+    const r = rows.length ? rows[rows.length-1] : null;
+    if (r && Math.abs(l.cy - r.cy) < 0.45*P){ r.items.push(l); r.cy = r.items.reduce((s,i)=>s+i.cy,0)/r.items.length; }
+    else rows.push({cy:l.cy, items:[l]});
+  }
+  const pcLines = L.filter(l => l.kind === "addr" && /S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/.test(l.text));
+  const colX = median(pcLines.map(l => l.x)), topY = pcLines.length ? Math.min(...pcLines.map(l => l.y)) - 1.5*H : -Infinity;
+  for (const l of L) if (l.kind === "addr" && pcLines.length && (l.x + l.w < colX - 0.5*H || l.x < colX - 3*H || l.cy < topY)) l.kind = "junk";
+  const botY = pcLines.length ? Math.max(...pcLines.map(l => l.y + l.h)) + 0.6*P : Infinity;
+  for (const l of L) if (l.cy > botY && l.kind !== "header") l.kind = "junk";
+  for (let i = rows.length - 1; i >= 0; i--) if (rows[i].cy < topY || rows[i].cy > botY) rows.splice(i, 1);
+  // 2. the address column read top to bottom: lines accumulate until one ends with "SA 5xxx" — that is one address,
+  //    even when it wraps onto two lines. Each address joins the nearest row.
+  const PC = /S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/;
+  const addrLines = L.filter(l => l.kind === "addr").sort((a,b) => a.cy - b.cy || a.x - b.x);
+  const units = []; let acc = [];
+  for (const l of addrLines){
+    if (acc.length && l.cy - acc[acc.length-1].cy > 1.2*P){ units.push(acc); acc = []; }   // too far apart to be one address
+    acc.push(l);
+    if (PC.test(l.text)){ units.push(acc); acc = []; }
+  }
+  if (acc.length) units.push(acc);
+  for (const u of units){
+    const cy = u.reduce((t,l) => t + l.cy, 0) / u.length;
+    let best = null, bd = Infinity;
+    for (const r of rows){ const d = Math.abs(r.cy - cy); if (d < bd){ bd = d; best = r; } }
+    if (!best || bd > 0.8*P || best.items.some(i => i.kind === "addr")){ best = {cy, items:[]}; rows.push(best); }
+    u.forEach(l => best.items.push(l));
+  }
+  rows.sort((a,b) => a.cy - b.cy);
+  for (const d of L.filter(l => l.kind === "dims")){
+    let best = null, bd = Infinity;
+    for (const r of rows){ const dd = Math.abs(r.cy - d.cy); if (dd < bd){ bd = dd; best = r; } }
+    if (best && bd < 0.9*P) best.items.push(d);
+  }
+  // rows that ended up with neither an address nor a number are noise
+  for (let i = rows.length - 1; i >= 0; i--) if (!rows[i].items.some(x => x.kind === "addr")) { const hasSeq = rows[i].items.some(x => x.kind === "seq" || x.kind === "code"); if (!hasSeq) rows.splice(i,1); }
+  // 3. read each row
+  let out = rows.map(r => {
+    const seqCell = r.items.find(i => i.kind === "seq");
+    const addrCells = r.items.filter(i => i.kind === "addr").sort((a,b) => (Math.abs(a.cy-b.cy) < 0.5*H ? a.x - b.x : a.cy - b.cy));
+    const dims = r.items.find(i => i.kind === "dims");
+    let text = addrCells.map(i => i.text.replace(/[|\[\]{}]/g," ")).join(" ").replace(/\s+/g," ").trim();
+    let seq = seqCell ? +digitsOf(seqCell.text.replace(/[^\dOolI]/g,"")) : null;
+    let size = "";
+    if (dims){ const n = (dims.text.match(/\d+(?:\.\d+)?/g) || []); if (n.length === 3) size = n.join(" x "); }
+    const box = addrCells.concat(seqCell ? [seqCell] : []).reduce((b,i) => b ? {x:Math.min(b.x,i.x), y:Math.min(b.y,i.y), x2:Math.max(b.x2,i.x+i.w), y2:Math.max(b.y2,i.y+i.h)} : {x:i.x, y:i.y, x2:i.x+i.w, y2:i.y+i.h}, null);
+    return {seq, text, size, box, hasAnchor: r.items.some(i => i.kind !== "addr" && i.kind !== "dims")};
+  }).filter(r => r.text || r.seq != null);
+  // 4. run-sheet numbers on a page are consecutive from top to bottom. Trust the longest chain of readings that
+  //    agrees with the row order, and work out the others from their position between trusted rows.
+  for (const r of out){ if (r.seq != null && (r.seq < 1 || r.seq > 999)) r.seq = null;
+    if (r.seq == null){ const m = r.text.match(/^([\dOolI]{1,3})\s+(\d.*)$/); if (m) r.lead = +digitsOf(m[1]); } }
+  // a number in front of the house number ("26 19 TAMINGA AVENUE") is the run-sheet number when no number cell was read
+  out.forEach(r => { if (r.seq == null && r.lead != null && r.lead >= 1){ r.seq = r.lead; r.fromLead = true; } });
+  const idx = out.map((r,i) => i).filter(i => out[i].seq != null);
+  // longest chain i1<i2<... with seq increasing and seq gap >= row gap (rows can be missed, never invented)
+  const n = idx.length, len = new Array(n).fill(1), from = new Array(n).fill(-1);
+  for (let b = 0; b < n; b++) for (let a = 0; a < b; a++){
+    const ia = idx[a], ib = idx[b], ds = out[ib].seq - out[ia].seq, di = ib - ia;
+    if (ds >= di && ds <= di + 3 && len[a] + 1 > len[b]){ len[b] = len[a] + 1; from[b] = a; } }
+  let bestEnd = -1; for (let b = 0; b < n; b++) if (bestEnd < 0 || len[b] > len[bestEnd]) bestEnd = b;
+  const trusted = new Set(); for (let b = bestEnd; b >= 0; b = from[b]) trusted.add(idx[b]);
+  // a first-page chain should start near the expected number; ignore chains that are far off if very short
+  out.forEach((r,i) => { if (!trusted.has(i)){ r.readSeq = r.seq; r.seq = null; } });
+  const tIdx = [...trusted].sort((a,b)=>a-b);
+  for (let i = 0; i < out.length; i++){
+    const r = out[i]; if (r.seq != null) continue;
+    const p = tIdx.filter(t => t < i).pop(), q = tIdx.find(t => t > i);
+    const fromPrev = p != null ? out[p].seq + (i - p) : (prevMaxSeq ? prevMaxSeq + 1 + i : null);
+    const fromNext = q != null ? out[q].seq - (q - i) : null;
+    if (fromPrev != null && (fromNext == null || fromPrev === fromNext)) r.seq = fromPrev;
+    else if (fromNext != null && fromPrev == null) r.seq = fromNext;
+    else if (r.lead != null && r.lead >= fromPrev && r.lead <= fromNext) r.seq = r.lead;
+    else if (r.readSeq != null && fromPrev != null && fromNext != null && r.readSeq >= fromPrev && r.readSeq <= fromNext) r.seq = r.readSeq;
+    else { r.seq = fromPrev; r.guessed = true; }
+    // the number may also have been merged into the address: "26 19 TAMINGA AVENUE" or "100145 Penfold"
+    const m = r.text.match(/^([\dOolI]{1,6})\s+(.*)$/);
+    if (m && r.seq != null){ const d = digitsOf(m[1]), e = String(r.seq);
+      if (d === e && /^\d/.test(m[2])) r.text = m[2];
+      else if (d.length > e.length && d.startsWith(e) && /^[A-Za-z]/.test(m[2])) r.text = d.slice(e.length) + " " + m[2]; }
+  }
+  // the row's own number merged into the address: "26 19 TAMINGA AVENUE" (strip), "112 Allendale Grove" (strip and ask)
+  for (const r of out){ const m = r.text.match(/^([\dOolI]{1,3})\s+(.*)$/); if (!m || r.seq == null || +digitsOf(m[1]) !== r.seq) continue;
+    r.text = m[2]; if (!/^\d/.test(m[2])) r.numberLost = true; }
+  // 5. clean, check, and list gaps
+  const rowsOut = [];
+  const seen = new Set();
+  for (const r of out){
+    if (!r.text){ continue; }
+    if (r.seq != null && r.seq <= prevMaxSeq && prevMaxSeq > 0) { r.guessed = true; }
+    const c = cleanAddress(r.text);
+    const problems = [];
+    if (r.seq == null || r.guessed) problems.push("run-sheet number unclear");
+    else if (seen.has(r.seq)) problems.push("number appears twice");
+    if (!c.ok) problems.push(c.reason);
+    if (r.numberLost) problems.push("house number may be missing");
+    if (/^0\b/.test(c.search || "")) problems.push("house number unclear");
+    if (r.seq != null) seen.add(r.seq);
+    rowsOut.push({seq: r.seq, address: c.display, search: c.search || c.display, size: r.size, box: r.box, status: problems.length ? "check" : "ok", problem: problems.join("; ")});
+  }
+  rowsOut.sort((a,b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
+  const nums = rowsOut.map(r => r.seq).filter(s => s != null);
+  const lo = Math.min(prevMaxSeq + 1, ...(nums.length ? nums : [prevMaxSeq + 1])), hi = nums.length ? Math.max(...nums) : prevMaxSeq;
+  const missing = []; for (let s = lo; s <= hi; s++) if (!seen.has(s)) missing.push(s);
+  missing.forEach(s => rowsOut.push({seq: s, address: "", search: "", size: "", status: "missing", problem: "Row not read — type this address"}));
+  rowsOut.sort((a,b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
+  return {rows: rowsOut, total, firstSeq: lo, lastSeq: hi, lineCount: L.length};
+}
+
+const api = {readPage, cleanAddress, classify};
+if (typeof module !== "undefined" && module.exports) module.exports = api; else root.DroplineScan = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
 <script>
 (function(){
 "use strict";
@@ -502,7 +747,9 @@ function parseList(text){
 async function importText(text){
   const list = parseList(text);
   if (!list.length){ impStatus("No addresses found. Check the file has an \"address\" column or one address per line.", 0, true); return; }
-  const replace = $("impReplace").checked;
+  await importGroups(list, $("impReplace").checked);
+}
+async function importGroups(list, replace){
   const room = MAX_STOPS - (replace ? 0 : route.stops.length);
   if (list.length > room){ impStatus("That list has "+list.length+" addresses. The planner takes up to "+MAX_STOPS+" stops"+(replace ? "" : " in total")+". Remove some addresses and try again.", 0, true); return; }
   if (replace){ const keep = route.start; route = blankRoute(); route.start = keep; selId = expandedId = null; $("optMsg").hidden = true; }
@@ -888,6 +1135,121 @@ document.querySelector("#nextCard .acts").addEventListener("click", e => { const
 $("nextReasons").addEventListener("click", e => { const r = e.target.dataset.nreason; if(!r) return; setStatus($("nextCard").dataset.id, "failed", r); toast("Marked failed: "+r); });
 if (window.Sortable) Sortable.create($("stops"), {handle:".drag", animation:150, onEnd: ev => {
   if (ev.oldIndex === ev.newIndex) return; const [s] = route.stops.splice(ev.oldIndex, 1); route.stops.splice(ev.newIndex, 0, s); markStale(); persist(); render(); }});
+
+
+/* ---------- scan a paper run sheet, page by page (Android app: on-device Google ML Kit text recognition) ---------- */
+const APK_URL = "https://github.com/Sandip-ios/RouteApp_Australia/releases/download/app-latest/dropline.apk";
+const STORE_SCAN = "dropline.scan.v1";
+function nativeScanner(){
+  if (window.__DroplineScanEngine) return window.__DroplineScanEngine;             // test hook
+  const C = window.Capacitor; if (!C || !(C.isNativePlatform ? C.isNativePlatform() : C.isNative)) return null;
+  const P = (C.Plugins && C.Plugins.TextScan) || (C.registerPlugin ? C.registerPlugin("TextScan") : null);
+  if (P && P.recognize) return P;
+  return C.nativePromise ? {recognize: o => C.nativePromise("TextScan", "recognize", o)} : null;
+}
+let scan = loadJSON(STORE_SCAN) || {pages:[], total:null};
+let scanPage = null;          // the page being reviewed: {rows, thumbs, ms, lines}
+const thumbs = {};            // seq -> image of that row (kept in memory only)
+function scanSave(){ saveJSON(STORE_SCAN, {pages:scan.pages, total:scan.total}); }
+function scanLastSeq(){ let m = 0; scan.pages.forEach(p => p.rows.forEach(r => { if (r.seq > m) m = r.seq; })); return m; }
+function scanCount(){ return scan.pages.reduce((a,p) => a + p.rows.filter(r => r.address).length, 0); }
+
+async function photoToCanvas(file){
+  let bmp;
+  try{ bmp = await createImageBitmap(file, {imageOrientation:"from-image"}); }
+  catch(e){ bmp = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = URL.createObjectURL(file); }); }
+  const W = bmp.width, H = bmp.height, k = Math.min(1, 2400 / Math.max(W, H));
+  const c = document.createElement("canvas"); c.width = Math.round(W*k); c.height = Math.round(H*k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return c;
+}
+function cropRow(canvas, box){
+  if (!box) return "";
+  const pad = 6, x = Math.max(0, box.x - pad), y = Math.max(0, box.y - pad), w = Math.min(canvas.width - x, box.x2 - box.x + 2*pad), h = Math.min(canvas.height - y, box.y2 - box.y + 2*pad);
+  if (w < 4 || h < 4) return "";
+  const k = Math.min(1, 640 / w), c = document.createElement("canvas"); c.width = Math.round(w*k); c.height = Math.round(h*k);
+  c.getContext("2d").drawImage(canvas, x, y, w, h, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.7);
+}
+async function scanPhoto(file){
+  const eng = nativeScanner(); if (!eng){ scanMsg("Photo scanning needs the Dropline Android app.", true); return; }
+  const n = scan.pages.length + 1, t0 = performance.now();
+  scanMsg("Reading page "+n+"…"); $("scanList").innerHTML = ""; $("scanActs").hidden = true;
+  let canvas, res;
+  try{
+    canvas = await photoToCanvas(file);
+    res = await eng.recognize({image: canvas.toDataURL("image/jpeg", 0.92)});
+  }catch(e){ scanMsg("Could not read that photo. "+((e && e.message) || "Try again."), true); return; }
+  const page = DroplineScan.readPage(res.lines || [], scanLastSeq());
+  if (page.total) scan.total = page.total;
+  const secs = ((performance.now() - t0)/1000).toFixed(1);
+  const good = page.rows.filter(r => r.status === "ok").length, bad = page.rows.length - good;
+  if (!page.rows.length){ scanMsg("No delivery rows found in that photo ("+secs+" s). Hold the phone flat above the page, fill the screen with the table, and avoid shadows.", true); return; }
+  page.rows.forEach(r => { thumbs[r.seq] = cropRow(canvas, r.box); delete r.box; });
+  scanPage = {rows: page.rows, lines: res.lines, ms: res.ms, secs};
+  scanMsg("Page "+n+": rows "+page.firstSeq+"–"+page.lastSeq+" read in "+secs+" s. "+(bad ? bad+" need a look (highlighted). Compare with the photo strip and fix the text." : "All rows look right. Compare a few with the photo strip."), false);
+  renderScan();
+}
+function scanMsg(t, err){ const m = $("scanMsg"); m.hidden = false; m.textContent = t; m.classList.toggle("err", !!err); }
+function renderScan(){
+  const n = scan.pages.length + 1;
+  $("scanTitle").textContent = scanPage ? "Check page "+n : "Page "+n;
+  $("scanTake").textContent = scanPage ? "Retake page "+n : "Take photo of page "+n;
+  const sofar = scanCount(), last = scanLastSeq();
+  $("scanSummary").textContent = (sofar ? sofar+" rows saved from "+scan.pages.length+" page"+(scan.pages.length>1?"s":"")+" (up to #"+last+")" : "No pages saved yet") + (scan.total ? " · sheet total "+scan.total : "");
+  $("scanActs").hidden = !scanPage;
+  if (!scanPage){ $("scanList").innerHTML = ""; $("scanFinish").hidden = !sofar; return; }
+  $("scanFinish").hidden = false;
+  $("scanList").innerHTML = scanPage.rows.map((r,i) =>
+    '<div class="srow '+r.status+'"><div class="srow-h"><b>#'+(r.seq != null ? r.seq : "?")+'</b><span class="chip '+(r.status === "ok" ? "delivered" : r.status === "missing" ? "failed" : "skipped")+'">'+(r.status === "ok" ? "OK" : r.status === "missing" ? "Missing" : "Check")+'</span>'+(r.problem ? '<span class="sprob">'+esc(r.problem)+'</span>' : '')+'</div>' +
+    (thumbs[r.seq] ? '<img class="sthumb" alt="Photo of row '+r.seq+'" src="'+thumbs[r.seq]+'">' : '') +
+    '<input class="sinput" data-i="'+i+'" value="'+esc(r.address)+'" placeholder="Type the address for #'+r.seq+'" aria-label="Address for row '+r.seq+'"></div>').join("");
+}
+function acceptPage(){
+  if (!scanPage) return true;
+  const empty = scanPage.rows.filter(r => !r.address.trim());
+  scan.pages.push({rows: scanPage.rows.map(r => ({seq:r.seq, address:r.address.trim(), search:r.search || r.address.trim(), size:r.size || ""}))});
+  scanPage = null; scanSave();
+  if (empty.length) toast(empty.length+" empty row"+(empty.length>1?"s were":" was")+" left out: #"+empty.map(r=>r.seq).join(", #"));
+  return true;
+}
+$("scanList").addEventListener("input", e => { const i = e.target.dataset.i; if (i == null || !scanPage) return;
+  const r = scanPage.rows[+i]; r.address = e.target.value;
+  const c = DroplineScan.cleanAddress(r.address.replace(/,/g," "));
+  r.search = c.search || r.address; r.status = "edited"; e.target.closest(".srow").className = "srow edited"; });
+$("btnScan").addEventListener("click", () => {
+  const native = !!nativeScanner();
+  $("scanNoApp").hidden = native; $("scanApp").hidden = !native;
+  renderScan(); $("scanSheet").hidden = false; });
+$("scanClose").addEventListener("click", () => $("scanSheet").hidden = true);
+["scanCam","scanGallery"].forEach(id => $(id).addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) scanPhoto(f); }));
+$("scanNext").addEventListener("click", () => { acceptPage(); renderScan(); scanMsg("Saved. Now take a photo of page "+(scan.pages.length+1)+", or tap Finish if that was the last page."); $("scanTake").focus(); });
+$("scanRestart").addEventListener("click", () => { $("scanRestartConfirm").hidden = false; });
+$("scanRestartNo").addEventListener("click", () => { $("scanRestartConfirm").hidden = true; });
+$("scanRestartYes").addEventListener("click", () => { scan = {pages:[], total:null}; scanPage = null; scanSave(); $("scanRestartConfirm").hidden = true; $("scanMsg").hidden = true; renderScan(); });
+$("scanCopy").addEventListener("click", async () => {
+  const data = JSON.stringify({app:"dropline-scan", page:scan.pages.length+1, ms:scanPage && scanPage.ms, lines:scanPage ? scanPage.lines : []});
+  try{ await navigator.clipboard.writeText(data); toast("Scan details copied. Paste them into the chat with Claude."); }
+  catch(e){ toast("Copy is blocked on this phone."); } });
+$("scanFinish").addEventListener("click", async () => {
+  acceptPage();
+  const rows = []; scan.pages.forEach(p => p.rows.forEach(r => { if (r.address) rows.push(r); }));
+  if (!rows.length){ scanMsg("No rows to add yet.", true); return; }
+  const have = new Set(rows.map(r => r.seq)), last = Math.max(...rows.map(r => r.seq || 0));
+  const gaps = []; for (let s = 1; s <= (scan.total || last); s++) if (!have.has(s)) gaps.push(s);
+  if (gaps.length && !$("scanFinish").dataset.confirmed){
+    $("scanFinish").dataset.confirmed = "1";
+    scanMsg((scan.total && last < scan.total ? "The sheet lists "+scan.total+" parcels but rows stop at #"+last+". " : "") + gaps.length+" row"+(gaps.length>1?"s are":" is")+" missing (#"+gaps.slice(0,12).join(", #")+(gaps.length>12?"…":"")+"). Take another photo, or tap Finish again to continue without them.", true);
+    return; }
+  delete $("scanFinish").dataset.confirmed;
+  const groups = new Map();
+  rows.sort((a,b) => a.seq - b.seq).forEach(r => { const k = r.address.toLowerCase().replace(/\s+/g," ");
+    if (!groups.has(k)) groups.set(k, {address:r.address, search:r.search || r.address, parcels:[]});
+    groups.get(k).parcels.push({seq:r.seq, size:r.size || "", note:""}); });
+  $("scanSheet").hidden = true; $("importSheet").hidden = false;
+  scan = {pages:[], total:null}; scanSave();
+  await importGroups([...groups.values()], true);
+});
 
 /* import sheet */
 $("btnImport").addEventListener("click", () => { $("importSheet").hidden = false; });

@@ -21,6 +21,8 @@ def screencap(name):
 results = {"pages": [], "raw": []}
 try:
     say("installing", APK); say(adb("install", "-r", APK).strip())
+    for perm in ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA"]: adb("shell", "pm", "grant", "au.dropline.routeplanner", "android.permission." + perm, check=False)
+    adb("emu", "geo", "fix", "138.6406", "-34.9395", check=False)      # put the emulator in Burnside, Adelaide (near the test stops)
     adb("shell", "am", "start", "-n", "au.dropline.routeplanner/.MainActivity")
     sock = ""
     for _ in range(60):
@@ -34,9 +36,9 @@ try:
     for _ in range(30):
         try: targets = json.load(urllib.request.urlopen("http://127.0.0.1:9222/json", timeout=10))
         except Exception: targets = []
-        if any(t.get("type") == "page" and "localhost" in t.get("url","") for t in targets): break
+        if any(t.get("type") == "page" and re.search(r"localhost|github\.io", t.get("url","")) for t in targets): break
         time.sleep(1)
-    t = next((t for t in targets if t.get("type") == "page" and "localhost" in t.get("url","")), None)
+    t = next((t for t in targets if t.get("type") == "page" and re.search(r"localhost|github\.io", t.get("url",""))), None)
     if not t: raise SystemExit("App page not found: " + json.dumps(targets)[:300])
     ws = websocket.create_connection(t["webSocketDebuggerUrl"], timeout=300, suppress_origin=True, max_size=None) if False else websocket.create_connection(t["webSocketDebuggerUrl"], timeout=300, suppress_origin=True)
     msg_id = [0]
@@ -58,7 +60,11 @@ try:
     click = lambda sel: ev("document.querySelector(%s).click()" % json.dumps(sel))
     visible = lambda sel: ev("(() => { const e = document.querySelector(%s); return !!e && !e.closest('[hidden]') && e.offsetParent !== null; })()" % json.dumps(sel))
     text = lambda sel: ev("document.querySelector(%s).innerText" % json.dumps(sel))
-    wait_for("document.getElementById('btnScan')")
+    wait_for("document.getElementById('homeCreate') && window.RP", 90)
+    say("page:", ev("location.href"))
+    screencap("01b-routes-home.png")
+    ev("document.getElementById('homeCreate').click(); document.getElementById('createName').value = 'Emulator test run'; document.getElementById('createGo').click(); true")
+    wait_for("document.getElementById('home').hidden", 10); say("route created:", text("#routeTitle").replace("\n", " "))
     say("app loaded:", text(".brand").replace("\n", " "))
     say("running as Android app:", ev("!!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())"))
     files = sorted(f for f in os.listdir(PAGES) if f.endswith(".jpg"))
@@ -100,16 +106,52 @@ try:
             click("#scanNext"); time.sleep(0.5)
             if not ev("document.getElementById('scanResult').hidden"): click("#scanNext")
             wait_for("document.getElementById('scanResult').hidden", 10)
-    click("#scanFinish"); time.sleep(0.5)
-    if not visible("#importSheet") and not ev("document.getElementById('scanResult').hidden"): click("#scanFinish"); time.sleep(0.5)
-    if not visible("#importSheet"):
-        say("finish check:", text("#scanMsg")); screencap("04-finish-check.png"); click("#scanFinishIdle")
-    try: wait_for("document.getElementById('impStatusTxt').textContent.startsWith('Done')", 300)
+    click("#scanFinish"); time.sleep(0.6)
+    if not ev("document.getElementById('scanSheet').hidden"): click("#scanFinish"); time.sleep(0.6)
+    if not ev("document.getElementById('scanSheet').hidden"):
+        say("finish check:", text("#scanMsg")); screencap("04-finish-check.png")
+        if ev("!!document.getElementById('scanFinishIdle')"): click("#scanFinishIdle")
+    try: wait_for("window.RP.route.stops.length > 100 && window.RP.route.stops.every(s => s.geo !== 'pending' && s.geo !== 'searching')", 300)
     except Exception: say("locations not finished in time")
-    say("import:", text("#impStatusTxt"))
-    screencap("05-import-done.png"); click("#closeImport"); time.sleep(3); screencap("06-route-map.png")
+    st = ev("window.RP.route.stops.map(s => s.geo)"); say("stops in route:", len(st), "| exact:", st.count("exact"), "| check pin:", st.count("street"), "| missing:", st.count("missing"))
     results["stops"] = ev("window.RP.route.stops.map(s => ({label: s.label, geo: s.geo, parcels: s.parcels.map(p => p.seq)}))")
-    say("stops in route:", len(results["stops"]))
+    screencap("05-route-ready.png")
+    say("next step:", text("#nextStep").replace("\n", " ")[:160] if visible("#nextStep") else "(none)")
+    say("start:", ev("JSON.stringify(window.RP.route.start)"))
+    # optimise (live OSRM over the internet)
+    t0 = time.time(); click("#nsOpt" if visible("#nsOpt") else "#btnOpt")
+    try: wait_for("/Optimised|Estimate/.test(document.getElementById('optBadge').textContent)", 240); say(f"optimised in {round(time.time()-t0,1)} s:", text("#mTime"), text("#mDist"), "|", text("#optMsg")[:120])
+    except Exception: say("optimise did not finish:", text("#optMsg"))
+    screencap("06-optimised.png")
+    # pickup + parcel count on stop 2
+    sid = ev("window.RP.route.stops[1].id")
+    ev("document.querySelector('[data-tap=\"%s\"]').click(); true" % sid); time.sleep(0.5)
+    ev("document.querySelector('[data-kind=\"pickup\"][data-sid=\"%s\"]').click(); true" % sid); time.sleep(0.3)
+    ev("document.querySelector('[data-qty=\"1\"][data-sid=\"%s\"]').click(); true" % sid); time.sleep(0.3)
+    say("pickup + parcels:", ev("JSON.stringify({kind: window.RP.route.stops[1].kind, qty: window.RP.route.stops[1].qty})"))
+    # delivered -> next slides in
+    ev("document.getElementById('app-main').scrollTop = 0; true")
+    before = text("#nextNum"); ev("document.querySelector('#nextCard [data-next=\"delivered\"]').click(); true"); time.sleep(0.12)
+    mid = ev("[document.getElementById('nextBody').className, document.getElementById('nextStamp').textContent, !document.getElementById('nextStamp').hidden]"); screencap("07-delivered-sliding.png")
+    time.sleep(1); say("delivered:", before, "->", text("#nextNum"), "| mid-animation:", mid, "| then:", text("#upNext").replace("\n", " ")[:120])
+    screencap("08-next-stop.png")
+    # voice plugin
+    say("TextToSpeech plugin:", ev("!!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech)"))
+    say("TTS speak test:", ev("""(async () => { try { const T = window.Capacitor.Plugins.TextToSpeech; const t0 = performance.now();
+        await Promise.race([T.speak({text: 'Turn left onto Glynburn Road', lang: 'en-AU', rate: 1.0}), new Promise((_, r) => setTimeout(() => r(new Error('no reply in 15 s')), 15000))]);
+        return 'spoke OK in ' + Math.round(performance.now() - t0) + ' ms'; } catch (e) { return 'error: ' + e.message; } })()"""))
+    try: say("TTS languages:", str(ev("(async () => { try { const r = await window.Capacitor.Plugins.TextToSpeech.getSupportedLanguages(); return (r.languages || []).filter(l => /en/i.test(l)).slice(0, 8); } catch (e) { return 'error ' + e.message; } })()")))
+    except Exception as e: say("TTS languages: error", e)
+    # real navigation from the emulator's GPS position
+    ev("window.__spoken = []; document.getElementById('nextGo').click(); true")
+    try: wait_for("(window.__spoken || []).length > 0 || /km from|location/i.test(document.getElementById('navInstr').textContent)", 60)
+    except Exception: pass
+    time.sleep(3); say("navigation:", text("#navInstr"), "|", text("#navDist"), "|", text("#navEta"), "| spoken:", ev("JSON.stringify(window.__spoken)")[:200], "| simulate ticked:", ev("document.getElementById('navSim').checked"))
+    screencap("09-navigation.png")
+    click("#navBack"); time.sleep(1)
+    # routes list
+    click("#btnRoutes"); time.sleep(1); say("routes list:", text("#routeList").replace("\n", " ")[:160]); screencap("10-routes.png")
+    say("script errors:", ev("JSON.stringify(window.__errs || [])"))
 except SystemExit as e:
     say("STOPPED:", e)
 except Exception as e:

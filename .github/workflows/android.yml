@@ -72,7 +72,7 @@ jobs:
         run: |
           sudo apt-get install -y -q fonts-liberation
           pip install -q pillow numpy websocket-client==1.8.0
-          python3 android-app/emulator-test/make_pages.py test-pages
+          python3 android-app/emulator-test/make_pages.py test-pages 777
       - name: Run the app in an Android emulator and scan the pages
         uses: reactivecircus/android-emulator-runner@v2
         with:

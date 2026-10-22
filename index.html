@@ -155,7 +155,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v3.0</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v3.1</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -359,12 +359,14 @@ function titleCase(s){ return s.replace(/\b([A-Z][A-Z'’]{2,})\b/g, w => w[0] +
 function classify(t){
   const s = t.replace(/^[\[|({_\s]+|[\]|)}_\s]+$/g,"");
   const compact = s.replace(/\s+/g,"");
-  if (/dragonfly|total\s*number|packages|route\s*-|from\s+20\d\d|tracking|dimensions|^code$|^seq$|^address$|^sig$/i.test(s)) return "header";
+  if (/dragonfly|total\s*number|packages|route\s*-|from\s+20\d\d|tracking|dimensions|^code$|^se[qg]\b|^address$|^sig$/i.test(s)) return "header";
+  if (/^A\s?[UL]$/i.test(s)) return "junk";
   if (/^[DBO0][S5O0]?\d[\dOolI]{6,}$/.test(compact)) return "code";
   if (/DRNFLY|DRNF|^[\dOolI]{14,}$/.test(compact)) return "track";
   if (/CM/i.test(s) && /\bX\b|X\s*\d|\dX/i.test(s)) return "dims";
   if (/^[\dOolI]{1,3}$/.test(compact)) return "seq";
   if (/[A-Za-z]{2,}/.test(s)) return "addr";
+  if (/^[5S]\d{3}\s*A\s?U\b/i.test(s)) return "addr";
   return "junk";
 }
 
@@ -411,17 +413,67 @@ function cleanAddress(raw){
   return {ok: problems.length === 0, reason: problems.join(", "), display, search, suburb, postcode: pc, fixedPc};
 }
 
+/* Text recognition sometimes merges neighbouring cells into one line. Split them back, estimating each piece's position. */
+function splitMerged(lines){
+  const out = [];
+  const piece = (l, text, from, to) => { const n = Math.max(1, l.text.length); return {text, x: l.x + l.w*from/n, y: l.y, w: Math.max(8, l.w*(to-from)/n), h: l.h, split: true}; };
+  for (const l of lines){
+    let t = l.text;
+    // tracking ID with the run-sheet number glued on: "DRNFLY000024431633126 6A Leroy St", "00393580940198201863133 233A ..."
+    let g = t.match(/^([|\[(\s]*DRNFLY\s*[\dOolI]{12})([\dOolI]{1,3})(?:\s+(.+))?$/) || t.match(/^([|\[(\s]*[\dOolI]{20})([\dOolI]{1,3})(?:\s+(.+))?$/);
+    if (g){ const a0 = g[1].length, b0 = a0 + g[2].length;
+      out.push(piece(l, g[1], 0, a0)); out.push(piece(l, g[2], a0, b0));
+      if (g[3]) out.push(piece(l, g[3], t.indexOf(g[3], b0), t.length)); continue; }
+    // tracking ID followed by the run-sheet number and maybe the address: "00393580940112959543 14 61 HEATHERBANK ..."
+    let m = t.match(/^([|\[(\s]*(?:DRNFLY\s*[\dOolI]{10,14}|[\dOolI]{14,22}))\s+([\dOolI]{1,3})(?:\s+(.+))?$/);
+    if (m){ const a = t.indexOf(m[2], m[1].length), b = a + m[2].length;
+      out.push(piece(l, m[1], 0, m[1].length)); out.push(piece(l, m[2], a, b));
+      if (m[3]) out.push(piece(l, m[3], t.indexOf(m[3], b), t.length)); continue; }
+    // address followed by the parcel size: "... SA 5068 AU 43.18 CM X 28.39 CM X 7.4 CM"
+    m = t.match(/^(.*?S\s?A\s?[5S$][\dOolIGSsB]{3}\s*(?:A\s?U\w?)?)\s+([\d.,]+\s*CM.*)$/i);
+    if (m){ out.push(piece(l, m[1], 0, m[1].length)); out.push(piece(l, m[2], m[1].length+1, t.length)); continue; }
+    // any address text followed by a parcel size: "ACME PTY LTD ... Glen Osmond 25.5 CM X 26.86 CM X 6.3 CM"
+    m = t.match(/^(.*?[A-Za-z]{2,}.*?)\s+([\d.,]+\s*CM\s*X.*)$/i);
+    if (m && !/^[|\s]*[\d.,]+\s*CM/i.test(t)){ out.push(piece(l, m[1], 0, m[1].length)); out.push(piece(l, m[2], m[1].length+1, t.length)); continue; }
+    // header words merged ("Seq Address") are dropped by the classifier; a lone "AU" is the tail of a wrapped address
+    if (/^[|\s]*A\s?[UL][|\s]*$/.test(t)) continue;
+    out.push(l);
+  }
+  return out;
+}
+/* A hand-held photo is slightly tilted, so one table row sits at different heights across the page.
+   Find the tilt that best lines up each row's code (left) with its address (right). */
+function deskew(L, P){
+  const codes = L.filter(l => l.kind === "code");
+  const members = L.filter(l => l.kind === "track" || l.kind === "dims" || (l.kind === "addr" && /S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/.test(l.text)));
+  if (codes.length < 3 || members.length < 3) return 0;
+  let best = 0, bestScore = -1;
+  for (let k = -90; k <= 90; k++){
+    const sl = k / 1000;
+    const cy = codes.map(l => l.cy - (l.x + l.w/2)*sl).sort((a,b) => a-b);
+    let score = 0;
+    for (const a of members){ const y = a.cy - (a.x + a.w/2)*sl; let d = Infinity; for (const c of cy) d = Math.min(d, Math.abs(c - y)); score += Math.max(0, 1 - d/(0.3*P)); }
+    score -= Math.abs(sl) * 2;   // slight preference for a level photo
+    if (score > bestScore){ bestScore = score; best = sl; }
+  }
+  return best;
+}
 function median(a){ const s = a.slice().sort((x,y)=>x-y); return s.length ? s[Math.floor(s.length/2)] : 0; }
 
 /* lines: [{text,x,y,w,h}] for one page. prevMaxSeq: last seq number from earlier pages (0 for page 1). */
 function readPage(lines, prevMaxSeq){
-  const L = lines.filter(l => l.text && l.text.trim()).map(l => Object.assign({}, l, {cy: l.y + l.h/2, kind: classify(l.text)}));
+  const L = splitMerged(lines.filter(l => l.text && l.text.trim())).map(l => Object.assign({}, l, {cy: l.y + l.h/2, kind: classify(l.text)}));
   let total = null;
   for (const l of L){ const m = l.text.match(/packages\s*[:;.]?\s*([\dOolI]{1,4})/i); if (m) total = +digitsOf(m[1]); }
   const H = median(L.filter(l => l.kind !== "header" && l.kind !== "junk").map(l => l.h)) || 20;
   const codeY = L.filter(l => l.kind === "code").map(l => l.cy).sort((a,b)=>a-b);
   const gaps = codeY.slice(1).map((y,i) => y - codeY[i]).filter(g => g > 0.5*H);
-  const P = gaps.length >= 3 ? Math.min(median(gaps), 3*H) : 1.6*H;   // typical distance between table rows
+  let P = gaps.length >= 3 ? Math.min(median(gaps), 3*H) : 1.6*H;   // typical distance between table rows
+  const slope = deskew(L, P); if (typeof process !== "undefined" && process.env.DBG) console.log("slope", slope, "P", P.toFixed(1), "H", H);
+  if (slope) for (const l of L) l.cy = l.cy - (l.x + l.w/2) * slope;
+  const codeY2 = L.filter(l => l.kind === "code").map(l => l.cy).sort((a,b)=>a-b);
+  const gaps2 = codeY2.slice(1).map((y,i) => y - codeY2[i]).filter(g => g > 0.5*H);
+  if (gaps2.length >= 3) P = Math.min(median(gaps2), 3*H);
   // 1. row anchors: code / tracking / seq cells sit on the row's centre line
   const cand = L.filter(l => l.kind === "code" || l.kind === "track" || l.kind === "seq").sort((a,b) => a.cy - b.cy);
   const rows = [];
@@ -432,7 +484,7 @@ function readPage(lines, prevMaxSeq){
   }
   const pcLines = L.filter(l => l.kind === "addr" && /S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/.test(l.text));
   const colX = median(pcLines.map(l => l.x)), topY = pcLines.length ? Math.min(...pcLines.map(l => l.y)) - 1.5*H : -Infinity;
-  for (const l of L) if (l.kind === "addr" && pcLines.length && (l.x + l.w < colX - 0.5*H || l.x < colX - 3*H || l.cy < topY)) l.kind = "junk";
+  for (const l of L) if (l.kind === "addr" && pcLines.length && ((!l.split && (l.x + l.w < colX - 0.5*H || l.x < colX - 3*H)) || l.cy < topY)) l.kind = "junk";
   const botY = pcLines.length ? Math.max(...pcLines.map(l => l.y + l.h)) + 0.6*P : Infinity;
   for (const l of L) if (l.cy > botY && l.kind !== "header") l.kind = "junk";
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].cy < topY || rows[i].cy > botY) rows.splice(i, 1);
@@ -444,7 +496,7 @@ function readPage(lines, prevMaxSeq){
   for (const l of addrLines){
     if (acc.length && l.cy - acc[acc.length-1].cy > 1.2*P){ units.push(acc); acc = []; }   // too far apart to be one address
     acc.push(l);
-    if (PC.test(l.text)){ units.push(acc); acc = []; }
+    if (PC.test(acc.map(x => x.text).join(" "))){ units.push(acc); acc = []; }
   }
   if (acc.length) units.push(acc);
   for (const u of units){
@@ -523,6 +575,7 @@ function readPage(lines, prevMaxSeq){
     if (!c.ok) problems.push(c.reason);
     if (r.numberLost) problems.push("house number may be missing");
     if (/^0\b/.test(c.search || "")) problems.push("house number unclear");
+    if (/\blevel\s?1\d{1,3}\b/i.test(r.text)) problems.push("level and house number may be joined");
     if (r.seq != null) seen.add(r.seq);
     rowsOut.push({seq: r.seq, address: c.display, search: c.search || c.display, size: r.size, box: r.box, status: problems.length ? "check" : "ok", problem: problems.join("; ")});
   }

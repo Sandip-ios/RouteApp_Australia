@@ -63,16 +63,23 @@ try:
     say("running as Android app:", ev("!!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())"))
     files = sorted(f for f in os.listdir(PAGES) if f.endswith(".jpg"))
     # 1. raw text recognition per page, same image size the app uses
-    for f in files:
-        im = Image.open(os.path.join(PAGES, f)).convert("RGB"); k = min(1, 2400 / max(im.size))
+    for size, f in [(sz, f) for sz in (2400, 1600) for f in files]:
+        im = Image.open(os.path.join(PAGES, f)).convert("RGB"); k = min(1, size / max(im.size))
         im = im.resize((round(im.width*k), round(im.height*k))); buf = io.BytesIO(); im.save(buf, "JPEG", quality=92)
         uri = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
         r = ev("""(async () => { const C = window.Capacitor; const P = (C.Plugins && C.Plugins.TextScan) || C.registerPlugin('TextScan');
             const t0 = performance.now(); const r = await P.recognize({image: %s}); r.roundTripMs = Math.round(performance.now() - t0); return r; })()""" % json.dumps(uri))
-        say(f"{f}: ML Kit {r.get('ms')} ms on device, {r.get('roundTripMs')} ms including transfer, {len(r.get('lines', []))} lines")
-        results["raw"].append({"file": f, **r})
+        say(f"{f} at {size}px: ML Kit {r.get('ms')} ms on device, {r.get('roundTripMs')} ms including transfer, {len(r.get('lines', []))} lines")
+        results["raw"].append({"file": f, "size": size, **r})
     # 2. the real scan flow, page by page, as a courier would use it
-    click("#btnScan"); wait_for("!document.getElementById('scanSheet').hidden && !document.getElementById('scanApp').hidden", 10)
+    ev("window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); true")
+    ev("document.getElementById('btnScan').dispatchEvent(new MouseEvent('click', {bubbles:true})); true")
+    try: wait_for("!document.getElementById('scanSheet').hidden && !document.getElementById('scanApp').hidden", 15)
+    except Exception:
+        say("scan screen did not open:", json.dumps(ev("""({sheetHidden: document.getElementById('scanSheet').hidden, appHidden: document.getElementById('scanApp').hidden,
+            noAppHidden: document.getElementById('scanNoApp').hidden, errs: window.__errs, cap: !!window.Capacitor, plugins: Object.keys((window.Capacitor||{}).Plugins||{}),
+            url: location.href})""")))
+        raise
     for i, f in enumerate(files):
         data = base64.b64encode(open(os.path.join(PAGES, f), "rb").read()).decode()
         t0 = time.time()

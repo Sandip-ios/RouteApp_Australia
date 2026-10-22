@@ -6,7 +6,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "pages"
 os.makedirs(OUT, exist_ok=True)
-random.seed(20261022)
+SEED = int(sys.argv[2]) if len(sys.argv) > 2 else 20261022
+random.seed(SEED)
 FONT = "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"
 BOLD = "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf"
 
@@ -127,5 +128,5 @@ with open(os.path.join(OUT, "answers.csv"), "w", newline="") as fh:
 for p in range(7):
     chunk = rows[p*25:(p+1)*25]
     page = render_page(chunk, p+1, TOTAL)
-    phone_photo(page, p).save(os.path.join(OUT, f"page-{p+1}.jpg"), quality=85)
+    phone_photo(page, SEED * 10 + p).save(os.path.join(OUT, f"page-{p+1}.jpg"), quality=85)
 print("made", len(rows), "rows on 7 pages in", OUT)

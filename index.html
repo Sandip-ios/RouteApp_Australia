@@ -170,7 +170,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v3.9</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v4.0</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -747,7 +747,7 @@ async function nominatim(q, limit){
 }
 async function photon(q, limit, bias){
   const b = bias || biasPoint();
-  const j = await fetchJSON(PHOTON+"?q="+encodeURIComponent(q)+"&limit="+(limit||6)+"&lang=en&bbox="+AU_BBOX+"&lat="+b.lat+"&lon="+b.lon, 8000);
+  const j = await fetchJSON(PHOTON+"?q="+encodeURIComponent(q)+"&limit="+(limit||6)+"&lang=en&bbox="+AU_BBOX+"&lat="+b.lat+"&lon="+b.lon+(has(myLoc) || has(route.start) || route.stops.some(has) ? "&zoom=14&location_bias_scale=0.1" : ""), 8000);
   return (j.features||[]).filter(f => !f.properties.countrycode || f.properties.countrycode === "AU").map(f => ({
     label: photonLabel(f.properties), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], housenumber:f.properties.housenumber, postcode:f.properties.postcode}));
 }
@@ -857,6 +857,45 @@ async function gnafSuggest(q){
   return null;
 }
 
+/* Address search, local first: official addresses in the postcodes nearest to you, then the open map search sorted by distance. */
+let pcIndex = null;
+function knownCentre(){ if (has(myLoc)) return myLoc; if (has(route.start)) return route.start; const s = route.stops.find(has); return s || null; }
+async function nearbyPostcodes(c, km, max){
+  if (!pcIndex) pcIndex = await fetchJSON(GEO_BASE + "sa/index.json", 10000).catch(() => ({}));
+  return Object.entries(pcIndex).map(([pc, p]) => [pc, hav(c, {lat:p[0], lon:p[1]})]).filter(([, d]) => d < km*1000).sort((a,b) => a[1]-b[1]).slice(0, max).map(x => x[0]);
+}
+async function localSuggest(q, c){
+  if (!c) return [];
+  const m = String(q).trim().match(/^(\d+[A-Za-z]?)?\s*(?:\/\s*(\d+[A-Za-z]?))?\s*([A-Za-z].*?)?\s*(?:,\s*(.*))?$/);
+  if (!m || !m[3]) return [];
+  const num = (m[2] || m[1] || "").toUpperCase(), streetQ = gnorm(m[3]), subQ = m[4] ? locNorm(m[4].replace(/\b(SA|NSW|VIC|QLD|WA|TAS|ACT|NT)\b.*$/i, "")) : "";
+  if (streetQ.length < 3) return [];
+  const words = streetQ.split(" "); if (words.length > 1 && ST_FULL[words[words.length-1]]) words[words.length-1] = ST_FULL[words[words.length-1]];
+  const want = words.join(" ");
+  const pcs = await nearbyPostcodes(c, 25, 14);
+  const out = [];
+  for (const pc of pcs){
+    const idx = await gnafFile(pc); if (!idx) continue;
+    for (const x of Object.values(idx)){
+      if (!x.st.startsWith(want) && !(" " + x.st).includes(" " + want)) continue;
+      if (subQ && !x.loc.startsWith(subQ)) continue;
+      const p = num ? (x.nums[num] || null) : x.c;
+      if (num && !p) continue;
+      out.push({label: (num ? num + " " : "") + titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, lat: p[0], lon: p[1], official: true,
+        d: hav(c, {lat:p[0], lon:p[1]}) - (x.st.startsWith(want) ? 1e6 : 0)});
+    }
+    if (out.length >= 30) break;
+  }
+  return out.sort((a,b) => a.d - b.d).slice(0, 6);
+}
+async function searchAddresses(q, limit){
+  const c = knownCentre();
+  const [loc, web] = await Promise.all([localSuggest(q, c).catch(() => []), geocode(q, limit).catch(() => [])]);
+  const near = c ? web.slice().sort((a,b) => hav(c,a) - hav(c,b)) : web;
+  const seen = new Set(loc.map(r => r.label.toLowerCase()));
+  return loc.concat(near.filter(r => !seen.has(r.label.toLowerCase()) && !loc.some(l => hav(l, r) < 25))).slice(0, 8);
+}
+
 function titleCaseWords(s){ return String(s).toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()); }
 function lev(a, b){ if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
   let prev = Array.from({length:n+1}, (_,j)=>j);
@@ -883,7 +922,7 @@ function wireSearch(input, box, onPick){
     if (q.length < 4){ close(); return; }
     timer = setTimeout(async () => {
       const my = ++seq; box.hidden = false; box.innerHTML = '<button disabled>Searching…</button>';
-      try{ results = await geocode(q); }catch(e){ results = null; }
+      try{ results = await searchAddresses(q); }catch(e){ results = null; }
       if (my !== seq) return;
       if (results === null){ box.innerHTML = '<button disabled>Address search is unavailable. Check your internet connection and try again.</button>'; return; }
       if (!results.length){ box.innerHTML = '<button disabled>No Australian matches. Try adding the suburb.</button>'; return; }
@@ -1235,7 +1274,7 @@ function startLocation(then){
 }
 
 /* ---------- map ---------- */
-const map = L.map("map", {zoomControl:true, attributionControl:true}).setView(PARRA, 13);
+const map = L.map("map", {zoomControl:true, attributionControl:true}).setView([-34.9285, 138.6007], 12);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
 const layer = L.layerGroup().addTo(map), meLayer = L.layerGroup().addTo(map);
 function pin(cls, txt){ return L.divIcon({className:"", html:'<div class="pin '+cls+'"><span>'+txt+'</span></div>', iconSize:[28,28], iconAnchor:[14,28]}); }
@@ -1606,6 +1645,15 @@ $("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
 document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
 
 render(); if (route.stops.length) fitAll();
+(function locateQuietly(){
+  const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const go = () => navigator.geolocation && navigator.geolocation.getCurrentPosition(p => {
+    myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; drawMe();
+    if (!route.stops.length && !has(route.start)) map.setView([myLoc.lat, myLoc.lon], 14);
+  }, () => {}, {enableHighAccuracy:false, maximumAge:300000, timeout:15000});
+  if (native) go();
+  else if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(r => { if (r.state === "granted") go(); }).catch(() => {});
+})();
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 window.RP = {solve, tourCost, parseList, grader, loadSample, get route(){ return route; }};
 })();

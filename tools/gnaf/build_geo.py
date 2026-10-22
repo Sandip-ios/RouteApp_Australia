@@ -46,3 +46,11 @@ for st in STATES:
     print(f"{st}: {len(rows)} addresses, {len(files)} postcodes, {size/1e6:.1f} MB, {time.time()-t0:.0f} s", flush=True)
 with open(os.path.join(OUT, "README.txt"), "w") as fh:
     fh.write("Address points from G-NAF (Geocoded National Address File), © Geoscape Australia, licensed under CC BY 4.0. Built for the Dropline route planner.\n")
+
+# postcode index: centre point of each postcode, used to search nearby suburbs first
+for st in STATES:
+    d = os.path.join(OUT, st.lower()); idx = {}
+    for p in glob.glob(os.path.join(d, "[0-9]*.json")):
+        f = json.load(open(p)); pts = list(f["c"].values())
+        if pts: idx[os.path.basename(p)[:-5]] = [round(sum(x[0] for x in pts)/len(pts), 4), round(sum(x[1] for x in pts)/len(pts), 4)]
+    json.dump(idx, open(os.path.join(d, "index.json"), "w"), separators=(",", ":"))

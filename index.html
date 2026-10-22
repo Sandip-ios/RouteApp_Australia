@@ -166,7 +166,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v3.6</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v3.7</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -228,8 +228,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
       <button class="btn primary" id="btnScan" style="width:100%;margin-top:8px">Scan paper run sheet (photo)</button>
       <button class="btn ghost" id="btnImport" style="width:100%;margin-top:8px">Import a file or address list</button>
       <div class="row" style="margin-top:8px">
-        <button class="btn ghost grow" id="btnSample">Load 25 Parramatta test stops</button>
-        <button class="btn ghost" id="btnClear">Clear</button>
+        <button class="btn ghost grow" id="btnClear">Clear all stops</button>
       </div>
       <div class="row" id="clearConfirm" hidden style="margin-top:8px">
         <span style="flex:1">Remove all stops?</span>
@@ -244,7 +243,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
         <div class="m" style="font-size:12px;color:var(--muted)">Drag ☰ or use ▲▼ to reorder</div>
       </div>
       <ol class="stops" id="stops"></ol>
-      <p class="hint" id="emptyHint">No stops yet. Add an address above, import a run sheet, or load the 25 test stops.</p>
+      <p class="hint" id="emptyHint">No stops yet. Scan the run sheet, import a file, or type an address above.</p>
     </section>
   </main>
 </div>
@@ -1265,7 +1264,6 @@ wireSearch($("startIn"), $("startSugg"), setStart);
 $("retStart").addEventListener("change", e => { route.returnToStart = e.target.checked; markStale(); persist(); render(); });
 $("btnOpt").addEventListener("click", optimise);
 $("btnFit").addEventListener("click", fitAll);
-$("btnSample").addEventListener("click", loadSample);
 $("btnMyLoc").addEventListener("click", startLocation);
 $("btnLocate").addEventListener("click", locatePending);
 let probIdx = -1;
@@ -1519,7 +1517,7 @@ document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click"
 
 render(); if (route.stops.length) fitAll();
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
-window.RP = {solve, tourCost, parseList, grader, get route(){ return route; }};
+window.RP = {solve, tourCost, parseList, grader, loadSample, get route(){ return route; }};
 })();
 </script>
 </body>

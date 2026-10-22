@@ -2,7 +2,7 @@
 <html lang="en-AU">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Dropline Route Planner</title>
 <meta name="theme-color" content="#123b3a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +27,7 @@
   color-scheme:dark;
 }}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;-webkit-text-size-adjust:100%}
 body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -73,7 +73,7 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
 
 /* address entry */
 .addr{position:relative}
-.addr input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--bg);min-height:46px}
+.addr input{font-size:16px;width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--bg);min-height:46px}
 .addr input:focus{border-color:var(--accent);outline:none}
 .sugg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:20;overflow:hidden;max-height:300px;overflow-y:auto}
 .sugg button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 12px}
@@ -118,7 +118,7 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
 .saved{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .saved .t{flex:1;min-width:0}
 .field{display:flex;flex-direction:column;gap:4px;margin:8px 0}
-.field input{border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.field input{font-size:16px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
 .toggle{display:flex;gap:8px;align-items:center;font-size:14px}
 
 /* map pins */
@@ -134,7 +134,7 @@ header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(sa
 .chip.big{background:var(--accent-soft);color:var(--accent)}
 .chip.mark{background:var(--pend-soft);color:var(--ink)}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
-textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font:14px/1.4 var(--f-body);color:var(--ink);resize:vertical}
+textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font:16px/1.4 var(--f-body);color:var(--ink);resize:vertical}
 .bar{height:8px;border-radius:99px;background:var(--pend-soft);overflow:hidden;margin-top:8px}
 .bar i{display:block;height:100%;width:0;background:var(--accent)}
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
@@ -179,14 +179,14 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 .srow-h{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
 .sprob{font-size:12px;color:var(--muted)}
 .sthumb{display:block;width:100%;height:auto;max-height:70px;object-fit:contain;object-position:left;margin-top:6px;border-radius:4px;background:#fff}
-.sinput{width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);font:15px var(--f-body);color:var(--ink)}
+.sinput{width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);font:16px var(--f-body);color:var(--ink)}
 .placing #map{outline:4px solid var(--skip);outline-offset:-4px}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v4.2</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v4.3</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -1855,6 +1855,9 @@ $("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
 document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
 
 render(); if (route.stops.length) fitAll();
+["gesturestart","gesturechange"].forEach(t => document.addEventListener(t, e => { if (!e.target.closest || !e.target.closest(".leaflet-container")) e.preventDefault(); }, {passive:false}));
+let lastTouchEnd = 0;
+document.addEventListener("touchend", e => { const now = Date.now(); if (now - lastTouchEnd < 350 && !(e.target.closest && e.target.closest(".leaflet-container"))) e.preventDefault(); lastTouchEnd = now; }, {passive:false});
 /* Ask for the location when the app opens: nearby addresses first, start point, navigation. */
 function isNativeApp(){ const C = window.Capacitor; return !!(C && (C.isNativePlatform ? C.isNativePlatform() : C.isNative)) || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.bridge); }
 function askLocation(fromTap){

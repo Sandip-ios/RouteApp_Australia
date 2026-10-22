@@ -140,6 +140,14 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
 .alert{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--skip-soft);color:var(--ink);margin-top:10px}
 .alert span{flex:1;min-width:0}
+.switchrow{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
+.switch{position:relative;width:52px;height:30px;flex:none}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.switch .knob{position:absolute;inset:0;border-radius:99px;background:var(--line);transition:background .2s}
+.switch .knob::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.switch input:checked + .knob{background:var(--accent)}
+.switch input:checked + .knob::after{transform:translateX(22px)}
+.switch input:focus-visible + .knob{outline:3px solid var(--accent);outline-offset:2px}
 .locbanner{border:2px solid var(--accent);background:var(--accent-soft)}
 .locbanner p{margin:0 0 10px;font-size:14px}
 .nextstep{border:2px solid var(--ok);background:var(--ok-soft)}
@@ -187,7 +195,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand">Dropline<small>Route planner · prototype v4.4</small></div>
+    <div class="brand">Dropline<small>Route planner · prototype v4.5</small></div>
     <button class="hbtn" id="btnRoutes">Routes</button>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
@@ -246,13 +254,14 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
     </section>
 
     <section class="panel" aria-label="Start location">
-      <div class="label">Start from</div>
-      <div class="addr" style="margin-top:6px">
+      <label class="switchrow" for="startMe"><span class="label" style="font-size:13px">Start from my location</span>
+        <span class="switch"><input type="checkbox" id="startMe" role="switch" checked><span class="knob"></span></span></label>
+      <p class="hint" id="startMeTxt" style="margin:6px 0 0">Finding your location…</p>
+      <div class="addr" id="startAddrBox" style="margin-top:8px" hidden>
         <input id="startIn" type="text" placeholder="Depot or starting address" autocomplete="off" aria-label="Start address">
         <div class="sugg" id="startSugg" hidden></div>
       </div>
-      <button class="btn ghost" id="btnMyLoc" style="width:100%;margin-top:8px">Use my location as start</button>
-      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="retStart"> Return to start at end of run</label>
+      <button class="btn ghost" id="btnMyLoc" hidden>Use my location as start</button>
     </section>
 
     <section class="panel" aria-label="Add stops">
@@ -995,7 +1004,7 @@ function startChanged(){
 }
 function setStart(r){
   if (farFromStops(r)){ toast("That start is more than 150 km from your stops. Choose a start near the deliveries."); render(); return; }
-  route.start = {label:r.label, lat:r.lat, lon:r.lon}; startChanged(); }
+  route.start = {label:r.label, lat:r.lat, lon:r.lon}; if (startMeOn){ startMeOn = false; $("startMe").checked = false; try{ localStorage.setItem("dropline.startMe","0"); }catch(e){} } updateStartMeTxt(); startChanged(); }
 function markStale(){ if (route.opt) route.opt.stale = true; }
 function move(id, dir){ const i = route.stops.findIndex(s=>s.id===id), j = i+dir; if(i<0||j<0||j>=route.stops.length) return;
   [route.stops[i], route.stops[j]] = [route.stops[j], route.stops[i]]; markStale(); persist(); render(); }
@@ -1222,7 +1231,7 @@ async function optimise(){
   const origin = done.length && liveOk ? {lat:myLoc.lat, lon:myLoc.lon, id:"__me"} : (lastDone || startPt);
   if (!origin){ showMsg("Set a start address or tap \"Use my location as start\" first.", true); return; }
   if (hav(origin, pend[0]) > 150000 && pend.every(p => hav(origin, p) > 150000)){ showMsg("The start is more than 150 km from the stops. Choose a start near the deliveries.", true); return; }
-  const closed = route.returnToStart && startPt;
+  const closed = false;   // runs end at the last stop; the driver knows where to go after
   const pts = [origin].concat(pend); let endIdx = null;
   if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
   btn.disabled = true; btn.textContent = "Getting road times…"; const bar = $("optBar"); bar.hidden = false; bar.firstElementChild.style.width = "0";
@@ -1303,9 +1312,12 @@ function showNextStep(pages, busyText){
   const hasStart = has(route.start);
   $("nsText").textContent = (miss ? miss + " stop" + (miss > 1 ? "s" : "") + " still need a map location (shown at the end of the list). " : "") +
     (hasStart ? "Next: optimise the delivery order from " + route.start.label + "." : "Next: choose where you start, then the app works out the best delivery order.");
-  $("nsOpt").hidden = !hasStart; $("nsLocOpt").hidden = false; $("nsStart").hidden = false;
-  $("nsLocOpt").textContent = hasStart ? "Start from my current location instead" : "Start from my location and optimise";
-  $("nsLocOpt").className = hasStart ? "btn ghost" : "btn primary";
+  $("nsOpt").hidden = !hasStart; $("nsLocOpt").hidden = hasStart || !startMeOn; $("nsStart").hidden = hasStart && !startMeOn;
+  $("nsLocOpt").textContent = "Allow location and optimise"; $("nsLocOpt").className = "btn primary";
+  $("nsStart").textContent = startMeOn ? "Type a start address instead" : "Change the start address";
+  if (hasStart) $("nsText").textContent = (miss ? miss + " stop" + (miss > 1 ? "s" : "") + " still need a map location (shown at the end of the list). " : "") + "Next: optimise the delivery order from " + (route.start.me ? "your location" : route.start.label) + ".";
+  else if (startMeOn && has(myLoc) && farFromStops(myLoc)){ $("nsText").textContent = "You are more than 150 km from these stops, so the route can't start from your location. Type a start address near the deliveries."; $("nsLocOpt").hidden = true; $("nsStart").className = "btn primary"; }
+  else $("nsStart").className = "btn ghost";
   fitAll();
 }
 let afterLocate = null;
@@ -1324,7 +1336,7 @@ function startLocation(then){
         const msg = "You are more than 150 km from these stops, so your location can't be the start. Type a start address near the deliveries (for example the depot).";
         toast(msg); if (!$("nextStep").hidden) $("nsText").textContent = msg;
         return; }
-      route.start = {label:"My location at "+new Date().toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}), lat:myLoc.lat, lon:myLoc.lon};
+      route.start = {label:"My location", lat:myLoc.lat, lon:myLoc.lon, me:true}; updateStartMeTxt();
       $("btnMyLoc").textContent = "Update start to my location";
       toast("Start set to your location (accuracy about "+Math.round(myLoc.acc)+" m)");
       if (afterLocate){ const f = afterLocate; afterLocate = null; markStale(); persist(); render(); f(); }
@@ -1369,6 +1381,8 @@ map.on("click", e => {
 /* ---------- render ---------- */
 const REASONS = ["No one home","Address not found","Refused","Unsafe access","Other"];
 function render(){
+  try { if (startMeOn && route.start && route.start.me && route.stops.length && farFromStops(route.start)){ route.start = null; route.opt = null; } } catch(e){}
+  if (typeof updateStartMeTxt === 'function') try { updateStartMeTxt(); } catch(e){}
   const st = route.stops, cnt = {pending:0,delivered:0,failed:0,skipped:0}; st.forEach(s => cnt[s.status]++);
   $("cP").textContent = cnt.pending; $("cD").textContent = cnt.delivered; $("cF").textContent = cnt.failed; $("cK").textContent = cnt.skipped;
   $("nStops").textContent = st.length;
@@ -1380,8 +1394,7 @@ function render(){
     else if (o.method === "road"){ b.className = "badge live"; b.textContent = "Optimised"; }
     else { b.className = "badge est"; b.textContent = "Estimate"; } }
   if (!busy) $("btnOpt").textContent = o && !o.stale ? "Re-optimise" : "Optimise route";
-  if (document.activeElement !== $("startIn")) $("startIn").value = route.start ? route.start.label : "";
-  $("retStart").checked = !!route.returnToStart;
+  if (document.activeElement !== $("startIn")) $("startIn").value = route.start && !route.start.me ? route.start.label : "";
   $("emptyHint").hidden = st.length > 0;
 
   const nSearch = st.filter(s => s.geo === "searching").length, nPend = st.filter(s => s.geo === "pending").length, nMiss = st.filter(s => s.geo === "missing").length, nChk = st.filter(s => s.geo === "street").length;
@@ -1429,13 +1442,12 @@ function render(){
 /* ---------- events ---------- */
 wireSearch($("addrIn"), $("addrSugg"), addStop);
 wireSearch($("startIn"), $("startSugg"), setStart);
-$("retStart").addEventListener("change", e => { route.returnToStart = e.target.checked; markStale(); persist(); render(); });
 $("btnOpt").addEventListener("click", optimise);
 $("btnFit").addEventListener("click", fitAll);
 $("btnMyLoc").addEventListener("click", () => startLocation());
 $("nsOpt").addEventListener("click", () => { $("nextStep").hidden = true; optimise(); });
-$("nsLocOpt").addEventListener("click", () => { $("nsLocOpt").textContent = "Finding your location…"; startLocation(() => { $("nextStep").hidden = true; optimise(); }); });
-$("nsStart").addEventListener("click", () => { $("nextStep").hidden = true; const i = $("startIn"); i.scrollIntoView({block:"center", behavior:"smooth"}); setTimeout(() => i.focus(), 300); });
+$("nsLocOpt").addEventListener("click", () => { $("nsLocOpt").textContent = "Finding your location…"; setStartMode(true, true); startLocation(() => { $("nextStep").hidden = true; optimise(); }); });
+$("nsStart").addEventListener("click", () => { setStartMode(false, true); const i = $("startIn"); i.scrollIntoView({block:"center", behavior:"smooth"}); setTimeout(() => i.focus(), 300); });
 $("btnLocate").addEventListener("click", locatePending);
 let probIdx = -1;
 $("btnShowProb").addEventListener("click", () => {
@@ -1889,16 +1901,46 @@ function askLocation(fromTap){
   $("locBtn").textContent = "Finding you…";
   navigator.geolocation.getCurrentPosition(p => {
     myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; drawMe();
-    $("locBanner").hidden = true;
+    $("locBanner").hidden = true; useMyLocAsStart();
     if (!route.stops.length && !has(route.start)) map.setView([myLoc.lat, myLoc.lon], 14);
   }, err => {
+    updateStartMeTxt();
     if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Open the iPhone Settings app → Dropline → Location → \"While Using the App\", then come back." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
     else showLocBanner("Could not get your location yet. Try again outdoors or check that Location Services is on.", false);
   }, {enableHighAccuracy:true, maximumAge:120000, timeout:20000});
 }
+/* Start: "my location" (default) or a typed address. */
+let startMeOn = (() => { try{ return localStorage.getItem("dropline.startMe") !== "0"; }catch(e){ return true; } })();
+function setStartMode(on, quiet){
+  startMeOn = on; try{ localStorage.setItem("dropline.startMe", on ? "1" : "0"); }catch(e){}
+  $("startMe").checked = on; $("startAddrBox").hidden = on;
+  if (on){ if (has(myLoc)) useMyLocAsStart(); else { updateStartMeTxt(); askLocation(true); } }
+  else {
+    if (route.start && route.start.me){ route.start = null; markStale(); persist(); render(); }
+    updateStartMeTxt(); if (!quiet) setTimeout(() => $("startIn").focus(), 100);
+  }
+}
+function updateStartMeTxt(){
+  const t = $("startMeTxt");
+  if (!startMeOn){ t.textContent = "Type the address where the run starts (for example the depot)."; return; }
+  if (route.start && route.start.me) t.textContent = "📍 Starting from where you are" + (myLoc && myLoc.at ? " (updated " + new Date(myLoc.at).toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}) + ")" : "") + ".";
+  else if (has(myLoc) && farFromStops(myLoc)) t.textContent = "You are more than 150 km from these stops. Switch this off and type a start address near the deliveries.";
+  else t.textContent = "Waiting for your location… If location is off, switch this off and type a start address.";
+}
+function useMyLocAsStart(){
+  if (!startMeOn || !has(myLoc)) { updateStartMeTxt(); return; }
+  if (farFromStops(myLoc)){ if (route.start && route.start.me){ route.start = null; persist(); render(); } updateStartMeTxt(); return; }
+  const prev = route.start, moved = !prev || !prev.me || hav(prev, myLoc) > 300;
+  route.start = {label:"My location", lat:myLoc.lat, lon:myLoc.lon, me:true};
+  updateStartMeTxt();
+  if (moved && prev) startChanged(); else { persist(); render(); }
+  if (!$("nextStep").hidden && !route.opt) showNextStep(lastStepPages);
+}
 function showLocBanner(text, blocked){ $("locBanner").hidden = false; $("locText").textContent = text; $("locBtn").textContent = blocked ? "Try again" : "Allow location"; }
 $("locBtn").addEventListener("click", () => askLocation(true));
+$("startMe").addEventListener("change", e => setStartMode(e.target.checked));
 $("locClose").addEventListener("click", () => { $("locBanner").hidden = true; });
+$("startMe").checked = startMeOn; $("startAddrBox").hidden = startMeOn; updateStartMeTxt();
 setTimeout(() => {
   if (isNativeApp()) askLocation(false);
   else if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(r => {

@@ -71,7 +71,7 @@ jobs:
       - name: Prepare test pages and tools
         run: |
           sudo apt-get install -y -q fonts-liberation
-          pip install -q pillow numpy playwright==1.47.0
+          pip install -q pillow numpy websocket-client==1.8.0
           python3 android-app/emulator-test/make_pages.py test-pages
       - name: Run the app in an Android emulator and scan the pages
         uses: reactivecircus/android-emulator-runner@v2

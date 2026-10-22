@@ -34,7 +34,7 @@ jobs:
         working-directory: android-app
         run: |
           npm ci
-          mkdir -p www && cp ../index.html www/index.html
+          mkdir -p www && cp ../index.html www/index.html && cp offline.html www/offline.html
           npx cap sync android
       - name: Build test APK
         working-directory: android-app/android

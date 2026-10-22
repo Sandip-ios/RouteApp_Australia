@@ -23,7 +23,7 @@ jobs:
         working-directory: android-app
         run: |
           npm ci
-          mkdir -p www && cp ../index.html www/index.html
+          mkdir -p www && cp ../index.html www/index.html && cp offline.html www/offline.html
           npx cap copy ios
           mkdir -p ../ios-results
       - name: Build for the iPhone Simulator

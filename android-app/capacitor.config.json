@@ -7,7 +7,8 @@
   },
   "server": {
     "url": "https://sandip-ios.github.io/RouteApp_Australia/",
-    "cleartext": false
+    "cleartext": false,
+    "errorPath": "offline.html"
   },
   "ios": {
     "contentInset": "never",

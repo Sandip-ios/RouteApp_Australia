@@ -36,9 +36,9 @@ try:
     for _ in range(30):
         try: targets = json.load(urllib.request.urlopen("http://127.0.0.1:9222/json", timeout=10))
         except Exception: targets = []
-        if any(t.get("type") == "page" and re.search(r"localhost|github\.io", t.get("url","")) for t in targets): break
+        if any(t.get("type") == "page" and re.search(r"localhost|github\.io|offline\.html", t.get("url","")) for t in targets): break
         time.sleep(1)
-    t = next((t for t in targets if t.get("type") == "page" and re.search(r"localhost|github\.io", t.get("url",""))), None)
+    t = next((t for t in targets if t.get("type") == "page" and re.search(r"localhost|github\.io|offline\.html", t.get("url",""))), None)
     if not t: raise SystemExit("App page not found: " + json.dumps(targets)[:300])
     ws = websocket.create_connection(t["webSocketDebuggerUrl"], timeout=300, suppress_origin=True, max_size=None) if False else websocket.create_connection(t["webSocketDebuggerUrl"], timeout=300, suppress_origin=True)
     msg_id = [0]
@@ -54,13 +54,23 @@ try:
     def wait_for(cond, timeout=60):
         t0 = time.time()
         while time.time() - t0 < timeout:
-            if ev("!!(" + cond + ")"): return True
+            try:
+                if ev("!!(" + cond + ")"): return True
+            except RuntimeError: pass
             time.sleep(0.25)
         raise RuntimeError("timed out waiting for " + cond[:80])
     click = lambda sel: ev("document.querySelector(%s).click()" % json.dumps(sel))
     visible = lambda sel: ev("(() => { const e = document.querySelector(%s); return !!e && !e.closest('[hidden]') && e.offsetParent !== null; })()" % json.dumps(sel))
     text = lambda sel: ev("document.querySelector(%s).innerText" % json.dumps(sel))
-    wait_for("document.getElementById('homeCreate') && window.RP", 90)
+    if ev("location.href").startswith("file:") or ev("/offline/.test(location.href) || document.title.includes('no internet')"):
+        say("app opened without internet:", ev("location.href"), "| page:", ev("document.title")); screencap("01a-offline-page.png")
+        for _ in range(12):
+            try:
+                if ev("!!window.RP"): break
+                ev("document.getElementById('again') && document.getElementById('again').click(); true")
+            except Exception: pass
+            time.sleep(10)
+    wait_for("document.getElementById('homeCreate') && window.RP", 120)
     say("page:", ev("location.href"))
     screencap("01b-routes-home.png")
     ev("document.getElementById('homeCreate').click(); document.getElementById('createName').value = 'Emulator test run'; document.getElementById('createGo').click(); true")

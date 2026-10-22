@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Dropline</string>
+    <string name="title_activity_main">Dropline</string>
+    <string name="package_name">au.dropline.routeplanner</string>
+    <string name="custom_url_scheme">au.dropline.routeplanner</string>
+</resources>

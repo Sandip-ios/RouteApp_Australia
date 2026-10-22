@@ -1,0 +1,55 @@
+name: Build Android app
+
+on:
+  push:
+    branches: [main]
+    paths: ["index.html", "android-app/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: android-app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: Prepare web app
+        working-directory: android-app
+        run: |
+          npm ci
+          mkdir -p www && cp ../index.html www/index.html
+          npx cap sync android
+      - name: Build test APK
+        working-directory: android-app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk ../../dropline.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dropline-apk
+          path: dropline.apk
+      - name: Publish download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete app-latest --yes --cleanup-tag || true
+          gh release create app-latest dropline.apk \
+            --title "Dropline Android test build #${{ github.run_number }}" \
+            --notes "Test build from commit ${{ github.sha }}. Install on Android: download dropline.apk and open it." \
+            --latest

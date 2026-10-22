@@ -1,0 +1,6 @@
+{
+  "appId": "au.dropline.routeplanner",
+  "appName": "Dropline",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}

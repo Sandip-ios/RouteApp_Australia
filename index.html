@@ -192,6 +192,13 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 .nav-eta b{font:700 24px/1 var(--f-display);color:var(--ok)}
 .nav-eta span{color:var(--muted);font-size:14px}
 .nav-stop{font-size:14px;margin-top:4px;overflow-wrap:anywhere}
+.snote{display:block;margin-top:4px;padding:5px 8px;border-radius:6px;background:#fff6d6;color:#5a4300;font-size:13px;line-height:1.35;overflow-wrap:anywhere;white-space:pre-wrap}
+@media (prefers-color-scheme:dark){.snote{background:#3a3110;color:#f3dd8c}}
+.notebox{width:100%;margin:2px 0 4px}
+.notebox textarea{display:block;width:100%;min-height:62px;margin-top:4px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);font:16px/1.35 var(--f-body);color:var(--ink);resize:vertical}
+.qnotes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.qnotes button{border:1.5px solid var(--line);background:var(--surface);border-radius:16px;padding:6px 11px;font-size:13.5px;font-weight:600}
+.qnotes button.on{background:#fff6d6;border-color:#d8b64a;color:#5a4300}
 .nav-arrive{margin-top:8px}
 .slist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .sprogress{margin:0 0 10px;font-size:14px;color:var(--muted)}
@@ -267,6 +274,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
       <h2 id="nextAddr"></h2>
       <div class="m" id="nextMeta" style="font-size:13px;color:var(--muted)"></div>
       <div class="chips" id="nextChips"></div>
+      <span class="snote" id="nextNote" hidden></span>
       </div>
       <div class="acts">
         <button class="btn act-d" data-next="delivered">Delivered</button>
@@ -349,7 +357,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <div class="home" id="home" hidden>
   <header class="top">
-    <div class="brand">Dropline<small>Your routes · prototype v5.3</small></div>
+    <div class="brand">Dropline<small>Your routes · prototype v5.4</small></div>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
   <div class="hlist">
@@ -481,7 +489,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
   <div id="navMap"></div>
   <div class="nav-bottom">
     <div class="nav-eta"><b id="navEta"></b><span id="navRemain"></span></div>
-    <div style="position:relative"><div class="stamp" id="navStamp" hidden></div><div class="nav-stop" id="navStop"></div></div>
+    <div style="position:relative"><div class="stamp" id="navStamp" hidden></div><div class="nav-stop" id="navStop"></div><span class="snote" id="navNote" hidden></span></div>
     <div id="navArriveBox" class="nav-arrive" hidden>
       <div class="acts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
         <button class="btn act-d" id="navDelivered">Delivered</button><button class="btn act-f" id="navFailed">Failed</button><button class="btn act-k" id="navSkip">Skip</button>
@@ -859,6 +867,13 @@ function chipsFor(s){
   if (ps.some(p => isBig(p.size))) out.push('<span class="chip big">Large parcel</span>');
   const notes = [...new Set(ps.map(p => p.note).filter(Boolean))]; notes.forEach(n => out.push('<span class="chip mark">★ '+esc(n)+'</span>'));
   return out.join("");
+}
+const QUICK_NOTES = ["Front door", "Back door", "Side gate", "Big box", "Small box", "Heavy", "Fragile", "Leave with neighbour", "Call on arrival", "Signature needed"];
+const hasNote = (s, q) => (", " + (s.notes||"") + ",").toLowerCase().includes(", " + q.toLowerCase() + ",");
+function toggleNote(s, q){
+  let parts = (s.notes||"").split(",").map(x => x.trim()).filter(Boolean);
+  parts = hasNote(s, q) ? parts.filter(x => x.toLowerCase() !== q.toLowerCase()) : parts.concat(q);
+  s.notes = parts.join(", ");
 }
 function pcount(s){ return s.qty > 0 ? s.qty : parcels(s).length; }
 const isPick = s => s && s.kind === "pickup";
@@ -1564,21 +1579,25 @@ function render(){
     document.querySelector('#nextCard .label').firstChild.nodeValue = isPick(nx) ? "Next pickup " : "Next stop ";
     $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + parcelLine(nx);
     $("nextChips").innerHTML = chipsFor(nx) + parcels(nx).filter(p => p.size).map(p => '<span class="chip pending" style="text-transform:none">'+esc((p.seq!=null?"#"+p.seq+" ":"")+p.size+" cm")+'</span>').join("");
+    $("nextNote").hidden = !nx.notes; $("nextNote").textContent = nx.notes ? "📝 " + nx.notes : "";
     $("nextNav").href = gmaps(nx, prevPoint(nextIdx)); $("nextPin").href = geoLink(nx); $("nextCard").dataset.id = nx.id;
     const rs = $("nextReasons"); rs.hidden = failPickId !== nx.id;
     rs.innerHTML = '<span class="label" style="width:100%">Why did it fail?</span>' + REASONS.map(r => '<button class="btn" data-nreason="'+esc(r)+'">'+esc(r)+'</button>').join("");
   }
 
   let elapsed = 0;
-  $("stops").innerHTML = st.map((s,i) => {
+  const typing = document.activeElement && document.activeElement.classList.contains("stopnote");
+  if (!typing) $("stops").innerHTML = st.map((s,i) => {
     let eta = "";
     if (o && !o.stale && o.legs && s.status === "pending" && o.legs[s.id] != null){ elapsed += o.legs[s.id]; eta = " · ~"+fmtTime(elapsed)+" drive"; }
     const exp = expandedId === s.id;
     return '<li class="stop'+(s.id===selId?" sel":"")+'" data-id="'+s.id+'">' +
       '<div class="num '+s.status+'">'+(i+1)+'</div>' +
-      '<div class="txt" data-tap="'+s.id+'"><div class="a">'+esc(s.label)+'</div><div class="m"><span class="chip '+s.status+'">'+statusWord(s)+'</span>'+(s.reason?" "+esc(s.reason):"")+" · "+esc(parcelLine(s))+eta+'</div><div class="chips">'+chipsFor(s)+'</div></div>' +
+      '<div class="txt" data-tap="'+s.id+'"><div class="a">'+esc(s.label)+'</div><div class="m"><span class="chip '+s.status+'">'+statusWord(s)+'</span>'+(s.reason?" "+esc(s.reason):"")+" · "+esc(parcelLine(s))+eta+'</div><div class="chips">'+chipsFor(s)+'</div>'+(s.notes ? '<span class="snote">📝 '+esc(s.notes)+'</span>' : '')+'</div>' +
       '<div class="row" style="gap:0;flex-wrap:nowrap"><button class="handle" aria-label="Move up" data-up="'+s.id+'">▲</button><button class="handle" aria-label="Move down" data-down="'+s.id+'">▼</button><button class="handle drag" aria-label="Drag to reorder">☰</button></div>' +
       (exp ? '<div class="more">' +
+        '<div class="notebox"><label class="label" for="note-'+s.id+'">Notes for this stop</label><textarea class="stopnote" id="note-'+s.id+'" data-note="'+s.id+'" maxlength="300" placeholder="e.g. Front door, big box, call on arrival">'+esc(s.notes||"")+'</textarea>' +
+        '<div class="qnotes">'+QUICK_NOTES.map(q => '<button data-qnote="'+esc(q)+'" data-sid="'+s.id+'" class="'+(hasNote(s,q)?"on":"")+'">'+esc(q)+'</button>').join("")+'</div></div>' +
         '<div class="kindrow"><span class="seg" role="group" aria-label="Stop type"><button data-kind="delivery" data-sid="'+s.id+'" class="'+(isPick(s)?"":"on")+'">Delivery</button><button data-kind="pickup" data-sid="'+s.id+'" class="'+(isPick(s)?"on":"")+'">Pickup</button></span>' +
         '<span class="qty" aria-label="Number of parcels"><button data-qty="-1" data-sid="'+s.id+'" aria-label="One parcel fewer">−</button><b>'+pcount(s)+' parcel'+(pcount(s)===1?"":"s")+'</b><button data-qty="1" data-sid="'+s.id+'" aria-label="One more parcel">+</button></span></div>' +
         (s.status!=="delivered" ? '<button class="btn act-d" data-st="delivered" data-sid="'+s.id+'">'+(isPick(s)?"Picked up":"Delivered")+'</button>' : '') +
@@ -1623,6 +1642,7 @@ $("stops").addEventListener("click", e => {
   if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
   if (t.dataset.place){ placingId = t.dataset.place; document.body.classList.add("placing"); window.scrollTo({top:0, behavior:"smooth"}); toast("Tap the map where this stop is."); return; }
   if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
+  if (t.dataset.qnote){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ toggleNote(s, t.dataset.qnote); persist(); render(); } return; }
   if (t.dataset.kind){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ if (t.dataset.kind === "pickup") s.kind = "pickup"; else delete s.kind; persist(); render(); } return; }
   if (t.dataset.qty){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ s.qty = Math.max(1, Math.min(99, pcount(s) + Number(t.dataset.qty))); persist(); render(); } return; }
   if (t.dataset.st){ if (t.dataset.st === "failed"){ failPickId = t.dataset.sid; render(); return; } setStatus(t.dataset.sid, t.dataset.st); return; }
@@ -1653,6 +1673,11 @@ function finishNext(id, st, reason){
 document.querySelector("#nextCard .acts").addEventListener("click", e => { const st = e.target.dataset.next; if(!st || swapping) return; const id = $("nextCard").dataset.id;
   if (st === "failed"){ failPickId = failPickId === id ? null : id; render(); return; } finishNext(id, st); });
 $("nextReasons").addEventListener("click", e => { const r = e.target.dataset.nreason; if(!r) return; finishNext($("nextCard").dataset.id, "failed", r); });
+let noteT;
+$("stops").addEventListener("input", e => { const id = e.target.dataset.note; if (!id) return; const s = route.stops.find(x => x.id === id); if (!s) return;
+  s.notes = e.target.value.slice(0, 300); clearTimeout(noteT); noteT = setTimeout(persist, 400);
+  const qs = e.target.closest(".notebox").querySelectorAll("[data-qnote]"); qs.forEach(b => b.classList.toggle("on", hasNote(s, b.dataset.qnote))); });
+$("stops").addEventListener("focusout", e => { if (e.target.dataset && e.target.dataset.note){ persist(); setTimeout(render, 0); } });
 if (window.Sortable) Sortable.create($("stops"), {handle:".drag", animation:150, onEnd: ev => {
   if (ev.oldIndex === ev.newIndex) return; const [s] = route.stops.splice(ev.oldIndex, 1); route.stops.splice(ev.newIndex, 0, s); markStale(); persist(); render(); }});
 
@@ -1975,7 +2000,7 @@ function navUpdate(pos){
   // spoken prompts: early warning, then at the turn
   const key = nav.stepIdx + ":";
   if (st.maneuver.type === "arrive"){
-    if (remaining < 30 && !nav.arrived){ nav.arrived = true; speak("You have arrived. " + nav.stop.label.split(",")[0] + "."); $("navArriveBox").hidden = false; }
+    if (remaining < 30 && !nav.arrived){ nav.arrived = true; speak("You have arrived. " + nav.stop.label.split(",")[0] + "." + (nav.stop.notes ? " Note: " + nav.stop.notes + "." : "")); $("navArriveBox").hidden = false; }
     else if (remaining < 250 && !nav.said[key+"far"]){ nav.said[key+"far"] = 1; speak(sayDist(remaining) + ", you will arrive at " + nav.stop.label.split(",")[0]); }
     return;
   }
@@ -1994,6 +2019,7 @@ async function navStart(stop){
   nav.on = true; nav.stop = stop; nav.sim = sim; nav.coords = []; nav.coordsFor = null; clearInterval(nav.simTimer);
   if (!sim && nav.watch == null) navWatch();
   $("navScreen").hidden = false; $("navArriveBox").hidden = true; $("navStop").textContent = "#" + (route.stops.indexOf(stop) + 1) + " · " + stop.label + " · " + (isPick(stop) ? "PICKUP · " : "") + parcelLine(stop); $("navDelivered").textContent = isPick(stop) ? "Picked up" : "Delivered";
+  $("navNote").hidden = !stop.notes; $("navNote").textContent = stop.notes ? "📝 " + stop.notes : "";
   if (!nav.map){
     nav.map = L.map("navMap", {zoomControl:false, attributionControl:true}).setView([stop.lat, stop.lon], 16);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:"© OpenStreetMap"}).addTo(nav.map);

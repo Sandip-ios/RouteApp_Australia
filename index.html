@@ -1,0 +1,2235 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Dropline Route Planner</title>
+<meta name="theme-color" content="#123b3a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: phone = map on top, stop list below; wide screens = list column left, map right. Road-sign condensed type. */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#15211f; --muted:#5b6a67; --line:#d9e0de;
+  --accent:#0f5c5a; --accent-ink:#ffffff; --accent-soft:#dcecea;
+  --ok:#23773a; --fail:#c0392b; --skip:#a86400; --pend:#55636a;
+  --ok-soft:#e1f1e4; --fail-soft:#f8e3e0; --skip-soft:#f6ecd9; --pend-soft:#e8ecee;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1514; --surface:#18201f; --ink:#e7eeec; --muted:#9aaba7; --line:#2b3634;
+  --accent:#4fb3ad; --accent-ink:#06201f; --accent-soft:#163533;
+  --ok:#5cc173; --fail:#ef7a6c; --skip:#e3a54a; --pend:#9aa8ae;
+  --ok-soft:#173222; --fail-soft:#3a1f1c; --skip-soft:#352812; --pend-soft:#222b2e;
+  color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+
+.app{display:grid;grid-template-rows:auto auto 1fr;position:fixed;inset:0}
+header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));padding-top:max(10px,env(safe-area-inset-top));background:var(--accent);color:var(--accent-ink)}
+.brand{font:700 22px/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase;flex:1;min-width:0}
+.brand small{display:block;font:500 12px/1.2 var(--f-body);letter-spacing:.04em;text-transform:none;opacity:.85;margin-top:2px}
+.hbtn{background:transparent;border:1.5px solid currentColor;border-radius:8px;padding:6px 10px;font-weight:600;font-size:13px;color:inherit}
+
+#map{height:40vh;min-height:230px;background:var(--line);z-index:0}
+.main{overflow:auto;padding:12px max(14px,env(safe-area-inset-right)) 28px max(14px,env(safe-area-inset-left));padding-bottom:max(28px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (min-width:900px){
+  .app{grid-template-columns:440px 1fr;grid-template-rows:auto 1fr}
+  header.top{grid-column:1/-1}
+  #map{grid-column:2;grid-row:2;height:auto}
+  .main{grid-column:1;grid-row:2;border-right:1px solid var(--line)}
+}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.label{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* summary */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+.summary div{border-radius:8px;padding:6px 2px;font-variant-numeric:tabular-nums}
+.summary b{display:block;font:700 22px/1 var(--f-display)}
+.summary span{font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.s-p{background:var(--pend-soft);color:var(--pend)} .s-d{background:var(--ok-soft);color:var(--ok)}
+.s-f{background:var(--fail-soft);color:var(--fail)} .s-k{background:var(--skip-soft);color:var(--skip)}
+.metrics{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.metrics .v{font:700 20px/1 var(--f-display)}
+.badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--pend-soft);color:var(--pend)}
+.badge.live{background:var(--ok-soft);color:var(--ok)} .badge.est{background:var(--skip-soft);color:var(--skip)} .badge.stale{background:var(--fail-soft);color:var(--fail)}
+
+.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:600;background:var(--pend-soft);color:var(--ink);min-height:44px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border:1.5px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.grow{flex:1}
+
+/* address entry */
+.addr{position:relative}
+.addr input{font-size:16px;width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--bg);min-height:46px}
+.addr input:focus{border-color:var(--accent);outline:none}
+.sugg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:20;overflow:hidden;max-height:300px;overflow-y:auto}
+.sugg button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 12px}
+.sugg button:last-child{border-bottom:0}
+.sugg button:hover,.sugg button:focus{background:var(--accent-soft)}
+.sugg .sub{display:block;font-size:12px;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted);margin:6px 0 0}
+.msg{font-size:13px;padding:8px 10px;border-radius:8px;background:var(--accent-soft)}
+.msg.err{background:var(--fail-soft);color:var(--fail)}
+
+/* next stop */
+.next{border:2px solid var(--accent)}
+.next h2{margin:4px 0 2px;font:700 24px/1.1 var(--f-display);text-wrap:balance}
+.next{position:relative;overflow:hidden}
+.main>*{flex-shrink:0}
+.nc-body,.nav-stop{transition:transform .26s cubic-bezier(.2,.8,.2,1),opacity .26s}
+.nc-body.out,.nav-stop.out{transform:translateX(-105%);opacity:0}
+.nc-body.in,.nav-stop.in{transform:translateX(60%);opacity:0;transition:none}
+.stamp{position:absolute;top:12px;right:12px;z-index:2;font:700 16px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:7px 10px;border-radius:8px;color:#fff;animation:stampin .26s cubic-bezier(.2,1.4,.4,1)}
+.stamp.delivered{background:var(--ok)}.stamp.failed{background:var(--fail)}.stamp.skipped{background:var(--skip)}
+@keyframes stampin{from{transform:scale(1.6) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
+.upnext{list-style:none;margin:10px 0 0;padding:8px 0 0;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:4px}
+.upnext li{display:flex;gap:8px;align-items:baseline;font-size:13.5px;color:var(--muted);min-width:0}
+.upnext li b{flex:none;min-width:34px;font:700 15px/1 var(--f-display);color:var(--ink)}
+.upnext li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upnext li.new{animation:upin .3s ease-out}
+@keyframes upin{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.nc-body,.nav-stop{transition:none}.stamp,.upnext li.new{animation:none}}
+.next .acts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.act-d{background:var(--ok);color:#fff}.act-f{background:var(--fail);color:#fff}.act-k{background:var(--skip);color:#fff}
+
+/* stops list */
+.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.stop{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px}
+.stop.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 17px/1 var(--f-display);color:#fff;background:var(--pend);font-variant-numeric:tabular-nums}
+.num.delivered{background:var(--ok)}.num.failed{background:var(--fail)}.num.skipped{background:var(--skip)}
+.stop .txt{min-width:0}
+.stop .a{font-weight:600;overflow-wrap:anywhere}
+.stop .m{font-size:12px;color:var(--muted)}
+.chip{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:5px}
+.chip.pending{background:var(--pend-soft);color:var(--pend)}.chip.delivered{background:var(--ok-soft);color:var(--ok)}
+.chip.failed{background:var(--fail-soft);color:var(--fail)}.chip.skipped{background:var(--skip-soft);color:var(--skip)}
+.handle{touch-action:none;border:0;background:transparent;padding:8px 6px;color:var(--muted);font-size:18px;line-height:1}
+.more{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px;border-top:1px dashed var(--line)}
+.more .btn{padding:8px 10px;min-height:40px;font-size:14px}
+.sortable-ghost{opacity:.35}
+.reasons{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+
+/* sheets */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px max(16px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.sheet h3{font:700 22px/1.1 var(--f-display);margin:0 0 10px;text-transform:uppercase;letter-spacing:.02em}
+.sheet h4{margin:14px 0 6px;font-size:14px}
+.sheet ul{margin:0;padding-left:18px}
+.sheet li{margin:3px 0}
+.saved{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.saved .t{flex:1;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+.field input{font-size:16px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.toggle{display:flex;gap:8px;align-items:center;font-size:14px}
+
+/* map pins */
+.pin{width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);background:#55636a}
+.pin span{transform:rotate(45deg);color:#fff;font:700 14px/1 "Barlow Condensed",Arial,sans-serif}
+.pin.delivered{background:#23773a}.pin.failed{background:#c0392b}.pin.skipped{background:#a86400}
+.pin.start{background:#0f5c5a}.pin.pickup{border-radius:7px;transform:none}.pin.pickup span{transform:none}.pin.pickup.pending{background:#6b3fa0}.pin.sel{outline:3px solid #f5c400}
+.leaflet-container{font-family:var(--f-body)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(18px,env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;z-index:2000;font-size:14px;max-width:90vw}
+@media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
+.chip.warn{background:var(--skip-soft);color:var(--skip)}
+.chip.miss{background:var(--fail-soft);color:var(--fail)}
+.chip.big{background:var(--accent-soft);color:var(--accent)}
+.chip.mark{background:var(--pend-soft);color:var(--ink)}
+.chip.pick{background:#ece4f6;color:#5b2f91}
+@media (prefers-color-scheme:dark){.chip.pick{background:#2c2140;color:#c9a9f0}}
+.kindrow{display:flex;align-items:center;gap:10px;width:100%;flex-wrap:wrap;padding:2px 0 6px}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:8px 14px;font-weight:600;min-height:40px}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.qty{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+.qty button{border:0;background:var(--surface);width:44px;min-height:40px;font-size:20px;font-weight:600}
+.qty b{min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font:16px/1.4 var(--f-body);color:var(--ink);resize:vertical}
+.bar{height:8px;border-radius:99px;background:var(--pend-soft);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:var(--accent)}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
+.alert{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--skip-soft);color:var(--ink);margin-top:10px}
+.alert span{flex:1;min-width:0}
+.switchrow{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
+.switch{position:relative;width:52px;height:30px;flex:none}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.switch .knob{position:absolute;inset:0;border-radius:99px;background:var(--line);transition:background .2s}
+.switch .knob::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.switch input:checked + .knob{background:var(--accent)}
+.switch input:checked + .knob::after{transform:translateX(22px)}
+.switch input:focus-visible + .knob{outline:3px solid var(--accent);outline-offset:2px}
+.locbanner{border:2px solid var(--accent);background:var(--accent-soft)}
+.locbanner p{margin:0 0 10px;font-size:14px}
+.nextstep{border:2px solid var(--ok);background:var(--ok-soft)}
+.nextstep b{display:block;font:700 20px/1.2 var(--f-display);color:var(--ok)}
+.nextstep p{margin:6px 0 10px;font-size:14px}
+.ns-acts{display:flex;flex-direction:column;gap:8px}
+.nav{position:fixed;inset:0;z-index:1500;background:var(--bg);display:flex;flex-direction:column}
+.nav-top{display:flex;gap:12px;align-items:center;background:#0f5c5a;color:#fff;padding:12px max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left));padding-top:max(12px,env(safe-area-inset-top))}
+.nav-arrow{font:700 46px/1 var(--f-display);width:56px;text-align:center}
+.nav-back{background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.6);border-radius:10px;padding:8px 10px;font-weight:600;min-height:44px;align-self:flex-start}
+.nav-txt{min-width:0}
+.nav-dist{font:700 30px/1 var(--f-display)}
+.nav-instr{font:600 19px/1.2 var(--f-body);margin-top:2px;overflow-wrap:anywhere}
+.nav-then{font-size:13px;opacity:.85;margin-top:3px}
+#navMap{flex:1;min-height:200px}
+.nav-bottom{background:var(--surface);border-top:1px solid var(--line);padding:10px max(14px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+.nav-eta{display:flex;gap:10px;align-items:baseline}
+.nav-eta b{font:700 24px/1 var(--f-display);color:var(--ok)}
+.nav-eta span{color:var(--muted);font-size:14px}
+.nav-stop{font-size:14px;margin-top:4px;overflow-wrap:anywhere}
+.nav-arrive{margin-top:8px}
+.slist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sprogress{margin:0 0 10px;font-size:14px;color:var(--muted)}
+.sresult{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:10px;margin-top:4px}
+.sresult b{font:700 20px/1.2 var(--f-display)}
+.sresult.good{background:var(--ok-soft);color:var(--ok)}
+.sresult.warn{background:var(--skip-soft);color:var(--ink)}
+.sresult span{font-size:14px}
+.srow.ok,.srow.confirmed,.srow.fixed{border-color:var(--line)}
+.srow.confirmed,.srow.fixed{background:var(--ok-soft);border-color:var(--ok)}
+.sok{margin-top:6px;width:100%}
+.smore{margin-top:12px;font-size:14px;color:var(--muted)}
+.smore summary{cursor:pointer;padding:6px 0}
+.srow{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface)}
+.srow.check{border-color:var(--skip);background:var(--skip-soft)}
+.srow.missing{border-color:var(--fail);background:var(--fail-soft)}
+.srow.edited{border-color:var(--accent)}
+.ssug{width:100%;margin-top:6px;text-align:left;white-space:normal;font-weight:500}
+.srow-h{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+.sprob{font-size:12px;color:var(--muted)}
+.sthumb{display:block;width:100%;height:auto;max-height:70px;object-fit:contain;object-position:left;margin-top:6px;border-radius:4px;background:#fff}
+.sinput{display:block;width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);font:16px/1.35 var(--f-body);color:var(--ink);resize:none;overflow:hidden;min-height:44px;white-space:pre-wrap;overflow-wrap:anywhere}
+/* routes home */
+.home{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column}
+.home .hlist{flex:1;overflow:auto;padding:14px max(14px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px;max-width:640px;width:100%;margin:0 auto}
+.create{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;border:0;border-radius:14px;background:var(--accent);color:var(--accent-ink);font:700 21px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
+.create b{font-size:30px;line-height:0;font-weight:600}
+.rcard{display:flex;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rcard .ro{flex:1;min-width:0;text-align:left;background:none;border:0;padding:12px 12px 10px}
+.rcard .rn{font:700 19px/1.15 var(--f-display);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcard .rm{font-size:13px;color:var(--muted);margin-top:3px}
+.rcard .rbar{height:5px;border-radius:3px;background:var(--pend-soft);margin-top:8px;overflow:hidden;display:flex}
+.rcard .rbar i{display:block;height:100%}
+.rcard .more{border:0;border-left:1px solid var(--line);background:none;width:52px;font-size:22px;color:var(--muted)}
+.rstate{display:inline-block;font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:5px;margin-right:6px;vertical-align:1px}
+.rstate.new{background:var(--accent-soft);color:var(--accent)} .rstate.go{background:var(--skip-soft);color:var(--skip)} .rstate.done{background:var(--ok-soft);color:var(--ok)}
+.addgrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
+.addbtn{display:flex;align-items:center;gap:12px;text-align:left;min-height:56px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg)}
+.addbtn .ic{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:19px;flex:none}
+.addbtn b{display:block;font-size:15px} .addbtn small{display:block;color:var(--muted);font-size:12.5px;line-height:1.3}
+.addbtn.on{border-color:var(--accent)}
+.placing #map{outline:4px solid var(--skip);outline-offset:-4px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <button class="hbtn" id="btnRoutes" aria-label="Back to all routes">‹ Routes</button>
+    <div class="brand" id="routeTitle">Route<small id="routeSub">Dropline</small></div>
+    <button class="hbtn" id="btnRouteMenu" aria-label="Route options">⋯</button>
+  </header>
+  <div id="map" aria-label="Map of delivery stops"></div>
+  <main class="main" id="app-main">
+    <section class="panel locbanner" id="locBanner" hidden>
+      <p id="locText">Turn on location so the app can suggest nearby addresses and start routes from where you are.</p>
+      <div class="row"><button class="btn primary grow" id="locBtn">Allow location</button><button class="btn ghost" id="locClose">Not now</button></div>
+    </section>
+
+    <section class="panel nextstep" id="nextStep" hidden aria-live="polite">
+      <b id="nsTitle"></b>
+      <p id="nsText"></p>
+      <div class="ns-acts">
+        <button class="btn primary" id="nsOpt">Optimise route</button>
+        <button class="btn primary" id="nsLocOpt">Start from my location and optimise</button>
+        <button class="btn ghost" id="nsStart">Type a start address instead</button>
+      </div>
+    </section>
+
+    <section class="panel next" id="nextCard" hidden aria-label="Next stop">
+      <div class="stamp" id="nextStamp" hidden></div>
+      <div class="nc-body" id="nextBody">
+      <div class="label">Next stop <span id="nextNum"></span></div>
+      <h2 id="nextAddr"></h2>
+      <div class="m" id="nextMeta" style="font-size:13px;color:var(--muted)"></div>
+      <div class="chips" id="nextChips"></div>
+      </div>
+      <div class="acts">
+        <button class="btn act-d" data-next="delivered">Delivered</button>
+        <button class="btn act-f" data-next="failed">Failed</button>
+        <button class="btn act-k" data-next="skipped">Skip</button>
+      </div>
+      <div class="reasons" id="nextReasons" hidden style="margin-top:8px"></div>
+      <button class="btn primary" id="nextGo" style="width:100%;margin-top:8px">▶ Navigate (voice)</button>
+      <ol class="upnext" id="upNext" hidden></ol>
+      <div class="row" style="margin-top:8px;flex-wrap:nowrap"><a class="btn ghost grow" id="nextNav" style="text-align:center;text-decoration:none">Directions in Google Maps ↗</a><a class="btn ghost" id="nextPin" style="text-decoration:none">Show pin</a></div>
+    </section>
+    <section class="panel" aria-label="Route summary" id="sumPanel">
+      <div class="summary">
+        <div class="s-p"><b id="cP">0</b><span>Pending</span></div>
+        <div class="s-d"><b id="cD">0</b><span>Delivered</span></div>
+        <div class="s-f"><b id="cF">0</b><span>Failed</span></div>
+        <div class="s-k"><b id="cK">0</b><span>Skipped</span></div>
+      </div>
+      <div class="metrics">
+        <div><div class="label">Stops</div><div class="v"><span id="nStops">0</span>/200</div><div id="nParcels" style="font-size:12px;color:var(--muted)"></div></div>
+        <div><div class="label">Drive time</div><div class="v" id="mTime">–</div></div>
+        <div><div class="label">Distance</div><div class="v" id="mDist">–</div></div>
+        <div style="align-self:center"><span class="badge" id="optBadge">Not optimised</span></div>
+      </div>
+      <div class="alert" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:36px;padding:6px 10px">Find locations</button><button class="btn" id="btnShowProb" style="min-height:36px;padding:6px 10px">Check pins</button></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary grow" id="btnOpt">Optimise route</button>
+        <button class="btn ghost" id="btnFit" title="Show all stops on map">Fit map</button>
+      </div>
+      <div class="bar" id="optBar" hidden><i></i></div>
+      <p class="msg" id="optMsg" hidden></p>
+    </section>
+
+
+    <section class="panel" aria-label="Start location">
+      <label class="switchrow" for="startMe"><span class="label" style="font-size:13px">Start from my location</span>
+        <span class="switch"><input type="checkbox" id="startMe" role="switch" checked><span class="knob"></span></span></label>
+      <p class="hint" id="startMeTxt" style="margin:6px 0 0">Finding your location…</p>
+      <div class="addr" id="startAddrBox" style="margin-top:8px" hidden>
+        <input id="startIn" type="text" placeholder="Depot or starting address" autocomplete="off" aria-label="Start address">
+        <div class="sugg" id="startSugg" hidden></div>
+      </div>
+      <button class="btn ghost" id="btnMyLoc" hidden>Use my location as start</button>
+    </section>
+
+    <section class="panel" aria-label="Add stops">
+      <div class="label">Add stops</div>
+      <div class="addgrid">
+        <button class="addbtn" id="btnManual"><span class="ic">＋</span><span><b>Add stop</b><small>Type an address</small></span></button>
+        <div id="manualBox" hidden>
+          <div class="addr">
+            <input id="addrIn" type="text" placeholder="e.g. 100 King William Street, Adelaide" autocomplete="off" aria-label="Stop address">
+            <div class="sugg" id="addrSugg" hidden></div>
+          </div>
+          <p class="hint">Type at least 4 characters and pick a suggestion. Nearby addresses come first.</p>
+        </div>
+        <button class="addbtn" id="btnScan"><span class="ic">▣</span><span><b>Scan run sheet</b><small>Photo of the paper manifest, page by page</small></span></button>
+        <button class="addbtn" id="btnImport"><span class="ic">⇪</span><span><b>Import manifest</b><small>CSV file or a pasted address list</small></span></button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn ghost grow" id="btnClear">Clear all stops</button>
+      </div>
+      <div class="row" id="clearConfirm" hidden style="margin-top:8px">
+        <span style="flex:1">Remove all stops?</span>
+        <button class="btn" id="clearNo">Keep</button>
+        <button class="btn act-f" id="clearYes">Remove all</button>
+      </div>
+    </section>
+
+    <section aria-label="Stops">
+      <div class="row" style="justify-content:space-between;margin:2px 2px 8px">
+        <div class="label">Delivery order</div>
+        <div class="m" style="font-size:12px;color:var(--muted)">Drag ☰ or use ▲▼ to reorder</div>
+      </div>
+      <ol class="stops" id="stops"></ol>
+      <p class="hint" id="emptyHint">No stops yet. Use Add stop, Scan run sheet or Import manifest above.</p>
+    </section>
+  </main>
+</div>
+
+<div class="home" id="home" hidden>
+  <header class="top">
+    <div class="brand">Dropline<small>Your routes · prototype v5.3</small></div>
+    <button class="hbtn" id="btnAbout">What works</button>
+  </header>
+  <div class="hlist">
+    <button class="create" id="homeCreate"><b>+</b> Create route</button>
+    <div id="routeList"></div>
+    <p class="hint" id="homeEmpty" style="text-align:center;margin-top:18px">No routes yet. Create one for today's run, then add stops by typing, scanning the paper run sheet, or importing the manifest.</p>
+    <label class="btn ghost" style="text-align:center;margin-top:6px">Open a route file from another phone<input type="file" id="importIn" accept=".json,application/json" hidden></label>
+  </div>
+</div>
+
+<div class="sheet-bg" id="createSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Create route">
+    <h3>Create route</h3>
+    <div class="field"><label for="createName" class="label">Route name</label><input id="createName" type="text" maxlength="60"></div>
+    <button class="btn primary" id="createGo" style="width:100%">Create</button>
+    <button class="btn" id="createCancel" style="width:100%;margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="menuSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Route options">
+    <h3 id="menuTitle">Route</h3>
+    <div class="field"><label for="menuName" class="label">Name</label>
+      <div class="row" style="flex-wrap:nowrap"><input id="menuName" type="text" maxlength="60" style="flex:1"><button class="btn primary" id="menuRename">Rename</button></div></div>
+    <button class="btn ghost" id="menuCopy" style="width:100%;margin-top:4px">Copy route (same stops, all set back to pending)</button>
+    <button class="btn ghost" id="menuExport" style="width:100%;margin-top:8px">Save as file (to move to another phone)</button>
+    <button class="btn ghost" id="menuDelete" style="width:100%;margin-top:8px;color:var(--fail)">Delete route</button>
+    <div class="row" id="menuDelConfirm" hidden style="margin-top:8px"><span style="flex:1">Delete this route and its stops?</span><button class="btn" id="menuDelNo">Keep</button><button class="btn act-f" id="menuDelYes">Delete</button></div>
+    <button class="btn" id="menuClose" style="width:100%;margin-top:14px">Close</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="scanSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Scan run sheet" style="max-height:94vh">
+    <h3 id="scanTitle">Scan page 1</h3>
+    <div id="scanNoApp">
+      <p class="hint" style="margin-top:0">Photo scanning uses Google's on-device text recognition, which works in the Dropline Android app.</p>
+      <a class="btn primary" style="display:block;text-align:center;text-decoration:none" href="https://github.com/Sandip-ios/RouteApp_Australia/releases/download/app-latest/dropline.apk">Download the Android app (test version)</a>
+      <p class="hint">After downloading, open the file to install. Android may ask you to allow installs from your browser.</p>
+    </div>
+    <div id="scanApp">
+      <p class="sprogress" id="scanSummary"></p>
+      <p class="sprogress" id="scanLocating" hidden></p>
+      <div id="scanShoot">
+        <label class="btn primary" style="display:block;text-align:center"><span id="scanTake">Take photo of page 1</span><input type="file" id="scanCam" accept="image/*" capture="environment" hidden></label>
+        <label class="btn ghost" style="display:block;text-align:center;margin-top:8px">Choose a saved photo<input type="file" id="scanGallery" hidden></label>
+        <p class="hint">Hold the phone flat above the page so the whole table fills the screen. Good light, no shadow.</p>
+      </div>
+      <p class="msg" id="scanMsg" hidden></p>
+      <div id="scanResult" hidden>
+        <div class="sresult" id="scanResultBox"><b id="scanResultTitle"></b><span id="scanResultSub"></span></div>
+        <p class="hint" id="scanHowTo"></p>
+        <div id="scanList" class="slist"></div>
+        <button class="btn ghost" id="scanShowAll" style="width:100%;margin-top:8px"></button>
+        <div id="scanAllList" class="slist" hidden></div>
+        <div class="msg err" id="scanNextWarn" hidden></div>
+        <button class="btn primary" id="scanNext" style="width:100%;margin-top:12px">Next page ›</button>
+        <button class="btn act-d" id="scanFinish" style="width:100%;margin-top:8px">Done — all pages scanned</button>
+        <label class="btn ghost" style="display:block;text-align:center;margin-top:8px">Retake this page<input type="file" id="scanRetake" accept="image/*" capture="environment" hidden></label>
+      </div>
+      <button class="btn act-d" id="scanFinishIdle" style="width:100%;margin-top:8px" hidden>Done — all pages scanned</button>
+      <details class="smore"><summary>More options</summary>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost grow" id="scanRestart">Start over</button>
+          <button class="btn ghost grow" id="scanCopy">Copy scan details</button>
+        </div>
+        <div class="row" id="scanRestartConfirm" hidden style="margin-top:8px"><span style="flex:1">Discard all scanned pages?</span><button class="btn" id="scanRestartNo">Keep</button><button class="btn act-f" id="scanRestartYes">Discard</button></div>
+      </details>
+    </div>
+    <button class="btn" id="scanClose" style="width:100%;margin-top:14px">Close</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="importSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Import stops">
+    <h3>Import stops</h3>
+    <p class="hint" style="margin-top:0">Choose a run-sheet file (.csv) or paste addresses, one per line. The same address on several lines becomes one stop with several parcels. Your list stays on this phone.</p>
+    <label class="btn primary" style="display:block;text-align:center;margin-top:8px">Choose file<input type="file" id="impFile" accept=".csv,.txt,.json,text/csv,text/plain,application/json" hidden></label>
+    <div class="field" style="margin-top:12px"><label for="impText" class="label">Or paste addresses</label><textarea id="impText" placeholder="100 King William Street, Adelaide SA 5000&#10;1 Rundle Mall, Adelaide SA 5000"></textarea></div>
+    <label class="toggle"><input type="checkbox" id="impReplace" checked> Replace the current stops</label>
+    <button class="btn primary" id="impGo" style="width:100%;margin-top:10px">Import pasted addresses</button>
+    <div id="impStatus" hidden style="margin-top:12px"><div id="impStatusTxt" class="msg"></div><div class="bar"><i id="impBar"></i></div></div>
+    <button class="btn" id="closeImport" style="width:100%;margin-top:14px">Close</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="aboutSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="What works in this prototype">
+    <h3>What works in v5</h3>
+    <h4 style="color:var(--ok)">Fully working (needs internet)</h4>
+    <ul>
+      <li>Several routes on this phone: create, open, rename, copy, delete</li>
+      <li>Each stop is a Delivery or a Pickup, with a parcel count you can change</li>
+      <li>After Delivered / Failed / Skip the next stop slides in, with the following two shown</li>
+      <li>Up to 200 stops; import a run sheet (.csv) or pasted address list</li>
+      <li>Several parcels at one address grouped into one stop, with run-sheet numbers</li>
+      <li>Australian address search; pins marked "Check pin" when only the street was found</li>
+      <li>Move any pin by tapping the map</li>
+      <li>Route optimisation of every pending stop together, using road travel times</li>
+      <li>Use my location as the start, with a live blue dot while the page is open</li>
+      <li>Drag-and-drop or ▲▼ reordering</li>
+      <li>Pending, delivered, failed (with reason) and skipped statuses</li>
+      <li>Auto-save and resume on this device, named copies, export/import file</li>
+    </ul>
+    <h4 style="color:var(--skip)">Demonstration only</h4>
+    <ul>
+      <li>Free public map services: no guaranteed uptime, no live traffic</li>
+      <li>If road times are unavailable, the plan uses straight-line estimates (marked "Estimate")</li>
+      <li>In-app voice navigation works while the app is open and the screen is on; no live traffic. Google Maps is still available for each stop</li>
+      <li>Location tracking only while this page is open and the screen is on</li>
+    </ul>
+    <h4 style="color:var(--fail)">Not built yet</h4>
+    <ul>
+      <li>Navigation with the screen off or in the background, and live traffic</li>
+      <li>Reading a paper run sheet from a photo</li>
+      <li>Delivery time windows, multiple drivers, proof of delivery</li>
+      <li>Accounts, cloud sync and business dashboard</li>
+    </ul>
+    <p class="hint">Map data © OpenStreetMap contributors. Address points from G-NAF © Geoscape Australia, licensed under CC BY 4.0 (South Australia). Other address search by Photon (komoot) and Nominatim. Routing by the OSRM public demo server. Addresses you import are sent to these services to find their locations.</p>
+    <button class="btn" id="closeAbout" style="width:100%;margin-top:10px">Close</button>
+  </div>
+</div>
+<div class="nav" id="navScreen" hidden>
+  <div class="nav-top">
+    <button class="nav-back" id="navBack" aria-label="Back to the stop list">‹ Back</button>
+    <div class="nav-arrow" id="navArrow">↑</div>
+    <div class="nav-txt"><div class="nav-dist" id="navDist"></div><div class="nav-instr" id="navInstr"></div><div class="nav-then" id="navThen"></div></div>
+  </div>
+  <div id="navMap"></div>
+  <div class="nav-bottom">
+    <div class="nav-eta"><b id="navEta"></b><span id="navRemain"></span></div>
+    <div style="position:relative"><div class="stamp" id="navStamp" hidden></div><div class="nav-stop" id="navStop"></div></div>
+    <div id="navArriveBox" class="nav-arrive" hidden>
+      <div class="acts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <button class="btn act-d" id="navDelivered">Delivered</button><button class="btn act-f" id="navFailed">Failed</button><button class="btn act-k" id="navSkip">Skip</button>
+      </div>
+      <div class="reasons" id="navReasons" hidden style="margin-top:6px"><button class="btn" data-nr="No one home">No one home</button><button class="btn" data-nr="Address not found">Address not found</button><button class="btn" data-nr="Refused">Refused</button><button class="btn" data-nr="Unsafe access">Unsafe access</button><button class="btn" data-nr="Other">Other</button></div>
+    </div>
+    <div class="row" style="margin-top:8px;flex-wrap:nowrap">
+      <button class="btn ghost grow" id="navVoice">🔊 Voice on</button>
+      <button class="btn" id="navExit">Exit</button>
+    </div>
+    <label class="toggle" style="margin-top:6px;font-size:13px"><input type="checkbox" id="navSim"> Simulate driving (for testing at a desk)</label>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script>
+/* Dropline run-sheet reader: turns recognised text lines (with positions) from one photographed page
+   into numbered delivery rows, and checks them. Works for tables with columns
+   Code | Tracking ID | Seq | Address (ending "<Suburb> SA 5xxx AU") | Dimensions. */
+(function(root){
+"use strict";
+const SUBURB_PC = {"Adelaide":"5000","North Adelaide":"5006","Parkside":"5063","Eastwood":"5063","Frewville":"5063","Fullarton":"5063","Highgate":"5063",
+ "Glenside":"5065","Toorak Gardens":"5065","Tusmore":"5065","Linden Park":"5065","Dulwich":"5065","Glenunga":"5064","Glen Osmond":"5064","Mount Osmond":"5064",
+ "St Georges":"5064","Saint Georges":"5064","Myrtle Bank":"5064","Urrbrae":"5064","Rose Park":"5067","Kent Town":"5067","Norwood":"5067","Beulah Park":"5067",
+ "Heathpool":"5068","Marryatville":"5068","Leabrook":"5068","Kensington Gardens":"5068","Kensington Park":"5068","Kensington":"5068","St Morris":"5068","Trinity Gardens":"5068",
+ "Erindale":"5066","Burnside":"5066","Beaumont":"5066","Hazelwood Park":"5066","Stonyfell":"5066","Wattle Park":"5066","Waterfall Gully":"5066",
+ "Auldana":"5072","Rosslyn Park":"5072","Magill":"5072","Skye":"5072","Woodforde":"5072","Teringie":"5072","Tranmere":"5073","Rostrevor":"5073","Hectorville":"5073",
+ "Glynde":"5070","Payneham":"5070","Felixstow":"5070","Unley":"5061","Unley Park":"5061","Malvern":"5061","Springfield":"5062","Kingswood":"5062","Netherby":"5062",
+ "Wayville":"5034","Goodwood":"5034","Black Forest":"5035","Mile End":"5031","Stepney":"5069","Maylands":"5069","St Peters":"5069","College Park":"5069","Hackney":"5069"};
+const SUBURBS = Object.keys(SUBURB_PC).sort((a,b) => b.length - a.length);
+const STREET_TYPES = "Street|St|Avenue|Ave|Av|Road|Rd|Terrace|Tce|Drive|Dr|Court|Ct|Crescent|Cres|Grove|Gr|Place|Pl|Walk|Square|Sq|Lane|Ln|Parade|Pde|Way|Close|Cl|Circuit|Cct|Boulevard|Bvd|Highway|Hwy|Mews|Rise|View";
+
+function lev(a, b){ if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  let prev = Array.from({length:n+1}, (_,j)=>j);
+  for (let i = 1; i <= m; i++){ const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1]===b[j-1]?0:1)); prev = cur; }
+  return prev[n]; }
+const digitsOf = s => s.replace(/[Oo]/g,"0").replace(/[lI|!]/g,"1").replace(/[Ss$]/g,"5").replace(/[B]/g,"8").replace(/[Z]/g,"2").replace(/G/g,"6");
+function titleCase(s){ return s.replace(/\b([A-Z][A-Z'’]{2,})\b/g, w => w[0] + w.slice(1).toLowerCase()).replace(/\bMc([a-z])/g, (m,c)=>"Mc"+c.toUpperCase()); }
+
+function classify(t){
+  const s = t.replace(/^[\[|({_\s]+|[\]|)}_\s]+$/g,"");
+  const compact = s.replace(/\s+/g,"");
+  if (/dragonfly|total\s*number|packages|route\s*-|from\s+20\d\d|tracking|dimensions|^code$|^se[qg]\b|^address$|^sig$/i.test(s)) return "header";
+  if (/^A\s?[UL]$/i.test(s)) return "junk";
+  if (/^[DBO0][S5O0]?\d[\dOolI]{6,}$/.test(compact)) return "code";
+  if (/DRNFLY|DRNF|^[\dOolI]{14,}$/.test(compact)) return "track";
+  if (/CM/i.test(s) && /\bX\b|X\s*\d|\dX/i.test(s)) return "dims";
+  if (/^[\dOolI]{1,3}$/.test(compact)) return "seq";
+  if (/[A-Za-z]{2,}/.test(s)) return "addr";
+  if (/^[5S]\d{3}\s*A\s?U\b/i.test(s)) return "addr";
+  return "junk";
+}
+
+/* Split the address text into display address, search address, suburb and postcode. */
+function cleanAddress(raw){
+  let a = raw.replace(/[|\[\]{}_~—]+/g," ").replace(/\s+/g," ").trim();
+  a = a.replace(/\bNone\b/gi,"").replace(/\s+,/g,",");
+  // postcode block: "SA 5066 AU", allowing common misreads (SAS066AU, SA SOG8 AU ...)
+  const pm = a.match(/\bS\s?A\s?[,.]?\s?([5S$][\dOolIGSsB]{3})\s*(A\s?U\w*|Al|AL)?\s*[^A-Za-z]*$/) || a.match(/\bS\s?A\s?[,.]?\s?([5S$][\dOolIGSsB]{3})\b/);
+  if (!pm) return {ok:false, reason:"Postcode not read", display:titleCase(a)};
+  let pc = digitsOf(pm[1]);
+  let body = a.slice(0, pm.index).replace(/[ ,.]+$/,"").trim();
+  // suburb: exact or close match against known suburbs at the end of the text
+  let suburb = null, best = 9;
+  const lower = body.toLowerCase();
+  for (const s of SUBURBS){
+    const L = s.length, tail = lower.slice(-L), d = lev(tail, s.toLowerCase());
+    const lim = L >= 9 ? 2 : (L >= 6 ? 1 : 0);
+    if (d <= lim && d < best && (lower.length === L || /[\s,]/.test(lower[lower.length-L-1] || " "))){ best = d; suburb = s; }
+  }
+  let street;
+  if (suburb){ street = body.slice(0, body.length - suburb.length).replace(/[ ,]+$/,"").trim(); }
+  else { const w = body.split(" "); suburb = titleCase(w.slice(-1)[0] || ""); street = w.slice(0,-1).join(" "); }
+  // drop a repeated suburb before the real one ("GLENUNGA Glenunga", "Saint Georges St Georges")
+  for (let k = 0; k < 2; k++){ const ls = street.toLowerCase();
+    const rep = SUBURBS.find(s => ls.endsWith(" "+s.toLowerCase()) || ls === s.toLowerCase());
+    if (rep && (rep === suburb || SUBURB_PC[rep] === SUBURB_PC[suburb])) street = street.slice(0, street.length - rep.length).replace(/[ ,]+$/,"").trim(); }
+  if (suburb === "Saint Georges") suburb = "St Georges";
+  // postcode cross-check with the suburb
+  let fixedPc = false;
+  // (postcodes are checked against the official address list later; no guessing here)
+  street = titleCase(street).replace(/\s+/g," ").trim();
+  street = street.replace(/^[Il|](?=[0-9]*[A-Za-z]?\s)/, "1").replace(/^(\d+)[Il|](?=\d*[A-Za-z]?\s)/, "$11").replace(/^(\d*)[Oo](?=\d+[A-Za-z]?\s)/, "$10");
+  // search address: first "number + street name + street type", skipping unit prefixes
+  const re = new RegExp("(\\d+)([A-Za-z]?)(?:\\s*[-–]\\s*\\d+[A-Za-z]?)?\\s+((?:[A-Za-z'’]+\\s+){0,4}?(?:"+STREET_TYPES+"))\\b", "i");
+  const m = street.match(re);
+  const search = (m ? m[1]+m[2].toUpperCase()+" "+m[3] : street) + ", " + suburb + " SA " + pc;
+  const display = street + ", " + suburb + " SA " + pc;
+  const problems = [];
+  if (!/^5\d{3}$/.test(pc)) problems.push("Postcode unclear");
+  if (!SUBURB_PC[suburb]) problems.push("Suburb unclear");
+
+  if (street.replace(/[^A-Za-z]/g,"").length < 4) problems.push("Street unclear");
+  const firstTok = (street.match(/^\S+/) || [""])[0];
+  if (/^[A-Za-z]{1,2}[\d/]/.test(firstTok) || /^\d+[^\dA-Za-z/,]/.test(firstTok)) problems.push("House number unclear");
+  else if (!m && !/school|post office|lpo|hospital|centre|college/i.test(street)) problems.push("No house number");
+  return {ok: problems.length === 0, reason: problems.join(", "), display, search, suburb, postcode: pc, fixedPc};
+}
+
+/* Text recognition sometimes merges neighbouring cells into one line. Split them back, estimating each piece's position. */
+function splitMerged(lines){
+  const out = [];
+  const piece = (l, text, from, to) => { const n = Math.max(1, l.text.length); return {text, x: l.x + l.w*from/n, y: l.y, w: Math.max(8, l.w*(to-from)/n), h: l.h, split: true}; };
+  for (const l of lines){
+    let t = l.text;
+    // tracking ID with the run-sheet number glued on: "DRNFLY000024431633126 6A Leroy St", "00393580940198201863133 233A ..."
+    let g = t.match(/^([|\[(\s]*DRNFLY\s*[\dOolI]{12})([\dOolI]{1,3})(?:\s+(.+))?$/) || t.match(/^([|\[(\s]*[\dOolI]{20})([\dOolI]{1,3})(?:\s+(.+))?$/);
+    if (g){ const a0 = g[1].length, b0 = a0 + g[2].length;
+      out.push(piece(l, g[1], 0, a0)); out.push(piece(l, g[2], a0, b0));
+      if (g[3]) out.push(piece(l, g[3], t.indexOf(g[3], b0), t.length)); continue; }
+    // tracking ID followed by the run-sheet number and maybe the address: "00393580940112959543 14 61 HEATHERBANK ..."
+    let m = t.match(/^([|\[(\s]*(?:DRNFLY\s*[\dOolI]{10,14}|[\dOolI]{14,22}))\s+([\dOolI]{1,3})(?:\s+(.+))?$/);
+    if (m){ const a = t.indexOf(m[2], m[1].length), b = a + m[2].length;
+      out.push(piece(l, m[1], 0, m[1].length)); out.push(piece(l, m[2], a, b));
+      if (m[3]) out.push(piece(l, m[3], t.indexOf(m[3], b), t.length)); continue; }
+    // address followed by the parcel size: "... SA 5068 AU 43.18 CM X 28.39 CM X 7.4 CM"
+    m = t.match(/^(.*?S\s?A\s?[5S$][\dOolIGSsB]{3}\s*(?:A\s?U\w?)?)\s+([\d.,]+\s*CM.*)$/i);
+    if (m){ out.push(piece(l, m[1], 0, m[1].length)); out.push(piece(l, m[2], m[1].length+1, t.length)); continue; }
+    // any address text followed by a parcel size: "ACME PTY LTD ... Glen Osmond 25.5 CM X 26.86 CM X 6.3 CM"
+    m = t.match(/^(.*?[A-Za-z]{2,}.*?)\s+([\d.,]+\s*CM\s*X.*)$/i);
+    if (m && !/^[|\s]*[\d.,]+\s*CM/i.test(t)){ out.push(piece(l, m[1], 0, m[1].length)); out.push(piece(l, m[2], m[1].length+1, t.length)); continue; }
+    // header words merged ("Seq Address") are dropped by the classifier; a lone "AU" is the tail of a wrapped address
+    if (/^[|\s]*A\s?[UL][|\s]*$/.test(t)) continue;
+    out.push(l);
+  }
+  return out;
+}
+/* A hand-held photo is slightly tilted, so one table row sits at different heights across the page.
+   Find the tilt that best lines up each row's code (left) with its address (right). */
+function deskew(L, P){
+  const codes = L.filter(l => l.kind === "code");
+  const members = L.filter(l => l.kind === "track" || l.kind === "dims" || (l.kind === "addr" && /S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/.test(l.text)));
+  if (codes.length < 3 || members.length < 3) return 0;
+  let best = 0, bestScore = -1;
+  for (let k = -90; k <= 90; k++){
+    const sl = k / 1000;
+    const cy = codes.map(l => l.cy - (l.x + l.w/2)*sl).sort((a,b) => a-b);
+    let score = 0;
+    for (const a of members){ const y = a.cy - (a.x + a.w/2)*sl; let d = Infinity; for (const c of cy) d = Math.min(d, Math.abs(c - y)); score += Math.max(0, 1 - d/(0.3*P)); }
+    score -= Math.abs(sl) * 2;   // slight preference for a level photo
+    if (score > bestScore){ bestScore = score; best = sl; }
+  }
+  return best;
+}
+function median(a){ const s = a.slice().sort((x,y)=>x-y); return s.length ? s[Math.floor(s.length/2)] : 0; }
+
+/* lines: [{text,x,y,w,h}] for one page. prevMaxSeq: last seq number from earlier pages (0 for page 1). */
+function readPage(lines, prevMaxSeq){
+  const L = splitMerged(lines.filter(l => l.text && l.text.trim())).map(l => Object.assign({}, l, {cy: l.y + l.h/2, kind: classify(l.text)}));
+  let total = null;
+  for (const l of L){ const m = l.text.match(/packages\s*[:;.]?\s*([\dOolI]{1,4})/i); if (m) total = +digitsOf(m[1]); }
+  const H = median(L.filter(l => l.kind !== "header" && l.kind !== "junk").map(l => l.h)) || 20;
+  const codeY = L.filter(l => l.kind === "code").map(l => l.cy).sort((a,b)=>a-b);
+  const gaps = codeY.slice(1).map((y,i) => y - codeY[i]).filter(g => g > 0.5*H);
+  let P = gaps.length >= 3 ? Math.min(median(gaps), 3*H) : 1.6*H;   // typical distance between table rows
+  const slope = deskew(L, P); if (typeof process !== "undefined" && process.env.DBG) console.log("slope", slope, "P", P.toFixed(1), "H", H);
+  if (slope) for (const l of L) l.cy = l.cy - (l.x + l.w/2) * slope;
+  const codeY2 = L.filter(l => l.kind === "code").map(l => l.cy).sort((a,b)=>a-b);
+  const gaps2 = codeY2.slice(1).map((y,i) => y - codeY2[i]).filter(g => g > 0.5*H);
+  if (gaps2.length >= 3) P = Math.min(median(gaps2), 3*H);
+  // 1. row anchors: code / tracking / seq cells sit on the row's centre line
+  const cand = L.filter(l => l.kind === "code" || l.kind === "track" || l.kind === "seq").sort((a,b) => a.cy - b.cy);
+  const rows = [];
+  for (const l of cand){
+    const r = rows.length ? rows[rows.length-1] : null;
+    if (r && Math.abs(l.cy - r.cy) < 0.45*P){ r.items.push(l); r.cy = r.items.reduce((s,i)=>s+i.cy,0)/r.items.length; }
+    else rows.push({cy:l.cy, items:[l]});
+  }
+  const pcLines = L.filter(l => l.kind === "addr" && /S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/.test(l.text));
+  const colX = median(pcLines.map(l => l.x)), topY = pcLines.length ? Math.min(...pcLines.map(l => l.y)) - 1.5*H : -Infinity;
+  for (const l of L) if (l.kind === "addr" && pcLines.length && ((!l.split && (l.x + l.w < colX - 0.5*H || l.x < colX - 3*H)) || l.cy < topY)) l.kind = "junk";
+  const botY = pcLines.length ? Math.max(...pcLines.map(l => l.y + l.h)) + 0.6*P : Infinity;
+  for (const l of L) if (l.cy > botY && l.kind !== "header") l.kind = "junk";
+  for (let i = rows.length - 1; i >= 0; i--) if (rows[i].cy < topY || rows[i].cy > botY) rows.splice(i, 1);
+  // 2. the address column read top to bottom: lines accumulate until one ends with "SA 5xxx" — that is one address,
+  //    even when it wraps onto two lines. Each address joins the nearest row.
+  const PC = /S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/;
+  const addrLines = L.filter(l => l.kind === "addr").sort((a,b) => a.cy - b.cy || a.x - b.x);
+  const units = []; let acc = [];
+  for (const l of addrLines){
+    if (acc.length && l.cy - acc[acc.length-1].cy > 1.2*P){ units.push(acc); acc = []; }   // too far apart to be one address
+    acc.push(l);
+    if (PC.test(acc.map(x => x.text).join(" "))){ units.push(acc); acc = []; }
+  }
+  if (acc.length) units.push(acc);
+  for (const u of units){
+    const cy = u.reduce((t,l) => t + l.cy, 0) / u.length;
+    let best = null, bd = Infinity;
+    for (const r of rows){ const d = Math.abs(r.cy - cy); if (d < bd){ bd = d; best = r; } }
+    if (!best || bd > 0.8*P || best.items.some(i => i.kind === "addr")){ best = {cy, items:[]}; rows.push(best); }
+    u.forEach(l => best.items.push(l));
+  }
+  rows.sort((a,b) => a.cy - b.cy);
+  for (const d of L.filter(l => l.kind === "dims")){
+    let best = null, bd = Infinity;
+    for (const r of rows){ const dd = Math.abs(r.cy - d.cy); if (dd < bd){ bd = dd; best = r; } }
+    if (best && bd < 0.9*P) best.items.push(d);
+  }
+  // rows that ended up with neither an address nor a number are noise
+  for (let i = rows.length - 1; i >= 0; i--) if (!rows[i].items.some(x => x.kind === "addr")) { const hasSeq = rows[i].items.some(x => x.kind === "seq" || x.kind === "code"); if (!hasSeq) rows.splice(i,1); }
+  // 3. read each row
+  let out = rows.map(r => {
+    const seqCell = r.items.find(i => i.kind === "seq");
+    const addrCells = r.items.filter(i => i.kind === "addr").sort((a,b) => (Math.abs(a.cy-b.cy) < 0.5*H ? a.x - b.x : a.cy - b.cy));
+    const dims = r.items.find(i => i.kind === "dims");
+    let text = addrCells.map(i => i.text.replace(/[|\[\]{}]/g," ")).join(" ").replace(/\s+/g," ").trim();
+    let seq = seqCell ? +digitsOf(seqCell.text.replace(/[^\dOolI]/g,"")) : null;
+    let size = "";
+    if (dims){ const n = (dims.text.match(/\d+(?:\.\d+)?/g) || []); if (n.length === 3) size = n.join(" x "); }
+    const box = addrCells.concat(seqCell ? [seqCell] : []).reduce((b,i) => b ? {x:Math.min(b.x,i.x), y:Math.min(b.y,i.y), x2:Math.max(b.x2,i.x+i.w), y2:Math.max(b.y2,i.y+i.h)} : {x:i.x, y:i.y, x2:i.x+i.w, y2:i.y+i.h}, null);
+    return {seq, text, size, box, hasAnchor: r.items.some(i => i.kind !== "addr" && i.kind !== "dims")};
+  }).filter(r => r.text || r.seq != null);
+  // 4. run-sheet numbers on a page are consecutive from top to bottom. Trust the longest chain of readings that
+  //    agrees with the row order, and work out the others from their position between trusted rows.
+  for (const r of out){ if (r.seq != null && (r.seq < 1 || r.seq > 999)) r.seq = null;
+    if (r.seq == null){ const m = r.text.match(/^([\dOolI]{1,3})\s+(\d.*)$/); if (m) r.lead = +digitsOf(m[1]); } }
+  // a number in front of the house number ("26 19 TAMINGA AVENUE") is the run-sheet number when no number cell was read
+  out.forEach(r => { if (r.seq == null && r.lead != null && r.lead >= 1){ r.seq = r.lead; r.fromLead = true; } });
+  const idx = out.map((r,i) => i).filter(i => out[i].seq != null);
+  // longest chain i1<i2<... with seq increasing and seq gap >= row gap (rows can be missed, never invented)
+  const n = idx.length, len = new Array(n).fill(1), from = new Array(n).fill(-1);
+  for (let b = 0; b < n; b++) for (let a = 0; a < b; a++){
+    const ia = idx[a], ib = idx[b], ds = out[ib].seq - out[ia].seq, di = ib - ia;
+    if (ds >= di && ds <= di + 3 && len[a] + 1 > len[b]){ len[b] = len[a] + 1; from[b] = a; } }
+  let bestEnd = -1; for (let b = 0; b < n; b++) if (bestEnd < 0 || len[b] > len[bestEnd]) bestEnd = b;
+  const trusted = new Set(); for (let b = bestEnd; b >= 0; b = from[b]) trusted.add(idx[b]);
+  // a first-page chain should start near the expected number; ignore chains that are far off if very short
+  out.forEach((r,i) => { if (!trusted.has(i)){ r.readSeq = r.seq; r.seq = null; } });
+  const tIdx = [...trusted].sort((a,b)=>a-b);
+  for (let i = 0; i < out.length; i++){
+    const r = out[i]; if (r.seq != null) continue;
+    const p = tIdx.filter(t => t < i).pop(), q = tIdx.find(t => t > i);
+    const fromPrev = p != null ? out[p].seq + (i - p) : (prevMaxSeq ? prevMaxSeq + 1 + i : null);
+    const fromNext = q != null ? out[q].seq - (q - i) : null;
+    if (fromPrev != null && (fromNext == null || fromPrev === fromNext)) r.seq = fromPrev;
+    else if (fromNext != null && fromPrev == null) r.seq = fromNext;
+    else if (r.lead != null && r.lead >= fromPrev && r.lead <= fromNext) r.seq = r.lead;
+    else if (r.readSeq != null && fromPrev != null && fromNext != null && r.readSeq >= fromPrev && r.readSeq <= fromNext) r.seq = r.readSeq;
+    else { r.seq = fromPrev; r.guessed = true; }
+    // the number may also have been merged into the address: "26 19 TAMINGA AVENUE" or "100145 Penfold"
+    const m = r.text.match(/^([\dOolI]{1,6})\s+(.*)$/);
+    if (m && r.seq != null){ const d = digitsOf(m[1]), e = String(r.seq);
+      if (d === e && /^\d/.test(m[2])) r.text = m[2];
+      else if (d.length > e.length && d.startsWith(e) && /^[A-Za-z]/.test(m[2])) r.text = d.slice(e.length) + " " + m[2]; }
+  }
+  // a tracking ID glued in front of the address: "00393580940175303872139145B Godfrey Terrace" → strip it, then the row number, and ask
+  for (const r of out){ const m = r.text.match(/^\s*(?:DRNFLY\s*[\dOolI]{12}|[\dOolI]{20})([\dOolI]*)\s*(.*)$/);
+    if (!m) continue; let rest = m[1]; r.glued = true;
+    if (r.seq != null && rest.startsWith(String(r.seq))) rest = rest.slice(String(r.seq).length);
+    r.text = (rest + (rest && /^[A-Za-z]$/.test(m[2][0]||"") && !/^[A-Za-z]\s/.test(m[2]) ? "" : " ") + m[2]).trim(); }
+  // the row's own number merged into the address: "26 19 TAMINGA AVENUE" (strip), "112 Allendale Grove" (strip and ask)
+  for (const r of out){ const m = r.text.match(/^([\dOolI]{1,3})\s+(.*)$/); if (!m || r.seq == null || +digitsOf(m[1]) !== r.seq) continue;
+    r.text = m[2]; if (!/^\d/.test(m[2])) r.numberLost = true; }
+  // 5. clean, check, and list gaps
+  const rowsOut = [];
+  const seen = new Set();
+  for (const r of out){
+    if (!r.text){ continue; }
+    if (r.seq != null && r.seq <= prevMaxSeq && prevMaxSeq > 0) { r.guessed = true; }
+    const c = cleanAddress(r.text);
+    const problems = [];
+    if (r.seq == null || r.guessed) problems.push("Row number unclear");
+    else if (seen.has(r.seq)) problems.push("Row number appears twice");
+    if (!c.ok) problems.push(c.reason);
+    // the row number was glued to the address and nothing that looks like a house number is left
+    if (r.numberLost && !/^\d|\b\d+[A-Za-z]?\s+\S+/.test(c.display || "") && !/No house number/.test(c.reason || "")) problems.push("No house number");
+    if (r.glued) problems.push("House number unclear");
+    if ((r.text.match(/S\s?A\s?[,.]?\s?[5S$][\dOolIGSsB]{3}/g) || []).length > 1) problems.push("Two addresses joined — keep only this row's");
+    if (/^\d{4,}/.test(c.search || "") || /^0\b/.test(c.search || "")) problems.push("House number unclear");
+    if (/\blevel\s?1\d{1,3}\b/i.test(r.text)) problems.push("Level and house number may be joined");
+    if (r.seq != null) seen.add(r.seq);
+    const uniq = [...new Set(problems.join(", ").split(", ").filter(Boolean))];
+    rowsOut.push({seq: r.seq, address: c.display, search: c.search || c.display, size: r.size, box: r.box, status: uniq.length ? "check" : "ok", problem: uniq.join(" · ")});
+  }
+  rowsOut.sort((a,b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
+  const nums = rowsOut.map(r => r.seq).filter(s => s != null);
+  const lo = Math.min(prevMaxSeq + 1, ...(nums.length ? nums : [prevMaxSeq + 1])), hi = nums.length ? Math.max(...nums) : prevMaxSeq;
+  const missing = []; for (let s = lo; s <= hi; s++) if (!seen.has(s)) missing.push(s);
+  missing.forEach(s => rowsOut.push({seq: s, address: "", search: "", size: "", status: "missing", problem: "Not read — type the address from the photo"}));
+  rowsOut.sort((a,b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
+  return {rows: rowsOut, total, firstSeq: lo, lastSeq: hi, lineCount: L.length};
+}
+
+const api = {readPage, cleanAddress, classify};
+if (typeof module !== "undefined" && module.exports) module.exports = api; else root.DroplineScan = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+<script>
+(function(){
+"use strict";
+const MAX_STOPS = 200;
+const OSRM = "https://router.project-osrm.org";
+const PHOTON = "https://photon.komoot.io/api/";
+const NOMINATIM = "https://nominatim.openstreetmap.org/search";
+const AU_BBOX = "112.9,-43.7,153.7,-10.6";
+const PARRA = [-33.8150, 151.0030];
+const STORE_CUR = "dropline.current.v1", STORE_SAVED = "dropline.saved.v1";
+const TABLE_MAX = 100;   // most coordinates the free routing server accepts in one travel-time request
+
+/* Public places used as test stops. */
+const SAMPLE_START = {label:"Parramatta Square, Parramatta NSW 2150", lat:-33.8156, lon:151.0040};
+const SAMPLE = [
+ ["Westfield Parramatta, Church St, Parramatta NSW 2150",-33.8176,151.0034],
+ ["Parramatta Station, Darcy St, Parramatta NSW 2150",-33.8174,151.0049],
+ ["CommBank Stadium, O'Connell St, Parramatta NSW 2150",-33.8079,151.0028],
+ ["Old Government House, Parramatta Park, Parramatta NSW 2150",-33.8113,150.9994],
+ ["Riverside Theatres, Market St, Parramatta NSW 2150",-33.8103,151.0044],
+ ["Westmead Hospital, Hawkesbury Rd, Westmead NSW 2145",-33.8025,150.9873],
+ ["Westmead Station, Hawkesbury Rd, Westmead NSW 2145",-33.8079,150.9874],
+ ["Harris Park Station, Wigram St, Harris Park NSW 2150",-33.8227,151.0076],
+ ["Elizabeth Farm, Alice St, Rosehill NSW 2142",-33.8221,151.0170],
+ ["Rosehill Gardens Racecourse, James Ruse Dr, Rosehill NSW 2142",-33.8257,151.0230],
+ ["Granville Station, Granville NSW 2142",-33.8329,151.0122],
+ ["Merrylands Station, Merrylands NSW 2160",-33.8367,150.9919],
+ ["Stockland Merrylands, McFarlane St, Merrylands NSW 2160",-33.8357,150.9893],
+ ["Guildford Station, Guildford NSW 2161",-33.8536,150.9839],
+ ["Wentworthville Station, Wentworthville NSW 2145",-33.8069,150.9711],
+ ["Pendle Hill Station, Pendle Hill NSW 2145",-33.8017,150.9555],
+ ["Toongabbie Station, Toongabbie NSW 2146",-33.7875,150.9516],
+ ["Winston Hills Mall, Caroline Chisholm Dr, Winston Hills NSW 2153",-33.7771,150.9825],
+ ["North Rocks Shopping Centre, North Rocks Rd, North Rocks NSW 2151",-33.7709,151.0187],
+ ["Carlingford Court, Pennant Hills Rd, Carlingford NSW 2118",-33.7819,151.0482],
+ ["Dundas Station, Dundas NSW 2117",-33.8044,151.0347],
+ ["Oatlands Golf Club, Bettington Rd, Oatlands NSW 2117",-33.7958,151.0254],
+ ["Ermington Shopping Centre, River Rd, Ermington NSW 2115",-33.8128,151.0571],
+ ["Parramatta Leagues Club, Eels Pl, Parramatta NSW 2150",-33.8064,151.0040],
+ ["Cumberland Hospital, Fleet St, North Parramatta NSW 2151",-33.8002,151.0007]
+];
+
+/* ---------- state ---------- */
+const uid = () => Math.random().toString(36).slice(2,10);
+const blankRoute = () => ({id:uid(), name:"", start:null, returnToStart:false, stops:[], opt:null, updatedAt:Date.now()});
+let route = loadJSON(STORE_CUR) || blankRoute();
+if (!Array.isArray(route.stops)) route = blankRoute();
+function emptiedRoute(){ const r = blankRoute(); ["id","name","createdAt","start"].forEach(k => { if (route[k] !== undefined) r[k] = route[k]; }); return r; }
+route.stops.forEach(s => { if (s.geo === "searching") s.geo = "pending"; });
+let selId = null, expandedId = null, failPickId = null, placingId = null, myLoc = null, watchId = null, busy = false;
+
+function loadJSON(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+function saveJSON(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+function persist(){ route.updatedAt = Date.now();
+  let ok = saveJSON(STORE_CUR, route);
+  if (ok && route.name !== undefined && document.getElementById("home")){ const a = lib(); if (a[route.id] || route.createdAt){ a[route.id] = route; ok = saveLib(a); } }
+  if (!ok) toast("This phone blocked saving. Your route will not survive a reload."); }
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const has = p => p && p.lat != null && p.lon != null;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function fmtTime(sec){ if(sec==null) return "–"; const m = Math.round(sec/60); return m < 60 ? m+" min" : Math.floor(m/60)+" h "+(m%60)+" m"; }
+function fmtDist(m){ if(m==null) return "–"; return (m/1000).toFixed(m<10000?1:0)+" km"; }
+function hav(a,b){ const R=6371000, r=Math.PI/180; const dLa=(b.lat-a.lat)*r, dLo=(b.lon-a.lon)*r;
+  const x=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
+let toastT; function toast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 3500); }
+function ll(p){ return p.lat.toFixed(6)+","+p.lon.toFixed(6); }
+function gmaps(s, from){
+  if (!has(s)) return "https://www.google.com/maps/search/"+encodeURIComponent(s.query || s.label);
+  return "https://www.google.com/maps/dir/"+(has(from) ? ll(from) : "")+"/"+ll(s)+"/data=!4m2!4m1!3e0"; }
+function geoLink(s){ return has(s) ? "geo:"+ll(s)+"?q="+ll(s)+"("+encodeURIComponent(s.label.split(",")[0])+")" : "geo:0,0?q="+encodeURIComponent(s.query || s.label); }
+function prevPoint(i){ for (let k = i-1; k >= 0; k--) if (has(route.stops[k])) return route.stops[k]; return route.start; }
+async function fetchJSON(url, ms){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms||12000);
+  try{ const r = await fetch(url,{signal:c.signal}); const j = await r.json().catch(()=>null); if(!r.ok){ const e = new Error("HTTP "+r.status); e.status = r.status; e.body = j; throw e; } return j; } finally{ clearTimeout(t); } }
+function parcels(s){ return s.parcels && s.parcels.length ? s.parcels : [{seq:null, size:"", note:""}]; }
+function isBig(size){ const n = String(size||"").match(/[\d.]+/g); return !!n && Math.max(...n.map(Number)) >= 60; }
+function chipsFor(s){
+  const ps = parcels(s), out = [];
+  if (isPick(s)) out.push('<span class="chip pick">↑ Pickup</span>');
+  if (s.geo === "missing") out.push('<span class="chip miss">No location</span>');
+  else if (s.geo === "pending" || s.geo === "searching") out.push('<span class="chip warn">Finding location…</span>');
+  else if (s.geo === "street" || s.approx) out.push('<span class="chip warn">Check pin</span>');
+  if (ps.some(p => isBig(p.size))) out.push('<span class="chip big">Large parcel</span>');
+  const notes = [...new Set(ps.map(p => p.note).filter(Boolean))]; notes.forEach(n => out.push('<span class="chip mark">★ '+esc(n)+'</span>'));
+  return out.join("");
+}
+function pcount(s){ return s.qty > 0 ? s.qty : parcels(s).length; }
+const isPick = s => s && s.kind === "pickup";
+function statusWord(s){ return s.status === "delivered" && isPick(s) ? "picked up" : s.status; }
+function parcelLine(s){ const ps = parcels(s), n = pcount(s); const seqs = ps.map(p => p.seq).filter(x => x != null);
+  return (seqs.length ? "#"+seqs.join(", #")+" · " : "") + n + (n === 1 ? " parcel" : " parcels"); }
+
+/* ---------- address search ---------- */
+function stateAbbr(s){ const m={"New South Wales":"NSW","Victoria":"VIC","Queensland":"QLD","Western Australia":"WA","South Australia":"SA","Tasmania":"TAS","Australian Capital Territory":"ACT","Northern Territory":"NT"}; return m[s]||s; }
+function photonLabel(p){
+  const line1 = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name || "";
+  const nm = (p.name && p.street && p.name !== line1) ? p.name+", " : "";
+  const sub = p.district || p.locality || p.city || "";
+  const tail = [sub, p.state ? stateAbbr(p.state) : "", p.postcode].filter(Boolean).join(" ");
+  return (nm + [line1, tail].filter(Boolean).join(", ")).replace(/^, /,"");
+}
+function biasPoint(){ if (has(myLoc)) return myLoc; if (has(route.start)) return route.start; const s = route.stops.find(has); return s || {lat:PARRA[0], lon:PARRA[1]}; }
+let lastNom = 0;
+async function nominatim(q, limit){
+  const wait = 1100 - (Date.now() - lastNom); if (wait > 0) await sleep(wait); lastNom = Date.now();
+  const j = await fetchJSON(NOMINATIM+"?format=jsonv2&addressdetails=1&countrycodes=au&limit="+(limit||6)+"&q="+encodeURIComponent(q), 10000);
+  return (j||[]).map(r => ({label:r.display_name.replace(/, Australia$/,""), lat:+r.lat, lon:+r.lon, housenumber:r.address && r.address.house_number, postcode:r.address && r.address.postcode}));
+}
+async function photon(q, limit, bias){
+  const b = bias || biasPoint();
+  const j = await fetchJSON(PHOTON+"?q="+encodeURIComponent(q)+"&limit="+(limit||6)+"&lang=en&bbox="+AU_BBOX+"&lat="+b.lat+"&lon="+b.lon+(has(myLoc) || has(route.start) || route.stops.some(has) ? "&zoom=14&location_bias_scale=0.1" : ""), 8000);
+  return (j.features||[]).filter(f => !f.properties.countrycode || f.properties.countrycode === "AU").map(f => ({
+    label: photonLabel(f.properties), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], housenumber:f.properties.housenumber, postcode:f.properties.postcode}));
+}
+async function geocode(q, limit){
+  try{ const out = await photon(q, limit); if (out.length) return out; }catch(e){}
+  return nominatim(q, limit);
+}
+/* Locate imported addresses: prefer a result with the same postcode; "exact" when the house number matched. */
+function grader(q){
+  const pc = (q.match(/\b(\d{4})\s*$/) || [])[1], num = (q.match(/^\s*(\d+)/) || [])[1];
+  const grade = r => { const h = String(r.housenumber || "").match(/^\d+/); return (num && h && h[0] === num) ? "exact" : "street"; };
+  const pick = list => { const ok = list.filter(r => !pc || !r.postcode || String(r.postcode) === pc);
+    if (ok.length) return Object.assign(ok[0], {geo:grade(ok[0])});
+    const near = list.find(r => pc && r.postcode && String(r.postcode)[0] === pc[0]);   // same state, neighbouring postcode
+    return near ? Object.assign(near, {geo:"street"}) : null; };
+  return pick;
+}
+/* Returns a result, null when the address is not known, or undefined when the service was busy or unreachable. */
+async function photonLocate(q, bias){
+  try{ return grader(q)(await photon(q, 3, bias)); }
+  catch(e){ if (e.status === 429) photonSlow = Date.now(); return undefined; }
+}
+let photonSlow = 0;
+function fmtLeft(sec){ sec = Math.max(1, Math.round(sec)); return sec < 60 ? "about "+sec+" s left" : "about "+Math.ceil(sec/60)+" min left"; }
+async function nominatimLocate(q){ try{ return grader(q)(await nominatim(q, 3)); }catch(e){ return null; } }
+/* Locations found before are remembered on this phone, so a repeat address imports instantly. */
+const STORE_GEO = "dropline.geocache.v1";
+let geoCache = loadJSON(STORE_GEO) || {};
+const gkey = q => String(q||"").toLowerCase().replace(/\s+/g," ").trim();
+function cachePut(q, r){ geoCache[gkey(q)] = {lat:r.lat, lon:r.lon, geo:r.geo, t:Date.now()}; }
+/* ---------- official address lookup (G-NAF, © Geoscape Australia, CC BY 4.0) ----------
+   One small file per postcode, published with the app. Exact points for every listed address, no rate limits. */
+const GEO_BASE = /github\.io$/.test(location.hostname) ? "geo/" : "https://sandip-ios.github.io/RouteApp_Australia/geo/";
+const STATE_DIR = {"5":"sa"};                       // states available so far, by first postcode digit
+const geoFiles = {};
+const ST_FULL = {ST:"STREET",RD:"ROAD",AVE:"AVENUE",AV:"AVENUE",TCE:"TERRACE",TER:"TERRACE",DR:"DRIVE",DVE:"DRIVE",CT:"COURT",CRT:"COURT",CRES:"CRESCENT",CR:"CRESCENT",
+  GR:"GROVE",GRV:"GROVE",PL:"PLACE",SQ:"SQUARE",LN:"LANE",PDE:"PARADE",CL:"CLOSE",CCT:"CIRCUIT",BVD:"BOULEVARD",BLVD:"BOULEVARD",HWY:"HIGHWAY",WK:"WALK",WY:"WAY",
+  ESP:"ESPLANADE",MWS:"MEWS",RISE:"RISE",HTS:"HEIGHTS",GDNS:"GARDENS",PKWY:"PARKWAY",RDGE:"RIDGE",VW:"VIEW",VSTA:"VISTA",TRL:"TRAIL",LOOP:"LOOP",END:"END"};
+const gnorm = s => String(s||"").toUpperCase().replace(/[’']/g,"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
+function streetNorm(s){ const w = gnorm(s).split(" "); if (w.length > 1 && ST_FULL[w[w.length-1]]) w[w.length-1] = ST_FULL[w[w.length-1]]; return w.join(" "); }
+function locNorm(s){ return gnorm(s).replace(/^SAINT /,"ST ").replace(/^MOUNT /,"MOUNT "); }
+function gnafFile(pc){
+  const dir = STATE_DIR[String(pc)[0]]; if (!dir || !/^\d{4}$/.test(pc)) return Promise.resolve(null);
+  if (!(pc in geoFiles)) geoFiles[pc] = fetchJSON(GEO_BASE + dir + "/" + pc + ".json", 15000).then(f => {
+    const idx = {}; for (const k of Object.keys(f.s)){ const [st, loc] = k.split("|"); idx[k] = {st, loc, nums:f.s[k], c:f.c[k]}; } return idx; }).catch(() => null);
+  return geoFiles[pc];
+}
+/* "502 Glynburn Road, Burnside SA 5066" → official point. Returns null when the postcode is not covered. */
+async function gnafLocate(q){
+  const m = String(q).match(/^\s*(\d+)\s*([A-Za-z]?)\s+(.+?),\s*(.+?)\s+(?:SA|NSW|VIC|QLD|WA|TAS|ACT|NT)\s+(\d{4})\s*$/i)
+         || (String(q).match(/^\s*()()([A-Za-z][^,]*?),\s*(.+?)\s+(?:SA|NSW|VIC|QLD|WA|TAS|ACT|NT)\s+(\d{4})\s*$/i));
+  if (!m) return null;
+  const [, n, suf, stRaw, locRaw, pc] = m;
+  const idx = await gnafFile(pc); if (!idx) return null;
+  const st = streetNorm(stRaw), loc = locNorm(locRaw), num = n + suf.toUpperCase();
+  const cands = Object.values(idx);
+  // 1. same street (exact spelling), same suburb first; 2. close spelling (misread letters)
+  const base = x => x.st.replace(/ [A-Z]+$/, "");
+  let pool = cands.filter(x => x.st === st), corrected = false;
+  if (!pool.length){
+    let best = 3, hits = [];
+    for (const x of cands){ const d = lev(x.st, st); if (d < best){ best = d; hits = [x]; } else if (d === best) hits.push(x); }
+    if (best <= 2 && hits.length && new Set(hits.map(x => x.st)).size === 1){ pool = hits; corrected = true; }
+    else { pool = cands.filter(x => base(x) === st.replace(/ [A-Z]+$/, "")); }   // street type misread (St vs Ave)
+    if (!pool.length){ const w = st.split(" ");                                    // a name in front: "SISSI JIA KATHERINE STREET"
+      for (let k = Math.min(3, w.length - 1); k >= 2 && !pool.length; k--){ const tail = w.slice(-k).join(" "); pool = cands.filter(x => x.st === tail); } }
+    if (pool.length) corrected = true;
+  }
+  if (!pool.length) return {found:false};
+  pool.sort((a,b) => (b.loc === loc) - (a.loc === loc) || lev(a.loc, loc) - lev(b.loc, loc));
+  for (const x of pool){
+    const dl = {O:"0",I:"1",L:"1",S:"5",B:"8",G:"6",Z:"2"}[suf.toUpperCase()];          // "2O" is 20, not 2O
+    const p = n ? ((dl && x.nums[n+dl]) || x.nums[num] || x.nums[n] || x.nums[n+"A"] || x.nums[n+"B"]) : null;
+    if (p) return {found:true, lat:p[0], lon:p[1], geo:"exact", official: ((dl && x.nums[n+dl]) ? n+dl : x.nums[num] ? num : n) + " " + titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, corrected: corrected || x.loc !== loc};
+  }
+  const x = pool[0];
+  return {found:false, streetOnly:true, lat:x.c[0], lon:x.c[1], geo:"street", official: titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, corrected};
+}
+/* Suggest the official address for a misread one: letters read in place of digits ("AO" → 40, "l2" → 12),
+   a level number glued on ("1213" → 213), or one digit off when that is the only real number on the street. */
+const DIGIT_LOOK = {O:"0",o:"0",D:"0",Q:"0",U:"0",I:"1",l:"1",i:"1","|":"1",L:"1",Z:"2",z:"2",S:"5",s:"5",B:"8",G:"6",b:"6",A:"4",T:"7",g:"9",q:"9"};
+async function gnafSuggest(q){
+  const m = String(q).match(/^\s*([0-9A-Za-z|]{1,6})\s+(.+?),\s*(.+?)\s+SA\s+(\d{4})\s*$/i);
+  if (!m) return null;
+  const [, tok, stRaw, locRaw, pc] = m;
+  const idx = await gnafFile(pc); if (!idx) return null;
+  const st = streetNorm(stRaw), loc = locNorm(locRaw);
+  let streets = Object.values(idx).filter(x => x.st === st);
+  if (!streets.length){ let best = 3, hits = []; for (const x of Object.values(idx)){ const d = lev(x.st, st); if (d < best){ best = d; hits = [x]; } else if (d === best) hits.push(x); }
+    if (best <= 2 && new Set(hits.map(x => x.st)).size === 1) streets = hits; }
+  if (!streets.length) return null;
+  streets.sort((a,b) => (b.loc === loc) - (a.loc === loc));
+  const S = streets[0], has = n => S.nums[n] || S.nums[n.toUpperCase()];
+  const out = (n, sure) => ({official: n.toUpperCase() + " " + titleCaseWords(S.st) + ", " + titleCaseWords(S.loc) + " SA " + pc, sure});
+  // 1. letters that look like digits
+  const asDigits = tok.replace(/^([^0-9]*)/, p => p.split("").map(c => DIGIT_LOOK[c] || c).join("")).replace(/(\d)([^0-9]+)(?=\d)/g, (a,d,mid) => d + mid.split("").map(c => DIGIT_LOOK[c] || c).join(""));
+  const fullDigits = tok.split("").map((c,i) => (i < tok.length - 1 || /\d/.test(tok[i-1] || "") === false) ? (DIGIT_LOOK[c] || c) : c).join("");
+  for (const v of [asDigits, fullDigits]) if (v !== tok && /^\d+[A-Z]?$/i.test(v) && has(v)) return out(v, true);
+  const digits = (fullDigits.match(/^\d+/) || [""])[0];
+  if (!digits) return null;
+  const nums = Object.keys(S.nums).filter(n => /^\d+[A-Z]?$/.test(n));
+  // 2. a glued level number in front: "1213" → "213" (only 4+ digits, only one digit dropped; 238 is never turned into 8)
+  if (digits.length >= 4 && has(digits.slice(1))) return out(digits.slice(1), false);
+  // 3. exactly one real number on this street that is one digit away
+  const near = nums.filter(n => lev(n.replace(/[A-Z]$/,""), digits) === 1);
+  if (near.length === 1) return out(near[0], false);
+  return null;
+}
+
+/* Address search, local first: official addresses in the postcodes nearest to you, then the open map search sorted by distance. */
+let pcIndex = null;
+function knownCentre(){ if (has(myLoc)) return myLoc; if (has(route.start)) return route.start; const s = route.stops.find(has); return s || null; }
+async function nearbyPostcodes(c, km, max){
+  if (!pcIndex) pcIndex = await fetchJSON(GEO_BASE + "sa/index.json", 10000).catch(() => ({}));
+  return Object.entries(pcIndex).map(([pc, p]) => [pc, hav(c, {lat:p[0], lon:p[1]})]).filter(([, d]) => d < km*1000).sort((a,b) => a[1]-b[1]).slice(0, max).map(x => x[0]);
+}
+/* ---------- type-ahead from the official street list (G-NAF): partial words, any order, small typos, nearest first ---------- */
+let streetsP = null;
+function loadStreets(){
+  if (!streetsP) streetsP = fetchJSON(GEO_BASE + "sa/streets.json", 30000).then(j => {
+    const words = x => x.replace(/['’]/g, "").replace(/-/g, " ").split(" ").filter(Boolean);
+    const L = j.l.map(([loc, pc]) => ({loc, pc, w: words(loc)}));
+    return j.s.map(([st, li, lat, lon, n]) => ({st, sw: words(st), l: L[li], lat, lon, n}));
+  }).catch(e => { streetsP = null; throw e; });
+  return streetsP;
+}
+const TYPE_ABBR = Object.assign({}, ST_FULL, {STR:"STREET", RO:"ROAD", AVENUE:"AVENUE", TCE:"TERRACE"});
+function parseQuery(q){
+  let t = String(q).toUpperCase().replace(/[’']/g, "").replace(/\s*\/\s*/g, "/").replace(/[^A-Z0-9\/ ]/g, " ").replace(/\s+/g, " ").trim();
+  t = t.replace(/\b(AUSTRALIA|AU)\b/g, " ").replace(/\b(SA|NSW|VIC|QLD|WA|TAS|ACT|NT)\b(?=\s*\d{4}|\s*$)/g, " ").replace(/\s+/g, " ").trim();
+  let unit = "", num = "", m;
+  if ((m = t.match(/^(?:(?:UNIT|U|APT|FLAT|SHOP|SUITE)\s*)?(\d+[A-Z]?)\s*\/\s*(\d+[A-Z]?)\b\s*/))){ unit = m[1]; num = m[2]; t = t.slice(m[0].length); }
+  else if ((m = t.match(/^(?:(?:UNIT|U|APT|FLAT)\s*(\d+[A-Z]?)\s+)?(\d+[A-Z]?)\b\s*/)) && !/^\d{4}$/.test(m[2] || "")){ unit = m[1] || ""; num = m[2]; t = t.slice(m[0].length); }
+  const toks = t.split(" ").filter(Boolean);
+  const pc = toks.find(x => /^\d{4}$/.test(x)) || "";
+  if (!num){ const k = toks.findIndex(x => /^\d{1,3}[A-Z]?$/.test(x)); if (k >= 0){ num = toks[k]; toks.splice(k, 1); } }   // "john st burnside 12"
+  return {unit, num, pc, toks: toks.filter(x => !/^\d+[A-Z]?$/.test(x)), partialLast: !/\s$/.test(String(q))};
+}
+function tokScore(tok, words, isLast, fuzzy){
+  const full = TYPE_ABBR[tok]; let best = 0, at = -1;
+  for (let k = 0; k < words.length; k++){ const w = words[k]; let v = 0;
+    if (w === tok || w === full) v = 3;
+    else if (w.startsWith(tok) && (isLast || tok.length >= 3 || w.length <= 4)) v = 2;
+    else if (!fuzzy || tok.length < 4 || w[0] !== tok[0] && w[1] !== tok[1]) v = 0;     // typo check only in the second pass, and only when a first letter lines up
+    else if (lev(w.slice(0, tok.length), tok) <= 1 && (isLast || Math.abs(w.length - tok.length) <= 2)) v = 1;
+    else if (tok.length >= 5 && Math.abs(w.length - tok.length) <= 2 && lev(w, tok) <= 2) v = 1;
+    if (v > best){ best = v; at = k; if (v === 3) break; }
+  }
+  return {s: best, k: at};
+}
+async function streetSearch(q, c, max){
+  const P = parseQuery(q); if (!P.toks.length) return [];
+  const all = await loadStreets();
+  // typing on: search only within the streets that matched the shorter text before
+  const key = P.toks.join(" "), prev = streetSearch.last;
+  const pool0 = prev && key.startsWith(prev.key) && prev.pc === P.pc && prev.rows.length < all.length ? prev.rows : all;
+  let hits = scanStreets(P, pool0, c, false);
+  if (!hits.length) hits = scanStreets(P, all, c, true);          // nothing matched as typed: allow small spelling mistakes
+  streetSearch.last = {key, pc: P.pc, rows: hits.length >= 5 ? hits.map(h => h.r) : all};
+  return finishSearch(P, hits, max);
+}
+function scanStreets(P, rows, c, fuzzy){
+  const hits = [];
+  for (const r of rows){
+    if (P.pc && r.l.pc !== P.pc) continue;
+    let q2 = 0, onStreet = 0, firstWord = false, ok = true;
+    for (let i = 0; i < P.toks.length; i++){
+      const last = i === P.toks.length - 1 && P.partialLast, tk = P.toks[i];
+      const a = tokScore(tk, r.sw, last, fuzzy);
+      if (a.s){ q2 += a.s + 1; if (!(TYPE_ABBR[tk] && a.k === r.sw.length - 1)) onStreet++; if (a.k === 0) firstWord = true; continue; }
+      const b = tokScore(P.toks[i], r.l.w, last, fuzzy);
+      if (b.s){ q2 += b.s; continue; }
+      ok = false; break;
+    }
+    if (!ok || !onStreet) continue;
+    const d = c ? hav(c, r) / 1000 : 0;
+    hits.push({r, score: q2 + (firstWord ? 2 : 0) - Math.min(8, Math.log2(1 + d)), d});
+  }
+  return hits;
+}
+async function finishSearch(P, hits, max){
+  hits.sort((a, b) => b.score - a.score || a.d - b.d);
+  const top = hits.slice(0, 60);
+  const label = (r, n) => (P.unit ? P.unit + "/" : "") + (n ? n + " " : "") + titleCaseWords(r.st) + ", " + titleCaseWords(r.l.loc) + " SA " + r.l.pc;
+  if (!P.num) return top.slice(0, max).map(h => ({label: label(h.r, ""), lat: h.r.lat, lon: h.r.lon, official: true, geo: "street", street: true}));
+  // with a house number: keep streets where that number really exists, using the exact official point
+  const out = [], pcs = [...new Set(top.map(h => h.r.l.pc))].slice(0, 10);
+  const files = await Promise.all(pcs.map(pc => gnafFile(pc).catch(() => null)));
+  const byPc = Object.fromEntries(pcs.map((pc, i) => [pc, files[i]]));
+  for (const h of top){ const f = byPc[h.r.l.pc]; if (!f) continue; const x = f[h.r.st + "|" + h.r.l.loc]; if (!x) continue;
+    const p = x.nums[P.num] || x.nums[P.num.toUpperCase()];
+    if (p) out.push({label: label(h.r, P.num), lat: p[0], lon: p[1], official: true, geo: "exact"});
+    if (out.length >= max) break; }
+  if (out.length) return out;
+  return top.slice(0, Math.min(3, max)).map(h => ({label: label(h.r, P.num), lat: h.r.lat, lon: h.r.lon, official: true, geo: "street", note: "No. " + P.num + " is not in the official list — pin on the street"}));
+}
+async function searchAddresses(q, limit, onEarly){
+  const c = knownCentre();
+  const local = await streetSearch(q, c, 6).catch(() => []);
+  const strong = local.filter(r => r.geo === "exact" || (r.street && !parseQuery(q).num)).length;
+  if (strong >= 3) return local;
+  if (local.length && onEarly) onEarly(local);
+  const web = await geocode(q, limit).catch(() => null);
+  if (web === null && !local.length) throw new Error("offline");
+  const near = c ? (web || []).slice().sort((a,b) => hav(c,a) - hav(c,b)) : (web || []);
+  return local.concat(near.filter(r => !local.some(l => l.label.toLowerCase() === r.label.toLowerCase() || hav(l, r) < 25))).slice(0, 8);
+}
+
+function titleCaseWords(s){ return String(s).toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()); }
+function lev(a, b){ if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  let prev = Array.from({length:n+1}, (_,j)=>j);
+  for (let i = 1; i <= m; i++){ const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1]===b[j-1]?0:1)); prev = cur; }
+  return prev[n]; }
+/* Official list first; the open-map search only for addresses outside it. */
+async function smartLocate(q, bias){
+  const g = await gnafLocate(q);
+  if (g && g.found) return {lat:g.lat, lon:g.lon, geo:"exact", official:g.official, corrected:g.corrected, source:"gnaf"};
+  const r = await photonLocate(q, bias);
+  if (r && r.geo === "exact") return Object.assign(r, {source:"osm", notOfficial: !!g});
+  if (g && g.streetOnly) return {lat:g.lat, lon:g.lon, geo:"street", official:g.official, source:"gnaf", notOfficial:true};
+  return r === undefined ? undefined : (r ? Object.assign(r, {notOfficial: !!g}) : null);
+}
+
+function cacheSave(){ const ks = Object.keys(geoCache);
+  if (ks.length > 3000) ks.sort((a,b) => geoCache[a].t - geoCache[b].t).slice(0, ks.length-3000).forEach(k => delete geoCache[k]);
+  saveJSON(STORE_GEO, geoCache); }
+function wireSearch(input, box, onPick){
+  let timer, seq = 0, results = [];
+  const close = () => { box.hidden = true; box.innerHTML = ""; };
+  input.addEventListener("focus", () => { loadStreets().catch(() => {}); });     // get the street list ready while the courier starts typing
+  input.addEventListener("input", () => {
+    clearTimeout(timer); const q = input.value.trim();
+    if (q.length < 3){ close(); return; }
+    const show = list => { results = list; box.hidden = false;
+      box.innerHTML = list.map((r,i) => { const parts = r.label.split(", "); return '<button data-i="'+i+'">'+esc(parts[0])+'<span class="sub">'+esc(parts.slice(1).join(", "))+(r.note ? ' · '+esc(r.note) : r.street ? ' · street' : '')+'</span></button>'; }).join(""); };
+    timer = setTimeout(async () => {
+      const my = ++seq; if (box.hidden || !results.length){ box.hidden = false; box.innerHTML = '<button disabled>Searching…</button>'; }
+      let out; try{ out = await searchAddresses(q, 6, early => { if (my === seq) show(early); }); }catch(e){ out = null; }
+      if (my !== seq) return;
+      if (out === null){ results = []; box.innerHTML = '<button disabled>Address search is unavailable. Check your internet connection and try again.</button>'; return; }
+      if (!out.length){ results = []; box.innerHTML = '<button disabled>No matches yet. Keep typing, or add the suburb.</button>'; return; }
+      show(out);
+    }, 150);
+  });
+  box.addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if(!b) return; onPick(results[+b.dataset.i]); input.value = ""; close(); });
+  input.addEventListener("keydown", e => { if(e.key === "Escape") close(); if(e.key==="Enter"){ const b = box.querySelector("button[data-i]"); if(b){ e.preventDefault(); b.click(); } } });
+  document.addEventListener("click", e => { if(!box.contains(e.target) && e.target !== input) close(); });
+}
+
+/* ---------- route editing ---------- */
+function addStop(r){
+  if (route.stops.length >= MAX_STOPS){ toast("The prototype plans up to "+MAX_STOPS+" stops."); return; }
+  if (route.stops.some(s => has(s) && Math.abs(s.lat-r.lat)<1e-5 && Math.abs(s.lon-r.lon)<1e-5)){ toast("That address is already on the list."); return; }
+  route.stops.push({id:uid(), label:r.label, query:r.label, lat:r.lat, lon:r.lon, geo:r.geo === "street" ? "street" : "exact", status:"pending", reason:"", parcels:[]});
+  markStale(); persist(); render(); toast("Added stop "+route.stops.length);
+}
+function farFromStops(p){ const st = route.stops.filter(has); if (!st.length || !has(p)) return false; return Math.min(...st.map(x => hav(p, x))) > 150000; }
+function startChanged(){
+  markStale(); persist(); render();
+  if (!$("nextStep").hidden && !route.opt) showNextStep(lastStepPages);
+  if (route.opt && route.stops.filter(s => s.status === "pending" && has(s)).length >= 2){ toast("Start changed. Updating the route…"); optimise(); }
+}
+function setStart(r){
+  if (farFromStops(r)){ toast("That start is more than 150 km from your stops. Choose a start near the deliveries."); render(); return; }
+  route.start = {label:r.label, lat:r.lat, lon:r.lon}; if (startMeOn){ startMeOn = false; $("startMe").checked = false; try{ localStorage.setItem("dropline.startMe","0"); }catch(e){} } updateStartMeTxt(); startChanged(); }
+function markStale(){ if (route.opt) route.opt.stale = true; }
+function move(id, dir){ const i = route.stops.findIndex(s=>s.id===id), j = i+dir; if(i<0||j<0||j>=route.stops.length) return;
+  [route.stops[i], route.stops[j]] = [route.stops[j], route.stops[i]]; markStale(); persist(); render(); }
+function removeStop(id){ route.stops = route.stops.filter(s=>s.id!==id); if(selId===id) selId=null; markStale(); persist(); render(); }
+function setStatus(id, st, reason){ const s = route.stops.find(x=>x.id===id); if(!s) return;
+  s.status = st; s.reason = st==="failed" ? (reason||"") : ""; s.doneAt = st==="pending" ? null : Date.now();
+  failPickId = null; persist(); render(); }
+
+/* ---------- import ---------- */
+function parseCSV(text){
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++){ const c = text[i];
+    if (q){ if (c === '"'){ if (text[i+1] === '"'){ f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true; else if (c === ","){ row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r"){ if (c === "\r" && text[i+1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c; }
+  if (f !== "" || row.length){ row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ""));
+}
+function cleanAddr(a){ return a.replace(/\s+/g," ").replace(/\s*,?\s*\bAU(STRALIA)?\s*$/i,"").replace(/\bNone\b\s*/g,"").trim(); }
+/* Returns [{address, search, parcels:[{seq,size,note}]}] grouped by address, keeping first-seen order. */
+function parseList(text){
+  text = text.replace(/^﻿/, "");
+  const groups = new Map();
+  const add = (address, search, parcel) => { address = cleanAddr(address); if (!address) return;
+    const k = address.toLowerCase(); if (!groups.has(k)) groups.set(k, {address, search:cleanAddr(search||address), parcels:[]}); groups.get(k).parcels.push(parcel); };
+  const rows = parseCSV(text), head = (rows[0]||[]).map(h => h.trim().toLowerCase());
+  const ai = head.indexOf("address");
+  if (ai >= 0){
+    const si = head.indexOf("search"), qi = head.indexOf("seq"), zi = head.findIndex(h => h.startsWith("size") || h.startsWith("dimension")), ni = head.indexOf("note");
+    rows.slice(1).forEach(r => add(r[ai]||"", si>=0 ? r[si] : "", {seq: qi>=0 && r[qi] ? +r[qi] || r[qi] : null, size: zi>=0 ? (r[zi]||"") : "", note: ni>=0 ? (r[ni]||"") : ""}));
+  } else {
+    text.split(/\r?\n/).forEach(line => { let l = line.trim(); if (!l) return;
+      let seq = null; const m = l.match(/^#\s*(\d+)[\s.:)\-]+(.*)$/) || l.match(/^(\d+)\t(.*)$/); if (m){ seq = +m[1]; l = m[2]; }
+      add(l, l, {seq, size:"", note:""}); });
+  }
+  return [...groups.values()];
+}
+async function importText(text){
+  const list = parseList(text);
+  if (!list.length){ impStatus("No addresses found. Check the file has an \"address\" column or one address per line.", 0, true); return; }
+  await importGroups(list, $("impReplace").checked);
+  $("importSheet").hidden = true; showNextStep(0);
+}
+async function importGroups(list, replace){
+  const room = MAX_STOPS - (replace ? 0 : route.stops.length);
+  if (list.length > room){ impStatus("That list has "+list.length+" addresses. The planner takes up to "+MAX_STOPS+" stops"+(replace ? "" : " in total")+". Remove some addresses and try again.", 0, true); return; }
+  if (replace){ route = emptiedRoute(); selId = expandedId = null; $("optMsg").hidden = true; }
+  list.forEach(g => route.stops.push({id:uid(), label:g.address, query:g.search, lat:null, lon:null, geo:"pending", status:"pending", reason:"", parcels:g.parcels}));
+  const np = list.reduce((a,g) => a + g.parcels.length, 0);
+  markStale(); persist(); render();
+  impStatus("Added "+list.length+" stops ("+np+" parcels). Finding their locations…", 0);
+  await locatePending();
+}
+function impStatus(t, frac, err){ $("impStatus").hidden = false; const m = $("impStatusTxt"); m.textContent = t; m.classList.toggle("err", !!err); $("impBar").style.width = Math.round((frac||0)*100)+"%"; }
+let refining = null;
+async function locatePending(){
+  if (busy) return; busy = true; $("btnLocate").disabled = true;
+  const todo = route.stops.filter(s => s.geo === "pending");
+  const need = [], refine = []; let done = 0, fromCache = 0, bias = null;
+  // lookups still queued in the background are done here instead; wait briefly for ones already running
+  const pendingQ = new Set(todo.map(s => s.query || s.label)); for (let i = preQueue.length - 1; i >= 0; i--) if (pendingQ.has(preQueue[i])) { preQueue.splice(i, 1); preTotal--; }
+  for (let w = 0; w < 40 && preBusy; w++) await sleep(250);
+  for (const s of todo){ const k = gkey(s.query || s.label), c = geoCache[k], pre = prefetched[k];
+    if (c){ s.lat = c.lat; s.lon = c.lon; s.geo = c.geo; done++; fromCache++; }
+    else if (pre){ s.lat = pre.lat; s.lon = pre.lon; s.geo = pre.geo; done++; fromCache++; if (pre.geo !== "exact") refine.push(s); }
+    else if (pre === null){ s.geo = "searching"; done++; refine.push(s); }
+    else need.push(s); }
+  const t0 = Date.now(), done0 = done;
+  const progress = () => { const n = done - done0, left = todo.length - done;
+    const eta = n >= 3 && left > 0 ? " · "+fmtLeft((Date.now()-t0)/1000/n*left) : "";
+    const msg = "Finding locations: "+done+" of "+todo.length+eta; impStatus(msg, todo.length ? done/todo.length : 1); $("geoAlertTxt").textContent = msg; };
+  progress(); render();
+  let next = 0, lastRender = 0;
+  const worker = async () => {
+    while (next < need.length){
+      const s = need[next++]; if (!route.stops.includes(s)) continue;
+      if (Date.now() - photonSlow < 3000) await sleep(1500);      // service asked us to slow down
+      let r = await smartLocate(s.query || s.label, bias || undefined);
+      if (r === undefined){ await sleep(1500); r = await smartLocate(s.query || s.label, bias || undefined); }   // one retry, not the slow service
+      if (r){ s.lat = r.lat; s.lon = r.lon; s.geo = r.geo; bias = r; if (r.geo === "exact") cachePut(s.query || s.label, r); else refine.push(s); }
+      else { s.geo = "searching"; refine.push(s); }
+      done++; progress();
+      if (Date.now() - lastRender > 400){ lastRender = Date.now(); render(); }
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);   // three lookups at a time
+  busy = false; $("btnLocate").disabled = false;
+  cacheSave(); persist(); render(); fitAll();
+  const located = todo.filter(s => has(s)).length;
+  impStatus("Done. "+located+" of "+todo.length+" located"+(fromCache ? " ("+fromCache+" already found while scanning or remembered)" : "")+"."+
+    (refine.length ? " Improving "+refine.length+" approximate pins in the background; you can optimise now." : ""), 1);
+  if (refine.length) refineInBackground(refine);
+}
+/* Second pass with the backup address service (limited to one lookup per second), without blocking the driver. */
+async function refineInBackground(list){
+  const my = refining = {}; let improved = 0, k = 0;
+  for (const s of list){
+    if (refining !== my) return;
+    k++; $("geoAlertTxt").textContent = "Improving approximate pins: "+k+" of "+list.length+" · "+fmtLeft((list.length-k+1)*1.3)+" (you can optimise now)";
+    if (!route.stops.includes(s) || s.geo === "manual") continue;
+    const r = await nominatimLocate(s.query || s.label);
+    if (r && (r.geo === "exact" || !has(s))){
+      s.lat = r.lat; s.lon = r.lon; s.geo = r.geo; improved++;
+      if (r.geo === "exact") cachePut(s.query || s.label, r);
+      if (s.status === "pending") markStale();
+    } else if (!has(s)) s.geo = "missing";
+    persist(); render();
+  }
+  refining = null; cacheSave(); persist(); render();
+  if (improved) toast(improved+" pin"+(improved>1?"s":"")+" improved."+(route.opt && route.opt.stale ? " Tap Re-optimise to update the order." : ""));
+}
+
+/* ---------- optimisation ----------
+   All pending stops are solved together as one problem:
+   1. road travel times between every pair of points, fetched in blocks of up to 100 points,
+   2. a local solver (construction + 2-opt + or-opt + random restarts) finds the shortest-time order,
+   3. the road line is drawn in that order. */
+function tourCost(D, order, endIdx){ let c = 0, prev = 0; for (const k of order){ c += D[prev][k]; prev = k; } if (endIdx != null) c += D[prev][endIdx]; return c; }
+function solve(D, endIdx, budgetMs){
+  const n = D.length, S = n, N = n + 1;              // S is a virtual finish node
+  const W = new Float64Array(N*N);
+  for (let i = 0; i < n; i++){ for (let j = 0; j < n; j++) W[i*N+j] = D[i][j]; W[i*N+S] = endIdx == null ? 0 : D[i][endIdx]; }
+  const nodes = []; for (let k = 1; k < n; k++) if (k !== endIdx) nodes.push(k);
+  const m = nodes.length;
+  if (m === 0) return {order:[], cost:tourCost(D, [], endIdx)};
+  const w = (a,b) => W[a*N+b];
+  const pathCost = P => { let c = 0; for (let i = 0; i < P.length-1; i++) c += w(P[i],P[i+1]); return c; };
+  let fwd, bwd;
+  const prefix = P => { const L = P.length; fwd = new Float64Array(L); bwd = new Float64Array(L);
+    for (let x = 1; x < L; x++){ fwd[x] = fwd[x-1] + w(P[x-1],P[x]); bwd[x] = bwd[x-1] + w(P[x],P[x-1]); } };
+  function localSearch(P){
+    const L = P.length; let improved = true; prefix(P);
+    while (improved){
+      improved = false;
+      for (let i = 1; i <= L-3; i++) for (let j = i+1; j <= L-2; j++){        // 2-opt: reverse P[i..j]
+        const d = w(P[i-1],P[j]) + (bwd[j]-bwd[i]) + w(P[i],P[j+1]) - w(P[i-1],P[i]) - (fwd[j]-fwd[i]) - w(P[j],P[j+1]);
+        if (d < -1e-7){ let a = i, b = j; while (a < b){ const t = P[a]; P[a] = P[b]; P[b] = t; a++; b--; } prefix(P); improved = true; }
+      }
+      for (let len = 1; len <= 3; len++) for (let i = 1; i + len - 1 <= L-2; i++){ // or-opt: move P[i..i+len-1], either direction
+        const a = P[i-1], s0 = P[i], sl = P[i+len-1], b = P[i+len];
+        const gain = w(a,s0) + w(sl,b) - w(a,b);
+        const inner = (bwd[i+len-1]-bwd[i]) - (fwd[i+len-1]-fwd[i]);
+        let bestD = -1e-7, bestJ = -1, bestRev = false;
+        for (let j = 0; j <= L-2; j++){ if (j >= i-1 && j <= i+len-1) continue;
+          const p = P[j], q = P[j+1], base = w(p,q);
+          const d1 = w(p,s0) + w(sl,q) - base - gain; if (d1 < bestD){ bestD = d1; bestJ = j; bestRev = false; }
+          const d2 = w(p,sl) + w(s0,q) - base + inner - gain; if (d2 < bestD){ bestD = d2; bestJ = j; bestRev = true; } }
+        if (bestJ >= 0){
+          const seg = P.splice(i, len); if (bestRev) seg.reverse();
+          const at = bestJ < i ? bestJ + 1 : bestJ + 1 - len; P.splice(at, 0, ...seg); prefix(P); improved = true; }
+      }
+    }
+    return P;
+  }
+  let seed = 12345; const rnd = () => (seed = (seed*1103515245+12345) & 0x7fffffff) / 0x7fffffff;
+  const ri = k => Math.floor(rnd()*k);
+  const starts = [];
+  { const left = new Set(nodes), o = []; let cur = 0; while(left.size){ let b=null,bc=Infinity; for(const k of left){ if(w(cur,k)<bc){bc=w(cur,k);b=k;} } o.push(b); left.delete(b); cur=b; } starts.push(o); }
+  { const P = [0, S]; for (const k of nodes){ let bp = 1, bc = Infinity; for (let p = 1; p < P.length; p++){ const c = w(P[p-1],k) + w(k,P[p]) - w(P[p-1],P[p]); if (c < bc){ bc = c; bp = p; } } P.splice(bp, 0, k); } starts.push(P.slice(1,-1)); }
+  const small = m <= 15, t0 = Date.now(), budget = budgetMs != null ? budgetMs : (small ? 400 : Math.min(3000, 600 + m*12));
+  if (small) for (let t = 0; t < 30; t++){ const o = nodes.slice(); for(let i=o.length-1;i>0;i--){ const j=ri(i+1); [o[i],o[j]]=[o[j],o[i]]; } starts.push(o); }
+  let best = null, bestC = Infinity;
+  for (const o of starts){ const P = localSearch([0, ...o, S]); const c = pathCost(P); if (c < bestC - 1e-9){ best = P; bestC = c; } }
+  // iterated local search: random "double-bridge" kicks from the best tour, keep improvements
+  let it = 0;
+  while (m >= 8 && Date.now() - t0 < budget && it < 20000){
+    it++;
+    const L = best.length, cut = [1+ri(L-2), 1+ri(L-2), 1+ri(L-2)].sort((x,y)=>x-y);
+    if (cut[0] === cut[1] || cut[1] === cut[2]) continue;
+    const P = best.slice(0,cut[0]).concat(best.slice(cut[1],cut[2]), best.slice(cut[0],cut[1]), best.slice(cut[2]));
+    localSearch(P); const c = pathCost(P);
+    if (c < bestC - 1e-9){ best = P; bestC = c; }
+  }
+  return {order: best.slice(1,-1), cost: bestC, iterations: it, ms: Date.now()-t0};
+}
+
+async function travelMatrix(pts, onProgress){
+  const n = pts.length, D = pts.map(()=>new Array(n).fill(null)), Dist = pts.map(()=>new Array(n).fill(null));
+  const est = (i,j) => { const d = hav(pts[i],pts[j])*1.35; return [i===j?0:d/(35/3.6), d]; };
+  const fillEst = (I,J) => { for (const i of I) for (const j of J){ const [t,d] = est(i,j); D[i][j] = t; Dist[i][j] = d; } };
+  const req = async (idx, src, dst) => {
+    const coords = idx.map(i => pts[i].lon.toFixed(6)+","+pts[i].lat.toFixed(6)).join(";");
+    let url = OSRM+"/table/v1/driving/"+coords+"?annotations=duration,distance";
+    if (src) url += "&sources="+src.join(";")+"&destinations="+dst.join(";");
+    const j = await fetchJSON(url, 25000); if (!j || j.code !== "Ok" || !j.durations) throw new Error((j && j.code) || "table failed"); return j;
+  };
+  if (n <= TABLE_MAX){
+    const all = pts.map((_,i)=>i);
+    try{ const j = await req(all); for (let a=0;a<n;a++) for (let b=0;b<n;b++){ D[a][b] = j.durations[a][b]; Dist[a][b] = j.distances ? j.distances[a][b] : est(a,b)[1]; } onProgress && onProgress(1);
+      return {D, Dist, road:n*n, estimated:0}; }
+    catch(e){ fillEst(all, all); return {D, Dist, road:0, estimated:n*n}; }
+  }
+  const C = Math.floor(TABLE_MAX/2), chunks = [];
+  for (let i = 0; i < n; i += C) chunks.push(pts.map((_,k)=>k).slice(i, i+C));
+  let doneB = 0, road = 0, estd = 0; const totalB = chunks.length*chunks.length;
+  for (const I of chunks) for (const J of chunks){
+    const idx = I === J ? I : I.concat(J);
+    const src = I.map((_,k)=>k), dst = I === J ? src : J.map((_,k)=>I.length+k);
+    let ok = false;
+    for (let attempt = 0; attempt < 2 && !ok; attempt++){
+      try{ const j = await req(idx, src, dst);
+        I.forEach((gi,a) => J.forEach((gj,b) => { D[gi][gj] = j.durations[a][b]; Dist[gi][gj] = j.distances ? j.distances[a][b] : est(gi,gj)[1]; }));
+        ok = true; road += I.length*J.length; }
+      catch(e){ await sleep(1500); }
+    }
+    if (!ok){ fillEst(I, J); estd += I.length*J.length; }
+    doneB++; onProgress && onProgress(doneB/totalB);
+    await sleep(300);
+  }
+  return {D, Dist, road, estimated:estd};
+}
+
+async function optimise(){
+  if (busy){ toast("Still finding locations. Try again in a moment."); return; }
+  const btn = $("btnOpt");
+  const done = route.stops.filter(s => s.status !== "pending");
+  const pend = route.stops.filter(s => s.status === "pending" && has(s));
+  const noLoc = route.stops.filter(s => s.status === "pending" && !has(s));
+  if (pend.length < 2){ showMsg("Add at least 2 pending stops with a location to optimise.", true); return; }
+  const startPt = has(route.start) ? route.start : null;
+  const lastDone = [...done].reverse().find(has);
+  const liveOk = has(myLoc) && Date.now() - myLoc.at < 180000 && hav(myLoc, pend[0]) < 150000;
+  const origin = done.length && liveOk ? {lat:myLoc.lat, lon:myLoc.lon, id:"__me"} : (lastDone || startPt);
+  if (!origin){ showMsg("Set a start address or tap \"Use my location as start\" first.", true); return; }
+  if (hav(origin, pend[0]) > 150000 && pend.every(p => hav(origin, p) > 150000)){ showMsg("The start is more than 150 km from the stops. Choose a start near the deliveries.", true); return; }
+  const closed = false;   // runs end at the last stop; the driver knows where to go after
+  const pts = [origin].concat(pend); let endIdx = null;
+  if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
+  btn.disabled = true; btn.textContent = "Getting road times…"; const bar = $("optBar"); bar.hidden = false; bar.firstElementChild.style.width = "0";
+  const M = await travelMatrix(pts, f => { bar.firstElementChild.style.width = Math.round(f*90)+"%"; });
+  btn.textContent = "Optimising…"; await sleep(30);
+  const method = M.estimated === 0 ? "road" : (M.road === 0 ? "estimate" : "partial");
+  const D = M.D.map(r => r.map(v => v == null ? 1e7 : v)), Dist = M.Dist;
+  const before = tourCost(D, pend.map((_,i)=>i+1), endIdx);
+  const res = solve(D, endIdx);
+  bar.firstElementChild.style.width = "100%";
+  const ordered = res.order.map(k => pts[k]);
+  if (new Set(ordered.map(s=>s.id)).size !== pend.length){ showMsg("Optimisation failed a safety check. Your order was not changed.", true); btn.disabled=false; btn.textContent="Optimise route"; bar.hidden = true; return; }
+  route.stops = done.concat(ordered, noLoc);
+  let distSum = 0, prev = 0; for (const k of res.order){ distSum += Dist[prev][k]; prev = k; } if (endIdx!=null) distSum += Dist[prev][endIdx];
+  route.opt = {method, duration:res.cost, distance:distSum, before, stops:pend.length, matrix:pts.length, solveMs:res.ms, at:Date.now(), stale:false, geometry:null, legs:null, closed:!!closed, origin:{lat:origin.lat, lon:origin.lon}};
+  persist(); render();
+  const saved = before - res.cost;
+  const fromTxt = origin.id === "__me" ? " starting from your current location" : (lastDone && origin === lastDone ? " starting from your last finished stop" : "");
+  let t = method === "road" ? "Optimised all "+pend.length+" pending stops together using road travel times"+fromTxt+"."
+        : method === "partial" ? "Optimised all "+pend.length+" pending stops together. Some road times were unavailable, so part of the plan uses straight-line estimates."
+        : "Routing service unavailable, so all "+pend.length+" stops were optimised using straight-line estimates.";
+  t += saved > 30 ? " Saves about "+fmtTime(saved)+" ("+Math.round(saved/before*100)+"%) versus the previous order." : " The previous order was already close to the best found.";
+  if (noLoc.length) t += " "+noLoc.length+" stop"+(noLoc.length>1?"s":"")+" without a location were left at the end.";
+  showMsg(t, method !== "road");
+  btn.disabled = false; btn.textContent = "Re-optimise"; bar.hidden = true;
+  await drawRoad();
+}
+async function drawRoad(){
+  if (!route.opt || route.opt.method === "estimate") return;
+  const pend = route.stops.filter(s => s.status === "pending" && has(s));
+  const origin = route.opt.origin; if(!has(origin) || !pend.length) return;
+  const pts = [origin].concat(pend); if (route.opt.closed && has(route.start)) pts.push(route.start);
+  const legs = [], geom = []; let dur = 0, dist = 0;
+  try{
+    for (let i = 0; i < pts.length - 1; i += 60){
+      const part = pts.slice(i, Math.min(i + 61, pts.length));
+      const coords = part.map(p => p.lon.toFixed(6)+","+p.lat.toFixed(6)).join(";");
+      const j = await fetchJSON(OSRM+"/route/v1/driving/"+coords+"?overview=full&geometries=geojson&steps=false", 25000);
+      if (!j || j.code !== "Ok") throw new Error("route failed");
+      const r = j.routes[0]; dur += r.duration; dist += r.distance; r.legs.forEach(l => legs.push(l.duration));
+      r.geometry.coordinates.forEach(c => geom.push([+(c[1].toFixed(5)), +(c[0].toFixed(5))]));
+      if (i + 60 < pts.length - 1) await sleep(300);
+    }
+    if (!route.opt || route.opt.stale) return;
+    route.opt.geometry = geom; route.opt.legs = {}; pend.forEach((st,i) => { route.opt.legs[st.id] = legs[i]; });
+    if (route.opt.method === "road"){ route.opt.duration = dur; route.opt.distance = dist; }
+    persist(); render();
+  }catch(e){ /* keep straight connector lines */ }
+}
+function showMsg(t, warn){ const m = $("optMsg"); m.textContent = t; m.hidden = false; m.classList.toggle("err", !!warn); }
+
+/* ---------- sample route ---------- */
+async function loadSample(){
+  route = emptiedRoute(); route.name = route.name || "Parramatta test run";
+  route.start = Object.assign({}, SAMPLE_START);
+  route.stops = SAMPLE.map(([label,lat,lon]) => ({id:uid(), label, query:label, lat, lon, geo:"street", approx:true, status:"pending", reason:"", parcels:[]}));
+  selId = expandedId = null; $("optMsg").hidden = true;
+  persist(); render(); fitAll(); toast("Loaded 25 test stops. Checking their exact locations…");
+  let fixed = 0;
+  for (const s of route.stops){
+    try{ const r = (await geocode(s.label, 1))[0];
+      if (r && hav(r, s) < 2500){ s.lat = r.lat; s.lon = r.lon; s.approx = false; s.geo = "exact"; fixed++; } }catch(e){}
+    await sleep(250);
+  }
+  persist(); render();
+  toast(fixed === route.stops.length ? "All 25 test stops located." : fixed+" of 25 test stops located exactly; the rest use approximate pins.");
+}
+
+/* ---------- my location ---------- */
+let lastStepPages = 0;
+function showNextStep(pages, busyText){
+  if (pages != null) lastStepPages = pages;
+  const box = $("nextStep"), st = route.stops, np = st.reduce((a,x) => a + parcels(x).length, 0);
+  box.hidden = false; $("app-main").scrollTop = 0;
+  if (busyText){ $("nsTitle").textContent = busyText; $("nsText").textContent = "Finding map locations…"; ["nsOpt","nsLocOpt","nsStart"].forEach(id => $(id).hidden = true); return; }
+  const miss = st.filter(x => !has(x)).length;
+  $("nsTitle").textContent = "✓ " + st.length + " stops added" + (np !== st.length ? " (" + np + " parcels)" : "") + (pages ? " from " + pages + " page" + (pages > 1 ? "s" : "") : "");
+  const hasStart = has(route.start);
+  $("nsText").textContent = (miss ? miss + " stop" + (miss > 1 ? "s" : "") + " still need a map location (shown at the end of the list). " : "") +
+    (hasStart ? "Next: optimise the delivery order from " + route.start.label + "." : "Next: choose where you start, then the app works out the best delivery order.");
+  $("nsOpt").hidden = !hasStart; $("nsLocOpt").hidden = hasStart || !startMeOn; $("nsStart").hidden = hasStart && !startMeOn;
+  $("nsLocOpt").textContent = "Allow location and optimise"; $("nsLocOpt").className = "btn primary";
+  $("nsStart").textContent = startMeOn ? "Type a start address instead" : "Change the start address";
+  if (hasStart) $("nsText").textContent = (miss ? miss + " stop" + (miss > 1 ? "s" : "") + " still need a map location (shown at the end of the list). " : "") + "Next: optimise the delivery order from " + (route.start.me ? "your location" : route.start.label) + ".";
+  else if (startMeOn && has(myLoc) && farFromStops(myLoc)){ $("nsText").textContent = "You are more than 150 km from these stops, so the route can't start from your location. Type a start address near the deliveries."; $("nsLocOpt").hidden = true; $("nsStart").className = "btn primary"; }
+  else $("nsStart").className = "btn ghost";
+  fitAll();
+}
+let afterLocate = null;
+function startLocation(then){
+  afterLocate = typeof then === "function" ? then : null;
+  if (!navigator.geolocation){ toast("This browser cannot share your location."); return; }
+  $("btnMyLoc").disabled = true; $("btnMyLoc").textContent = "Finding you…";
+  let first = true;
+  if (watchId != null) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(p => {
+    myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()};
+    if (first){ first = false;
+      $("btnMyLoc").disabled = false; drawMe();
+      if (farFromStops(myLoc)){
+        afterLocate = null; $("btnMyLoc").textContent = "Use my location as start"; $("nsLocOpt").textContent = "Start from my location and optimise";
+        const msg = "You are more than 150 km from these stops, so your location can't be the start. Type a start address near the deliveries (for example the depot).";
+        toast(msg); if (!$("nextStep").hidden) $("nsText").textContent = msg;
+        return; }
+      route.start = {label:"My location", lat:myLoc.lat, lon:myLoc.lon, me:true}; updateStartMeTxt();
+      $("btnMyLoc").textContent = "Update start to my location";
+      toast("Start set to your location (accuracy about "+Math.round(myLoc.acc)+" m)");
+      if (afterLocate){ const f = afterLocate; afterLocate = null; markStale(); persist(); render(); f(); }
+      else startChanged();
+      map.setView([myLoc.lat, myLoc.lon], Math.max(map.getZoom(), 14)); }
+    drawMe();
+  }, err => {
+    $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Use my location as start"; $("nsLocOpt").textContent = "Start from my location and optimise"; afterLocate = null;
+    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Open the iPhone Settings app → Dropline → Location → \"While Using the App\", then come back." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
+    toast(err.code === 1 ? "Location is off. Type a start address instead, or turn location on." : "Could not get your location. Try again outdoors.");
+  }, {enableHighAccuracy:true, maximumAge:10000, timeout:20000});
+}
+
+/* ---------- map ---------- */
+const map = L.map("map", {zoomControl:true, attributionControl:true}).setView([-34.9285, 138.6007], 12);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+const layer = L.layerGroup().addTo(map), meLayer = L.layerGroup().addTo(map);
+function pin(cls, txt){ return L.divIcon({className:"", html:'<div class="pin '+cls+'"><span>'+txt+'</span></div>', iconSize:[28,28], iconAnchor:[14,28]}); }
+function drawMe(){ meLayer.clearLayers(); if (!has(myLoc)) return;
+  L.circle([myLoc.lat, myLoc.lon], {radius:Math.min(myLoc.acc||30, 300), color:"#1a73e8", weight:1, fillOpacity:.12, interactive:false}).addTo(meLayer);
+  L.circleMarker([myLoc.lat, myLoc.lon], {radius:8, color:"#ffffff", weight:3, fillColor:"#1a73e8", fillOpacity:1, interactive:false}).addTo(meLayer); }
+function drawMap(){
+  layer.clearLayers();
+  if (has(route.start)) L.marker([route.start.lat, route.start.lon], {icon:pin("start","S"), zIndexOffset:1000, title:"Start"}).addTo(layer).bindTooltip("Start: "+route.start.label).on("click", ev => { if (placingId) map.fire("click", {latlng:ev.latlng}); });
+  const seen = {};
+  route.stops.forEach((s,i) => { if (!has(s)) return;
+    const key = s.lat.toFixed(5)+","+s.lon.toFixed(5), k = seen[key] = (seen[key] || 0) + 1;
+    const a = k * 2.4, r = k > 1 ? 0.00012 * Math.sqrt(k) : 0;
+    const m = L.marker([s.lat + r*Math.sin(a), s.lon + r*Math.cos(a)], {icon:pin(s.status+(isPick(s)?" pickup":"")+(s.id===selId?" sel":""), i+1), title:(i+1)+". "+s.label}).addTo(layer);
+    m.on("click", ev => { if (placingId){ map.fire("click", {latlng:ev.latlng}); return; } selId = expandedId = s.id; render(); const el = document.querySelector('[data-id="'+s.id+'"]'); if(el) el.scrollIntoView({block:"center", behavior:"smooth"}); });
+  });
+  if (route.opt && !route.opt.stale && route.opt.geometry) L.polyline(route.opt.geometry, {color:"#0f5c5a", weight:5, opacity:.8}).addTo(layer);
+  else { const line = (has(route.start) ? [[route.start.lat, route.start.lon]] : []).concat(route.stops.filter(has).map(s => [s.lat, s.lon]));
+    if (line.length > 1) L.polyline(line, {color:"#55636a", weight:2, dashArray:"6 6", opacity:.7}).addTo(layer); }
+}
+function fitAll(){ const pts = route.stops.filter(has).map(s=>[s.lat,s.lon]); if(has(route.start)) pts.push([route.start.lat,route.start.lon]); if(pts.length) map.fitBounds(pts, {padding:[30,30], maxZoom:15}); }
+map.on("click", e => {
+  if (!placingId) return; const s = route.stops.find(x => x.id === placingId); placingId = null; document.body.classList.remove("placing");
+  if (!s) return; s.lat = e.latlng.lat; s.lon = e.latlng.lng; s.geo = "manual"; s.approx = false; cachePut(s.query || s.label, s); cacheSave(); markStale(); persist(); render(); toast("Pin moved for stop "+(route.stops.indexOf(s)+1));
+});
+
+/* ---------- render ---------- */
+const REASONS = ["No one home","Address not found","Refused","Unsafe access","Other"];
+function render(){
+  try { if (startMeOn && route.start && route.start.me && route.stops.length && farFromStops(route.start)){ route.start = null; route.opt = null; } } catch(e){}
+  if (typeof updateStartMeTxt === 'function') try { updateStartMeTxt(); } catch(e){}
+  const st = route.stops, cnt = {pending:0,delivered:0,failed:0,skipped:0}; st.forEach(s => cnt[s.status]++);
+  $("cP").textContent = cnt.pending; $("cD").textContent = cnt.delivered; $("cF").textContent = cnt.failed; $("cK").textContent = cnt.skipped;
+  $("nStops").textContent = st.length;
+  const nParc = st.reduce((a,s) => a + pcount(s), 0), nPick = st.filter(isPick).length;
+  $("nParcels").textContent = [nParc !== st.length ? nParc+" parcels" : "", nPick ? nPick+" pickup"+(nPick>1?"s":"") : ""].filter(Boolean).join(" · ");
+  const o = route.opt, b = $("optBadge");
+  if (!o){ b.className = "badge"; b.textContent = "Not optimised"; $("mTime").textContent = "–"; $("mDist").textContent = "–"; }
+  else { $("mTime").textContent = o.stale ? "–" : fmtTime(o.duration); $("mDist").textContent = o.stale ? "–" : fmtDist(o.distance);
+    if (o.stale){ b.className = "badge stale"; b.textContent = "Needs re-optimise"; $("optMsg").hidden = true; }
+    else if (o.method === "road"){ b.className = "badge live"; b.textContent = "Optimised"; }
+    else { b.className = "badge est"; b.textContent = "Estimate"; } }
+  if (!busy) $("btnOpt").textContent = o && !o.stale ? "Re-optimise" : "Optimise route";
+  if (document.activeElement !== $("startIn")) $("startIn").value = route.start && !route.start.me ? route.start.label : "";
+  $("emptyHint").hidden = st.length > 0;
+  $("routeTitle").firstChild.nodeValue = route.name || "Route";
+  $("routeSub").textContent = st.length ? st.length+" stop"+(st.length===1?"":"s")+" · "+cnt.delivered+" delivered" : "No stops yet";
+  $("sumPanel").hidden = !st.length;
+  $("btnClear").hidden = !st.length;
+
+  const nSearch = st.filter(s => s.geo === "searching").length, nPend = st.filter(s => s.geo === "pending").length, nMiss = st.filter(s => s.geo === "missing").length, nChk = st.filter(s => s.geo === "street").length;
+  $("geoAlert").hidden = !(nPend || nMiss || nChk || nSearch || refining);
+  if (!busy && !refining) $("geoAlertTxt").textContent = nPend ? nPend+" stops still need a location." : [nMiss ? nMiss+" stop"+(nMiss>1?"s have":" has")+" no map pin" : "", nChk ? nChk+" stop"+(nChk>1?"s have":" has")+" an approximate map pin" : ""].filter(Boolean).join(" and ")+". Tap Check pins to look at "+((nMiss+nChk)>1?"them one by one":"it")+"; this does not start a trip.";
+  $("btnLocate").hidden = !nPend; $("btnShowProb").hidden = !(nMiss || nChk);
+
+  const nextIdx = st.findIndex(s => s.status === "pending"), nx = st[nextIdx];
+  $("nextCard").hidden = !nx || !(o && !o.stale) && cnt.delivered+cnt.failed+cnt.skipped === 0;
+  if (nx){ $("nextNum").textContent = "· #"+(nextIdx+1)+" of "+st.length; $("nextAddr").textContent = nx.label;
+    const leg = o && !o.stale && o.legs ? o.legs[nx.id] : null;
+    const ups = st.slice(nextIdx+1).map((x,k) => [x, nextIdx+1+k]).filter(([x]) => x.status === "pending").slice(0, 2);
+    const upEl = $("upNext"), prevFirst = upEl.dataset.first; upEl.hidden = !ups.length;
+    upEl.innerHTML = ups.map(([x,k], q) => '<li class="'+(prevFirst && prevFirst !== x.id && animNext ? "new" : "")+'"><b>#'+(k+1)+'</b><span>'+(q ? "" : "Then: ")+(isPick(x) ? "↑ Pickup · " : "")+esc(x.label)+'</span></li>').join("");
+    upEl.dataset.first = ups.length ? ups[0][0].id : "";
+    document.querySelector('#nextCard [data-next="delivered"]').textContent = isPick(nx) ? "Picked up" : "Delivered";
+    document.querySelector('#nextCard .label').firstChild.nodeValue = isPick(nx) ? "Next pickup " : "Next stop ";
+    $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + parcelLine(nx);
+    $("nextChips").innerHTML = chipsFor(nx) + parcels(nx).filter(p => p.size).map(p => '<span class="chip pending" style="text-transform:none">'+esc((p.seq!=null?"#"+p.seq+" ":"")+p.size+" cm")+'</span>').join("");
+    $("nextNav").href = gmaps(nx, prevPoint(nextIdx)); $("nextPin").href = geoLink(nx); $("nextCard").dataset.id = nx.id;
+    const rs = $("nextReasons"); rs.hidden = failPickId !== nx.id;
+    rs.innerHTML = '<span class="label" style="width:100%">Why did it fail?</span>' + REASONS.map(r => '<button class="btn" data-nreason="'+esc(r)+'">'+esc(r)+'</button>').join("");
+  }
+
+  let elapsed = 0;
+  $("stops").innerHTML = st.map((s,i) => {
+    let eta = "";
+    if (o && !o.stale && o.legs && s.status === "pending" && o.legs[s.id] != null){ elapsed += o.legs[s.id]; eta = " · ~"+fmtTime(elapsed)+" drive"; }
+    const exp = expandedId === s.id;
+    return '<li class="stop'+(s.id===selId?" sel":"")+'" data-id="'+s.id+'">' +
+      '<div class="num '+s.status+'">'+(i+1)+'</div>' +
+      '<div class="txt" data-tap="'+s.id+'"><div class="a">'+esc(s.label)+'</div><div class="m"><span class="chip '+s.status+'">'+statusWord(s)+'</span>'+(s.reason?" "+esc(s.reason):"")+" · "+esc(parcelLine(s))+eta+'</div><div class="chips">'+chipsFor(s)+'</div></div>' +
+      '<div class="row" style="gap:0;flex-wrap:nowrap"><button class="handle" aria-label="Move up" data-up="'+s.id+'">▲</button><button class="handle" aria-label="Move down" data-down="'+s.id+'">▼</button><button class="handle drag" aria-label="Drag to reorder">☰</button></div>' +
+      (exp ? '<div class="more">' +
+        '<div class="kindrow"><span class="seg" role="group" aria-label="Stop type"><button data-kind="delivery" data-sid="'+s.id+'" class="'+(isPick(s)?"":"on")+'">Delivery</button><button data-kind="pickup" data-sid="'+s.id+'" class="'+(isPick(s)?"on":"")+'">Pickup</button></span>' +
+        '<span class="qty" aria-label="Number of parcels"><button data-qty="-1" data-sid="'+s.id+'" aria-label="One parcel fewer">−</button><b>'+pcount(s)+' parcel'+(pcount(s)===1?"":"s")+'</b><button data-qty="1" data-sid="'+s.id+'" aria-label="One more parcel">+</button></span></div>' +
+        (s.status!=="delivered" ? '<button class="btn act-d" data-st="delivered" data-sid="'+s.id+'">'+(isPick(s)?"Picked up":"Delivered")+'</button>' : '') +
+        (s.status!=="failed" ? '<button class="btn act-f" data-st="failed" data-sid="'+s.id+'">Failed</button>' : '') +
+        (s.status!=="skipped" ? '<button class="btn act-k" data-st="skipped" data-sid="'+s.id+'">Skip</button>' : '') +
+        (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') +
+        '<a class="btn ghost" style="text-decoration:none" href="'+gmaps(s, prevPoint(i))+'">Google Maps ↗</a>' +
+        '<a class="btn ghost" style="text-decoration:none" href="'+geoLink(s)+'">Show pin</a>' +
+        '<button class="btn ghost" data-place="'+s.id+'">Move pin</button>' +
+        '<button class="btn ghost" data-rm="'+s.id+'">Remove</button>' +
+        (parcels(s).some(p => p.size) ? '<div class="m" style="width:100%">'+parcels(s).map(p => esc((p.seq!=null?"#"+p.seq+": ":"")+(p.size ? p.size+" cm" : "size not listed"))).join(" · ")+'</div>' : '') +
+        (failPickId===s.id ? '<div class="reasons"><span class="label" style="width:100%">Why did it fail?</span>'+REASONS.map(r=>'<button class="btn" data-reason="'+esc(r)+'" data-sid="'+s.id+'">'+esc(r)+'</button>').join("")+'</div>' : '') +
+        '</div>' : '') +
+      '</li>';
+  }).join("");
+  drawMap();
+}
+
+/* ---------- events ---------- */
+wireSearch($("addrIn"), $("addrSugg"), addStop);
+wireSearch($("startIn"), $("startSugg"), setStart);
+$("btnOpt").addEventListener("click", optimise);
+$("btnFit").addEventListener("click", fitAll);
+$("btnMyLoc").addEventListener("click", () => startLocation());
+$("nsOpt").addEventListener("click", () => { $("nextStep").hidden = true; optimise(); });
+$("nsLocOpt").addEventListener("click", () => { $("nsLocOpt").textContent = "Finding your location…"; setStartMode(true, true); startLocation(() => { $("nextStep").hidden = true; optimise(); }); });
+$("nsStart").addEventListener("click", () => { setStartMode(false, true); const i = $("startIn"); i.scrollIntoView({block:"center", behavior:"smooth"}); setTimeout(() => i.focus(), 300); });
+$("btnLocate").addEventListener("click", locatePending);
+let probIdx = -1;
+$("btnShowProb").addEventListener("click", () => {
+  const probs = route.stops.filter(s => s.geo === "missing" || s.geo === "street"); if (!probs.length) return;
+  probIdx = (probIdx + 1) % probs.length; const s = probs[probIdx]; selId = expandedId = s.id; render();
+  const el = document.querySelector('[data-id="'+s.id+'"]'); if (el) el.scrollIntoView({block:"center", behavior:"smooth"});
+  if (has(s)) map.setView([s.lat, s.lon], 17); toast("Pin check "+(probIdx+1)+" of "+probs.length+" — stop #"+(route.stops.indexOf(s)+1)+": "+(s.geo === "missing" ? "no map pin yet. Tap Move pin, then tap the map." : "is the pin in the right place? If not, tap Move pin.")); });
+$("btnClear").addEventListener("click", () => $("clearConfirm").hidden = false);
+$("clearNo").addEventListener("click", () => $("clearConfirm").hidden = true);
+$("clearYes").addEventListener("click", () => { route = emptiedRoute(); $("clearConfirm").hidden = true; $("optMsg").hidden = true; persist(); render(); });
+$("stops").addEventListener("click", e => {
+  const t = e.target;
+  if (t.dataset.up){ move(t.dataset.up, -1); return; }
+  if (t.dataset.down){ move(t.dataset.down, 1); return; }
+  if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
+  if (t.dataset.place){ placingId = t.dataset.place; document.body.classList.add("placing"); window.scrollTo({top:0, behavior:"smooth"}); toast("Tap the map where this stop is."); return; }
+  if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
+  if (t.dataset.kind){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ if (t.dataset.kind === "pickup") s.kind = "pickup"; else delete s.kind; persist(); render(); } return; }
+  if (t.dataset.qty){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ s.qty = Math.max(1, Math.min(99, pcount(s) + Number(t.dataset.qty))); persist(); render(); } return; }
+  if (t.dataset.st){ if (t.dataset.st === "failed"){ failPickId = t.dataset.sid; render(); return; } setStatus(t.dataset.sid, t.dataset.st); return; }
+  const tap = t.closest("[data-tap]"); if (tap){ const id = tap.dataset.tap; expandedId = expandedId === id ? null : id; selId = id; failPickId = null; render();
+    const s = route.stops.find(x=>x.id===id); if (has(s)) map.panTo([s.lat, s.lon]); }
+});
+/* slide the finished stop out, stamp it, slide the next one in */
+let animNext = false;
+const reduceMotion = () => { try{ return matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } };
+function slideSwap(el, stampEl, status, label, update){
+  try{ navigator.vibrate && navigator.vibrate(25); }catch(e){}
+  if (stampEl){ stampEl.className = "stamp " + status; stampEl.textContent = label; stampEl.hidden = false; }
+  if (reduceMotion() || !el){ update(); if (stampEl) setTimeout(() => stampEl.hidden = true, 700); return; }
+  el.classList.add("out");
+  setTimeout(() => {
+    update(); el.classList.remove("out"); el.classList.add("in"); void el.offsetWidth;
+    requestAnimationFrame(() => { el.classList.remove("in"); });
+    if (stampEl) setTimeout(() => stampEl.hidden = true, 450);
+  }, 230);
+}
+function doneWord(st, pick){ return st === "delivered" ? (pick ? "✓ Picked up" : "✓ Delivered") : st === "failed" ? "✗ Failed" : "↷ Skipped"; }
+let swapping = false;
+function finishNext(id, st, reason){
+  if (swapping) return; swapping = true; setTimeout(() => swapping = false, reduceMotion() ? 0 : 300);
+  const pick = isPick(route.stops.find(x => x.id === id));
+  slideSwap($("nextBody"), $("nextStamp"), st, doneWord(st, pick), () => { animNext = true; setStatus(id, st, reason); animNext = false; });
+}
+document.querySelector("#nextCard .acts").addEventListener("click", e => { const st = e.target.dataset.next; if(!st || swapping) return; const id = $("nextCard").dataset.id;
+  if (st === "failed"){ failPickId = failPickId === id ? null : id; render(); return; } finishNext(id, st); });
+$("nextReasons").addEventListener("click", e => { const r = e.target.dataset.nreason; if(!r) return; finishNext($("nextCard").dataset.id, "failed", r); });
+if (window.Sortable) Sortable.create($("stops"), {handle:".drag", animation:150, onEnd: ev => {
+  if (ev.oldIndex === ev.newIndex) return; const [s] = route.stops.splice(ev.oldIndex, 1); route.stops.splice(ev.newIndex, 0, s); markStale(); persist(); render(); }});
+
+
+/* ---------- scan a paper run sheet, page by page (Android app: on-device Google ML Kit text recognition) ---------- */
+const APK_URL = "https://github.com/Sandip-ios/RouteApp_Australia/releases/download/app-latest/dropline.apk";
+const STORE_SCAN = "dropline.scan.v1";
+function nativeScanner(){
+  if (window.__DroplineScanEngine) return window.__DroplineScanEngine;             // test hook
+  const C = window.Capacitor; if (!C || !(C.isNativePlatform ? C.isNativePlatform() : C.isNative)) return null;
+  const P = (C.Plugins && C.Plugins.TextScan) || (C.registerPlugin ? C.registerPlugin("TextScan") : null);
+  if (P && P.recognize) return P;
+  return C.nativePromise ? {recognize: o => C.nativePromise("TextScan", "recognize", o)} : null;
+}
+let scan = loadJSON(STORE_SCAN) || {pages:[], total:null};
+let scanPage = null;          // the page being reviewed: {rows, thumbs, ms, lines}
+const thumbs = {};            // seq -> image of that row (kept in memory only)
+function scanSave(){ saveJSON(STORE_SCAN, {pages:scan.pages, total:scan.total}); }
+function scanLastSeq(){ let m = 0; scan.pages.forEach(p => p.rows.forEach(r => { if (r.seq > m) m = r.seq; })); return m; }
+function scanCount(){ return scan.pages.reduce((a,p) => a + p.rows.filter(r => r.address).length, 0); }
+
+async function photoToCanvas(file){
+  let bmp;
+  try{ bmp = await createImageBitmap(file, {imageOrientation:"from-image"}); }
+  catch(e){ bmp = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = URL.createObjectURL(file); }); }
+  const W = bmp.width, H = bmp.height, k = Math.min(1, 1800 / Math.max(W, H));
+  const c = document.createElement("canvas"); c.width = Math.round(W*k); c.height = Math.round(H*k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return c;
+}
+function cropRow(canvas, box){
+  if (!box) return "";
+  const pad = 6, x = Math.max(0, box.x - pad), y = Math.max(0, box.y - pad), w = Math.min(canvas.width - x, box.x2 - box.x + 2*pad), h = Math.min(canvas.height - y, box.y2 - box.y + 2*pad);
+  if (w < 4 || h < 4) return "";
+  const k = Math.min(1, 640 / w), c = document.createElement("canvas"); c.width = Math.round(w*k); c.height = Math.round(h*k);
+  c.getContext("2d").drawImage(canvas, x, y, w, h, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.7);
+}
+/* Background location finding while pages are being scanned, so Done is near-instant. */
+const prefetched = {};                // search key -> result object, or null when not found
+const preQueue = []; let preBusy = 0, preDone = 0, preTotal = 0;
+function prefetch(q){
+  const k = gkey(q); if (!q || k in prefetched || geoCache[k] || preQueue.includes(q)) return;
+  preQueue.push(q); preTotal++; pumpPrefetch();
+}
+function pumpPrefetch(){
+  while (preBusy < 3 && preQueue.length){
+    const q = preQueue.shift(); preBusy++;
+    (async () => {
+      let r = await smartLocate(q, biasPoint());
+      if (r === undefined){ await sleep(1500); r = await smartLocate(q, biasPoint()); }
+      prefetched[gkey(q)] = r || null;
+      flagFromLookup(q, r);
+      if (r && r.geo === "exact"){ cachePut(q, r); }
+      preDone++; preBusy--; showPrefetch(); pumpPrefetch();
+      if (!preQueue.length && !preBusy) cacheSave();
+    })();
+  }
+  showPrefetch();
+}
+function flagFromLookup(q, r){
+  if (!scanPage) return; let changed = false;
+  for (const row of scanPage.rows){
+    if ((row.search || row.address) !== q || row.status === "confirmed" || row.status === "fixed" || row.status === "missing") continue;
+    // "LEVEL14 Russell Ave": the level and the house number may have run together (Level 1, number 4?) — ask, never guess
+    if (/\bL(?:E?VE?)?L\s*\d{2,}\s+[A-Za-z]/i.test(row.address) && !/\bL(?:E?VE?)?L\s*\d+(?:\s*[,/-]\s*|\s+)\d+/i.test(row.address)){
+      if (row.status !== "check"){ row.status = "check"; row.problem = "Level and house number may be joined — check the number"; changed = true; }
+      continue;
+    }
+    const exactOfficial = r && r.source === "gnaf" && r.geo === "exact" && !r.corrected;
+    if (exactOfficial){
+      row.official = r.official;
+      const readNum = (String(row.search || "").match(/^\s*(\S+)/) || [])[1] || "", offNum = (r.official.match(/^(\S+)/) || [])[1] || "";
+      if (readNum && offNum && readNum.toUpperCase() !== offNum.toUpperCase()){ row.address = r.official; row.search = r.official; row.autofixed = true; changed = true; }
+      // the address exists exactly in the official list: no need to ask, unless the row number itself is in doubt
+      if (row.status === "check" && !/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; changed = true; }
+      continue;
+    }
+    if (r && r.source === "gnaf" && r.geo === "exact" && r.corrected && r.official){
+      // only the spelling of the street or suburb differed ("Fiorence" → Florence): take the official spelling
+      const lead = (row.address.match(/^(.*?)(\d+[A-Za-z]?\s)/) || [])[1] || "";
+      row.address = r.official; row.search = r.official; row.autofixed = true;
+      if (!/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; }
+      changed = true; continue;
+    }
+    // not in the official list: try to work out what was meant
+    gnafSuggest(q).then(sug => {
+      if (!scanPage || !scanPage.rows.includes(row) || row.status === "confirmed" || row.status === "fixed") return;
+      if (sug && sug.sure){ row.address = sug.official; row.search = sug.official; row.autofixed = true;
+        if (!/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; } }
+      else if (sug){ row.suggest = sug.official; row.status = "check"; row.problem = "Not in the official address list — check the house number"; }   // keep what was read; the guess is only offered
+      else { row.status = "check"; row.problem = r ? "Not in the official address list — check the house number" : "Address not found — check it"; }
+      prefetch(row.search);
+      if (!(document.activeElement && document.activeElement.classList.contains("sinput"))) renderScan();
+    });
+  }
+  if (changed && !(document.activeElement && document.activeElement.classList.contains("sinput"))) renderScan();
+}
+function showPrefetch(){
+  const el = $("scanLocating"); if (!el) return;
+  const left = preQueue.length + preBusy;
+  el.hidden = !preTotal;
+  el.textContent = left ? "Finding map locations in the background: "+preDone+" of "+preTotal+" done" : "✓ Map locations found for "+preDone+" addresses";
+}
+
+async function scanPhoto(file){
+  const eng = nativeScanner(); if (!eng){ scanMsg("Photo scanning needs the Dropline Android app.", true); return; }
+  const n = scan.pages.length + 1, t0 = performance.now();
+  scanPage = null; renderScan(); scanMsg("Reading page "+n+"…");
+  let canvas, res;
+  try{
+    canvas = await photoToCanvas(file);
+    res = await eng.recognize({image: canvas.toDataURL("image/jpeg", 0.92)});
+  }catch(e){ scanMsg("That photo could not be read. Try again, or choose a different photo.", true); return; }
+  const page = DroplineScan.readPage(res.lines || [], scanLastSeq());
+  if (page.total) scan.total = page.total;
+  const secs = ((performance.now() - t0)/1000).toFixed(1);
+  if (!page.rows.length){ scanMsg("No addresses found in that photo. Hold the phone flat above the page so the whole table fills the screen, with good light, and try again.", true); return; }
+  page.rows.forEach(r => { thumbs[r.seq] = cropRow(canvas, r.box); delete r.box; });
+  scanPage = {rows: page.rows, lines: res.lines, ms: res.ms, secs, first: page.firstSeq, last: page.lastSeq, showAll: false};
+  page.rows.forEach(r => { if (r.address) prefetch(r.search || r.address); });
+  $("scanMsg").hidden = true; $("scanNextWarn").hidden = true; delete $("scanNext").dataset.warned; delete $("scanFinish").dataset.warned;
+  renderScan();
+}
+function scanMsg(t, err){ const m = $("scanMsg"); m.hidden = false; m.textContent = t; m.classList.toggle("err", !!err); }
+const needsLook = r => r.status === "check" || r.status === "missing";
+function rowCard(r, i, compact){
+  const look = needsLook(r), done = r.status === "confirmed" || r.status === "fixed";
+  const tag = r.status === "missing" ? '<span class="chip failed">Not read</span>' : look ? '<span class="chip skipped">Check</span>' : done ? '<span class="chip delivered">✓ Checked</span>' : r.autofixed ? '<span class="chip delivered">Corrected from official list</span>' : '';
+  return '<div class="srow '+r.status+'" data-row="'+i+'"><div class="srow-h"><b>#'+(r.seq != null ? r.seq : "?")+'</b>'+tag+(look && r.problem ? '<span class="sprob">'+esc(r.problem)+'</span>' : '')+'</div>' +
+    (thumbs[r.seq] && !compact ? '<img class="sthumb" alt="Photo of row '+r.seq+'" src="'+thumbs[r.seq]+'">' : '') +
+    '<textarea class="sinput" rows="1" enterkeyhint="done" data-i="'+i+'" placeholder="Type the address shown in the photo" aria-label="Address for row '+r.seq+'">'+esc(r.address)+'</textarea>' +
+    (look && r.suggest && r.suggest !== r.address ? '<button class="btn ghost ssug" data-sug="'+i+'">Did you mean <b>'+esc(r.suggest)+'</b>? Tap to use it</button>' : '') +
+    (look ? '<button class="btn act-d sok" data-ok="'+i+'">'+(r.status === "missing" ? "Save this address" : "Looks right ✓")+'</button>' : '') + '</div>';
+}
+function renderScan(){
+  const n = scan.pages.length + 1, sofar = scanCount(), last = scanLastSeq();
+  $("scanTitle").textContent = scanPage ? "Page "+n+" — check" : "Scan page "+n;
+  $("scanSummary").textContent = sofar ? sofar+" addresses saved from "+scan.pages.length+" page"+(scan.pages.length>1?"s":"")+(scan.total ? " (sheet has "+scan.total+" parcels)" : "") : "Photograph each page of the run sheet, one at a time.";
+  $("scanTake").textContent = "Take photo of page "+n;
+  $("scanShoot").hidden = !!scanPage;
+  $("scanResult").hidden = !scanPage;
+  $("scanFinishIdle").hidden = !!scanPage || !sofar;
+  if (!scanPage){ $("scanList").innerHTML = ""; $("scanAllList").innerHTML = ""; return; }
+  const rows = scanPage.rows, look = rows.filter(needsLook).length, total = rows.filter(r => r.status !== "missing").length;
+  const box = $("scanResultBox"); box.className = "sresult " + (look ? "warn" : "good");
+  $("scanResultTitle").textContent = look ? "⚠ "+look+" need"+(look === 1 ? "s" : "")+" your check" : "✓ All "+total+" addresses look right";
+  $("scanResultSub").textContent = "Rows #"+scanPage.first+"–#"+scanPage.last+" · read in "+scanPage.secs+" s";
+  $("scanHowTo").textContent = look ? "Compare each row below with its photo. Fix the text if it is different, then tap Looks right." : "Tap Next page to photograph page "+(n+1)+", or Done if this was the last page.";
+  $("scanList").innerHTML = rows.map((r,i) => needsLook(r) || r.status === "fixed" || (r.status === "confirmed" && r.wasLook) ? rowCard(r, i) : "").join("");
+  $("scanShowAll").textContent = scanPage.showAll ? "Hide the other addresses" : "Show all "+rows.length+" addresses on this page";
+  $("scanAllList").hidden = !scanPage.showAll;
+  $("scanAllList").innerHTML = scanPage.showAll ? rows.map((r,i) => needsLook(r) || r.wasLook ? "" : rowCard(r, i)).join("") : "";
+}
+function acceptPage(){
+  if (!scanPage) return;
+  const empty = scanPage.rows.filter(r => !r.address.trim());
+  scanPage.rows.forEach(r => { if (r.address.trim()) prefetch(r.search || r.address.trim()); });
+  scan.pages.push({rows: scanPage.rows.filter(r => r.address.trim()).map(r => ({seq:r.seq, address:r.address.trim(), search:r.search || r.address.trim(), size:r.size || ""}))});
+  scanPage = null; scanSave();
+  if (empty.length) toast("Left out (no address typed): #"+empty.map(r=>r.seq).join(", #"));
+}
+function fitBox(el){ el.style.height = "auto"; el.style.height = (el.scrollHeight + 3) + "px"; }
+function fitAllBoxes(){ document.querySelectorAll("textarea.sinput").forEach(fitBox); }
+function onRowEdit(e){ const i = e.target.dataset.i; if (i == null || !scanPage) return;
+  if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " ");
+  fitBox(e.target);
+  const r = scanPage.rows[+i]; r.address = e.target.value;
+  const c = DroplineScan.cleanAddress(r.address.replace(/,/g," "));
+  r.search = c.search || r.address; }
+function onRowOk(e){
+  const sb = e.target.closest && e.target.closest("[data-sug]");
+  if (sb && scanPage){ const r = scanPage.rows[+sb.dataset.sug]; r.address = r.search = r.suggest; r.autofixed = true; r.wasLook = true; r.status = "fixed"; prefetch(r.search); renderScan(); return; }
+  const i = e.target.dataset.ok; if (i == null || !scanPage) return;
+  const r = scanPage.rows[+i];
+  if (!r.address.trim()){ toast("Type the address from the photo first."); return; }
+  r.wasLook = true; r.status = r.status === "missing" ? "fixed" : "confirmed"; prefetch(r.search || r.address); renderScan(); }
+["scanList","scanAllList"].forEach(id => { $(id).addEventListener("input", onRowEdit); $(id).addEventListener("click", onRowOk);
+  $(id).addEventListener("keydown", e => { if (e.key === "Enter" && e.target.classList.contains("sinput")){ e.preventDefault(); e.target.blur(); } }); });
+new MutationObserver(() => requestAnimationFrame(fitAllBoxes)).observe($("scanSheet"), {childList:true, subtree:true});
+window.addEventListener("resize", () => requestAnimationFrame(fitAllBoxes));
+$("scanShowAll").addEventListener("click", () => { if (scanPage){ scanPage.showAll = !scanPage.showAll; renderScan(); } });
+$("btnScan").addEventListener("click", () => {
+  const native = !!nativeScanner();
+  $("scanNoApp").hidden = native; $("scanApp").hidden = !native;
+  renderScan(); $("scanSheet").hidden = false; });
+$("scanClose").addEventListener("click", () => $("scanSheet").hidden = true);
+["scanCam","scanGallery","scanRetake"].forEach(id => $(id).addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) scanPhoto(f); }));
+function unchecked(){ return scanPage ? scanPage.rows.filter(needsLook).length : 0; }
+$("scanNext").addEventListener("click", () => {
+  const u = unchecked();
+  if (u && !$("scanNext").dataset.warned){ $("scanNext").dataset.warned = "1"; const w = $("scanNextWarn"); w.hidden = false;
+    w.textContent = u+" yellow row"+(u>1?"s are":" is")+" not checked yet. Check "+(u>1?"them":"it")+", or tap Next page again to keep the text as read."; return; }
+  acceptPage(); renderScan(); scanMsg("Page saved. Now photograph page "+(scan.pages.length+1)+", or tap Done if that was the last page.");
+  document.querySelector("#scanSheet .sheet").scrollTop = 0; });
+$("scanRestart").addEventListener("click", () => { $("scanRestartConfirm").hidden = false; });
+$("scanRestartNo").addEventListener("click", () => { $("scanRestartConfirm").hidden = true; });
+$("scanRestartYes").addEventListener("click", () => { scan = {pages:[], total:null}; scanPage = null; scanSave(); $("scanRestartConfirm").hidden = true; $("scanMsg").hidden = true; renderScan(); });
+$("scanCopy").addEventListener("click", async () => {
+  const data = JSON.stringify({app:"dropline-scan", page:scan.pages.length+1, ms:scanPage && scanPage.ms, lines:scanPage ? scanPage.lines : []});
+  try{ await navigator.clipboard.writeText(data); toast("Scan details copied. Paste them into the chat with Claude."); }
+  catch(e){ toast("Copy is blocked on this phone."); } });
+async function finishScan(btn){
+  const u = unchecked();
+  if (u && !btn.dataset.warned){ btn.dataset.warned = "1"; const w = $("scanNextWarn"); w.hidden = false;
+    w.textContent = u+" yellow row"+(u>1?"s are":" is")+" not checked yet. Check "+(u>1?"them":"it")+", or tap Done again to keep the text as read."; return; }
+  acceptPage();
+  const rows = []; scan.pages.forEach(p => p.rows.forEach(r => { if (r.address) rows.push(r); }));
+  if (!rows.length){ scanMsg("No addresses saved yet.", true); renderScan(); return; }
+  const have = new Set(rows.map(r => r.seq)), last = Math.max(...rows.map(r => r.seq || 0));
+  const gaps = []; for (let s = 1; s <= (scan.total || last); s++) if (!have.has(s)) gaps.push(s);
+  if (gaps.length && !$("scanFinishIdle").dataset.confirmed){
+    $("scanFinishIdle").dataset.confirmed = "1"; renderScan();
+    scanMsg((scan.total && last < scan.total ? "The sheet lists "+scan.total+" parcels but the scanned rows stop at #"+last+". " : "") + gaps.length+" row"+(gaps.length>1?"s are":" is")+" missing (#"+gaps.slice(0,12).join(", #")+(gaps.length>12?"…":"")+"). Photograph the missing page, or tap Done again to continue without "+(gaps.length>1?"them":"it")+".", true);
+    return; }
+  delete $("scanFinishIdle").dataset.confirmed;
+  const groups = new Map();
+  rows.sort((a,b) => a.seq - b.seq).forEach(r => { const k = r.address.toLowerCase().replace(/\s+/g," ");
+    if (!groups.has(k)) groups.set(k, {address:r.address, search:r.search || r.address, parcels:[]});
+    groups.get(k).parcels.push({seq:r.seq, size:r.size || "", note:""}); });
+  $("scanSheet").hidden = true; $("importSheet").hidden = true; $("scanMsg").hidden = true;
+  showNextStep(null, "Adding "+groups.size+" stops…");
+  const scanPagesDone = scan.pages.length;
+  scan = {pages:[], total:null}; scanSave();
+  await importGroups([...groups.values()], true);
+  showNextStep(scanPagesDone);
+}
+$("scanFinish").addEventListener("click", e => finishScan(e.currentTarget));
+$("scanFinishIdle").addEventListener("click", e => finishScan(e.currentTarget));
+
+/* ---------- in-app turn-by-turn navigation with voice (foreground only; free routing, no live traffic) ---------- */
+const nav = {on:false, stop:null, coords:[], cum:[], steps:[], stepIdx:0, said:{}, off:0, lastPos:null, map:null, me:null, line:null, dest:null,
+  voice:true, sim:false, simTimer:null, simDist:0, rerouting:false, watch:null, arrived:false, wake:null};
+const lcFirst = t => t.charAt(0).toLowerCase() + t.slice(1);
+const ORD = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
+function speak(text){
+  (window.__spoken = window.__spoken || []).push(text);
+  if (!nav.voice) return;
+  try{
+    const T = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech;
+    if (T && T.speak){ T.speak({text, lang:"en-AU", rate:1.0}).catch(() => {}); return; }
+    if (window.speechSynthesis){ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-AU"; u.rate = 1.0; speechSynthesis.speak(u); }
+  }catch(e){}
+}
+function arrowFor(st){
+  const t = st.maneuver.type, m = st.maneuver.modifier || "";
+  if (t === "arrive") return "⚑"; if (t === "roundabout" || t === "rotary" || t === "roundabout turn") return "⟳";
+  return ({"left":"←","sharp left":"↙","slight left":"↖","right":"→","sharp right":"↘","slight right":"↗","uturn":"↶","straight":"↑"})[m] || "↑";
+}
+function stepText(st){
+  const t = st.maneuver.type, m = st.maneuver.modifier || "", name = st.name || st.ref || "", onto = name ? " onto " + name : "";
+  switch (t){
+    case "depart": return "Head off" + (name ? " along " + name : "");
+    case "arrive": return "You have arrived";
+    case "turn": case "end of road": return (m === "straight" ? "Continue" : m === "uturn" ? "Make a U-turn" : "Turn " + m) + onto;
+    case "new name": case "continue": return (m && m !== "straight" ? "Keep " + m.replace("slight ", "") : "Continue") + onto;
+    case "merge": return "Merge" + (m ? " " + m.replace("slight ", "") : "") + onto;
+    case "on ramp": return "Take the ramp" + (m ? " on the " + m.replace("slight ", "").replace("sharp ", "") : "") + onto;
+    case "off ramp": return "Take the exit" + (m ? " on the " + m.replace("slight ", "").replace("sharp ", "") : "") + onto;
+    case "fork": return "Keep " + (m.includes("left") ? "left" : "right") + onto;
+    case "roundabout": case "rotary": return "At the roundabout, take the " + (ORD[st.maneuver.exit || 1] || st.maneuver.exit + "th") + " exit" + onto;
+    case "roundabout turn": return "At the roundabout, turn " + m + onto;
+    default: return (m && m !== "straight" ? "Go " + m : "Continue") + onto;
+  }
+}
+function sayDist(m){ return m >= 1000 ? "In " + (Math.round(m/100)/10) + " kilometres" : "In " + Math.max(50, Math.round(m/50)*50) + " metres"; }
+function showDist(m){ return m >= 1000 ? (Math.round(m/100)/10) + " km" : Math.max(10, Math.round(m/10)*10) + " m"; }
+// local flat projection (metres) for snapping to the route line
+function toXY(p, lat0){ const k = Math.PI/180, R = 6371000; return [p[1]*k*R*Math.cos(lat0*k), p[0]*k*R]; }
+function snap(pos){
+  const lat0 = pos.lat, P = toXY([pos.lat, pos.lon], lat0);
+  let best = {d:Infinity, along:0, i:0};
+  for (let i = 0; i < nav.coords.length - 1; i++){
+    const A = toXY(nav.coords[i], lat0), B = toXY(nav.coords[i+1], lat0), dx = B[0]-A[0], dy = B[1]-A[1], L2 = dx*dx + dy*dy;
+    let t = L2 ? ((P[0]-A[0])*dx + (P[1]-A[1])*dy) / L2 : 0; t = Math.max(0, Math.min(1, t));
+    const X = A[0] + t*dx, Y = A[1] + t*dy, d = Math.hypot(P[0]-X, P[1]-Y);
+    if (d < best.d) best = {d, along: nav.cum[i] + t*(nav.cum[i+1]-nav.cum[i]), i, pt:[nav.coords[i][0] + t*(nav.coords[i+1][0]-nav.coords[i][0]), nav.coords[i][1] + t*(nav.coords[i+1][1]-nav.coords[i][1])]};
+  }
+  return best;
+}
+async function navRoute(from){
+  const to = nav.stop;
+  const j = await fetchJSON(OSRM + "/route/v1/driving/" + from.lon.toFixed(6) + "," + from.lat.toFixed(6) + ";" + to.lon.toFixed(6) + "," + to.lat.toFixed(6) + "?overview=full&geometries=geojson&steps=true", 20000);
+  if (!j || j.code !== "Ok") throw new Error("route");
+  const r = j.routes[0];
+  nav.coords = r.geometry.coordinates.map(c => [c[1], c[0]]); nav.coordsFor = to;
+  nav.cum = [0]; for (let i = 1; i < nav.coords.length; i++) nav.cum.push(nav.cum[i-1] + hav({lat:nav.coords[i-1][0], lon:nav.coords[i-1][1]}, {lat:nav.coords[i][0], lon:nav.coords[i][1]}));
+  // where each manoeuvre sits along the route
+  let from_i = 0;
+  nav.steps = r.legs[0].steps.map(st => {
+    const loc = {lat: st.maneuver.location[1], lon: st.maneuver.location[0]};
+    let bi = from_i, bd = Infinity;
+    for (let i = from_i; i < nav.coords.length; i++){ const d = hav(loc, {lat:nav.coords[i][0], lon:nav.coords[i][1]}); if (d < bd){ bd = d; bi = i; } }
+    from_i = bi; return Object.assign(st, {at: nav.cum[bi]});
+  });
+  nav.total = r.distance; nav.duration = r.duration; nav.stepIdx = 1; nav.said = {}; nav.off = 0; nav.arrived = false;
+  if (nav.line) nav.line.remove();
+  nav.line = L.polyline(nav.coords, {color:"#1a73e8", weight:7, opacity:.85}).addTo(nav.map);
+  if (nav.dest) nav.dest.remove();
+  nav.dest = L.marker([to.lat, to.lon], {icon: pin("pending", route.stops.indexOf(to) + 1)}).addTo(nav.map);
+}
+function navUpdate(pos){
+  if (!nav.on || !nav.coords.length) return;
+  nav.lastPos = pos;
+  const s = snap(pos);
+  nav.me.setLatLng([pos.lat, pos.lon]);
+  nav.map.setView([pos.lat, pos.lon], Math.max(nav.map.getZoom(), 16), {animate:false});
+  // off the route? find a new one
+  if (s.d > 45 && (pos.acc == null || pos.acc < 60)){ nav.off++; if (nav.off >= 2 && !nav.rerouting) navReroute(pos); }
+  else nav.off = 0;
+  const along = s.along, remaining = Math.max(0, nav.total - along);
+  while (nav.stepIdx < nav.steps.length - 1 && nav.steps[nav.stepIdx].at < along - 10) nav.stepIdx++;
+  const st = nav.steps[nav.stepIdx], toStep = Math.max(0, st.at - along);
+  $("navArrow").textContent = arrowFor(st);
+  $("navDist").textContent = showDist(toStep);
+  $("navInstr").textContent = stepText(st) + (st.maneuver.type === "arrive" ? ": " + nav.stop.label.split(",")[0] : "");
+  const nx = nav.steps[nav.stepIdx + 1]; $("navThen").textContent = nx && nx.maneuver.type !== "arrive" ? "Then " + lcFirst(stepText(nx)) : "";
+  const mins = Math.max(1, Math.round(remaining / Math.max(1, nav.total) * nav.duration / 60));
+  $("navEta").textContent = mins + " min"; $("navRemain").textContent = showDist(remaining) + " · arrive " + new Date(Date.now() + mins*60000).toLocaleTimeString("en-AU", {hour:"numeric", minute:"2-digit"});
+  // spoken prompts: early warning, then at the turn
+  const key = nav.stepIdx + ":";
+  if (st.maneuver.type === "arrive"){
+    if (remaining < 30 && !nav.arrived){ nav.arrived = true; speak("You have arrived. " + nav.stop.label.split(",")[0] + "."); $("navArriveBox").hidden = false; }
+    else if (remaining < 250 && !nav.said[key+"far"]){ nav.said[key+"far"] = 1; speak(sayDist(remaining) + ", you will arrive at " + nav.stop.label.split(",")[0]); }
+    return;
+  }
+  const far = pos.speed && pos.speed > 22 ? 800 : 300;
+  if (toStep <= far && toStep > 120 && !nav.said[key+"far"]){ nav.said[key+"far"] = 1; speak(sayDist(toStep) + ", " + lcFirst(stepText(st))); }
+  if (toStep <= 45 && !nav.said[key+"now"]){ nav.said[key+"now"] = 1; nav.said[key+"far"] = 1; speak(stepText(st) + (nx && nx.maneuver.type !== "arrive" && nx.at - st.at < 120 ? ", then " + lcFirst(stepText(nx)) : "")); }
+}
+async function navReroute(pos){
+  nav.rerouting = true; $("navInstr").textContent = "Finding a new route…"; speak("Rerouting");
+  try{ await navRoute(pos); nav.simDist = 0; }catch(e){ toast("No route found. Check your internet connection."); }
+  nav.rerouting = false; nav.off = 0;
+}
+async function navStart(stop){
+  if (!has(stop)){ toast("This stop has no map location yet. Open it in the list and tap Move pin."); return; }
+  const sim = $("navSim").checked;
+  nav.on = true; nav.stop = stop; nav.sim = sim; nav.coords = []; nav.coordsFor = null; clearInterval(nav.simTimer);
+  if (!sim && nav.watch == null) navWatch();
+  $("navScreen").hidden = false; $("navArriveBox").hidden = true; $("navStop").textContent = "#" + (route.stops.indexOf(stop) + 1) + " · " + stop.label + " · " + (isPick(stop) ? "PICKUP · " : "") + parcelLine(stop); $("navDelivered").textContent = isPick(stop) ? "Picked up" : "Delivered";
+  if (!nav.map){
+    nav.map = L.map("navMap", {zoomControl:false, attributionControl:true}).setView([stop.lat, stop.lon], 16);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:"© OpenStreetMap"}).addTo(nav.map);
+    nav.me = L.circleMarker([stop.lat, stop.lon], {radius:9, color:"#fff", weight:3, fillColor:"#1a73e8", fillOpacity:1}).addTo(nav.map);
+  }
+  setTimeout(() => nav.map.invalidateSize(), 50);
+  $("navArrow").textContent = "↑"; $("navDist").textContent = ""; $("navThen").textContent = ""; $("navEta").textContent = ""; $("navRemain").textContent = "";
+  // real navigation always starts from where the phone is now
+  let from = null;
+  if (!sim){
+    // use the location we already have (up to 5 minutes old) so directions appear at once; live GPS then corrects it and reroutes if needed
+    if (!has(myLoc) || Date.now() - myLoc.at > 300000){ $("navInstr").textContent = "Getting your location…"; await freshFix(); }
+    if (!nav.on || nav.stop !== stop) return;
+    if (!has(myLoc)){ $("navArrow").textContent = "!"; $("navInstr").textContent = "Turn on location for Dropline to navigate from where you are (phone Settings → Dropline → Location). Or tap Back."; return; }
+    const km = hav(myLoc, stop) / 1000;
+    if (km > 1500){ $("navArrow").textContent = "!"; $("navInstr").textContent = "You are about " + Math.round(km).toLocaleString("en-AU") + " km from this stop, so there is no road route. Navigation starts from your location when you are near the stops. (To try it at a desk, tick Simulate driving below.)"; return; }
+    from = myLoc;
+  } else {
+    const near = has(myLoc) && hav(myLoc, stop) < 100000;
+    from = near ? myLoc : (prevPoint(route.stops.indexOf(stop)) || route.start);
+    if (!has(from)){ $("navInstr").textContent = "Simulation needs a start address."; return; }
+  }
+  nav.me.setLatLng([from.lat, from.lon]); nav.map.setView([from.lat, from.lon], 16);
+  $("navInstr").textContent = "Finding the route…";
+  try{ await navRoute(from); }catch(e){ $("navArrow").textContent = "!"; $("navInstr").textContent = "No road route found to this stop. Check your internet connection, or tap Back."; return; }
+  try{ if (navigator.wakeLock) nav.wake = await navigator.wakeLock.request("screen"); }catch(e){}
+  const first = nav.steps[1] || nav.steps[0];
+  speak("Starting route to " + stop.label.split(",")[0] + ". " + stepText(nav.steps[0]) + (first ? ", then " + lcFirst(stepText(first)) : ""));
+  navUpdate({lat: from.lat, lon: from.lon});
+  if (nav.sim) navSimulate(); else navWatch();
+}
+function freshFix(){
+  return new Promise(res => { if (!navigator.geolocation) return res();
+    navigator.geolocation.getCurrentPosition(p => { myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; res(); }, () => res(), {enableHighAccuracy:true, maximumAge:10000, timeout:12000}); });
+}
+function navWatch(){
+  if (nav.watch != null || !navigator.geolocation) return;
+  nav.watch = navigator.geolocation.watchPosition(p => {
+    myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()};
+    navUpdate({lat:myLoc.lat, lon:myLoc.lon, acc:p.coords.accuracy, speed:p.coords.speed});
+  }, () => toast("Location is not available. Allow location for Dropline."), {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
+}
+/* Test mode: drives along the route at about 40 km/h so the voice and turn prompts can be checked from a desk. */
+function navSimulate(){
+  clearInterval(nav.simTimer); nav.simDist = 0;
+  nav.simTimer = setInterval(() => {
+    if (!nav.on || nav.rerouting) return;
+    nav.simDist = Math.min(nav.total, nav.simDist + 11 * (window.__simSpeed || 1));
+    let i = 0; while (i < nav.cum.length - 2 && nav.cum[i+1] < nav.simDist) i++;
+    const t = (nav.simDist - nav.cum[i]) / Math.max(1, nav.cum[i+1] - nav.cum[i]);
+    navUpdate({lat: nav.coords[i][0] + t*(nav.coords[i+1][0]-nav.coords[i][0]), lon: nav.coords[i][1] + t*(nav.coords[i+1][1]-nav.coords[i][1]), acc: 5, speed: 11});
+  }, 1000);
+}
+function navStop(){
+  nav.on = false; clearInterval(nav.simTimer); $("navSim").checked = false; nav.sim = false;
+  if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; }
+  try{ window.speechSynthesis && speechSynthesis.cancel(); }catch(e){}
+  try{ nav.wake && nav.wake.release(); }catch(e){}
+  $("navScreen").hidden = true; render();
+}
+function navDone(status, reason){
+  const was = nav.stop, pick = isPick(was);
+  try{ const sb = $("navStamp"); sb.className = "stamp " + status; sb.textContent = doneWord(status, pick); sb.hidden = false; setTimeout(() => sb.hidden = true, 900); navigator.vibrate && navigator.vibrate(25); }catch(e){}
+  setStatus(was.id, status, reason);
+  const next = route.stops.find(s => s.status === "pending" && has(s));
+  if (!next){ speak("All stops are done."); setTimeout(() => { navStop(); toast("All stops done"); }, 600); return; }
+  speak((status === "delivered" ? (pick ? "Picked up. " : "Delivered. ") : "") + (isPick(next) ? "Next pickup: " : "Next stop: ") + next.label.split(",")[0]);
+  const ns = $("navStop");
+  if (reduceMotion()){ navStart(next); return; }
+  ns.classList.add("out");
+  setTimeout(() => { navStart(next); ns.classList.remove("out"); ns.classList.add("in"); void ns.offsetWidth; requestAnimationFrame(() => ns.classList.remove("in")); }, 240);
+}
+$("navExit").addEventListener("click", navStop);
+$("navBack").addEventListener("click", navStop);
+$("navVoice").addEventListener("click", () => { nav.voice = !nav.voice; $("navVoice").textContent = nav.voice ? "🔊 Voice on" : "🔇 Voice off"; if (!nav.voice) try{ speechSynthesis.cancel(); }catch(e){} });
+$("navSim").addEventListener("change", e => { nav.sim = e.target.checked; if (!nav.on) return;
+  if (!nav.coords.length || nav.coordsFor !== nav.stop){ navStart(nav.stop); return; } if (nav.sim){ if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; } navSimulate(); } else { clearInterval(nav.simTimer); navWatch(); } });
+$("navDelivered").addEventListener("click", () => navDone("delivered"));
+$("navSkip").addEventListener("click", () => navDone("skipped"));
+$("navFailed").addEventListener("click", () => { $("navReasons").hidden = !$("navReasons").hidden; });
+$("navReasons").addEventListener("click", e => { const r = e.target.dataset.nr; if (r) navDone("failed", r); });
+$("nextGo").addEventListener("click", () => { const id = $("nextCard").dataset.id; const s = route.stops.find(x => x.id === id); if (s) navStart(s); });
+
+/* import sheet */
+$("btnImport").addEventListener("click", () => { $("importSheet").hidden = false; });
+$("closeImport").addEventListener("click", () => $("importSheet").hidden = true);
+$("impGo").addEventListener("click", () => { const t = $("impText").value; if (!t.trim()){ impStatus("Paste at least one address first.", 0, true); return; } importText(t); });
+$("impFile").addEventListener("change", e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
+  rd.onload = () => { const txt = String(rd.result);
+    if (/^\s*\{/.test(txt)){ try{ const r = JSON.parse(txt); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0; r.id = route.id; r.name = route.name || r.name; r.createdAt = route.createdAt; route = r; persist(); render(); fitAll(); impStatus("Imported a saved route with "+r.stops.length+" stops.", 1); }catch(err){ impStatus("That file is not a Dropline route.", 0, true); } return; }
+    importText(txt); };
+  rd.readAsText(f); e.target.value = ""; });
+
+/* ---------- routes library: home screen, create, rename, copy, delete ---------- */
+const STORE_OPEN = "dropline.open.v1";
+function lib(){ const a = loadJSON(STORE_SAVED); return a && typeof a === "object" ? a : {}; }
+function saveLib(a){ return saveJSON(STORE_SAVED, a); }
+function routeStats(r){ const c = {pending:0,delivered:0,failed:0,skipped:0}; (r.stops||[]).forEach(x => c[x.status] = (c[x.status]||0)+1);
+  const n = (r.stops||[]).length, done = n - c.pending; return {c, n, done, state: !n || !done ? "new" : c.pending ? "go" : "done"}; }
+function defaultName(){ const d = new Date(); return "Run " + d.toLocaleDateString("en-AU",{weekday:"short", day:"numeric", month:"short"}); }
+function renderHome(){
+  const items = Object.values(lib()).sort((a,b) => (b.updatedAt||0)-(a.updatedAt||0));
+  $("homeEmpty").hidden = items.length > 0;
+  $("routeList").innerHTML = items.map(r => { const t = routeStats(r), w = x => t.n ? (100*x/t.n).toFixed(1)+"%" : "0";
+    const lbl = {new:"Not started", go:"In progress", done:"Finished"}[t.state];
+    return '<div class="rcard" data-rid="'+esc(r.id)+'"><button class="ro" data-open="'+esc(r.id)+'"><div class="rn">'+esc(r.name||"Untitled route")+'</div>'
+      + '<div class="rm"><span class="rstate '+t.state+'">'+lbl+'</span>'+t.n+' stop'+(t.n===1?"":"s")+(t.done ? ' · '+t.c.delivered+' delivered' : '')+' · '+new Date(r.createdAt||r.updatedAt||Date.now()).toLocaleDateString("en-AU",{day:"numeric",month:"short"})+'</div>'
+      + '<div class="rbar"><i style="width:'+w(t.c.delivered)+';background:var(--ok)"></i><i style="width:'+w(t.c.failed)+';background:var(--fail)"></i><i style="width:'+w(t.c.skipped)+';background:var(--skip)"></i></div></button>'
+      + '<button class="more" data-menu="'+esc(r.id)+'" aria-label="Options for '+esc(r.name||"route")+'">⋯</button></div>'; }).join("");
+}
+function showHome(){ if (nav.on) try{ navStop(); }catch(e){}
+  document.querySelectorAll(".sheet-bg").forEach(b => b.hidden = true);
+  try{ localStorage.setItem(STORE_OPEN, ""); }catch(e){}
+  renderHome(); $("home").hidden = false; }
+function openRoute(id){
+  const r = lib()[id]; if (!r) { toast("That route is no longer on this phone."); return; }
+  route = r; if (!Array.isArray(route.stops)) route.stops = [];
+  route.stops.forEach(x => { if (x.geo === "searching") x.geo = "pending"; });
+  selId = expandedId = failPickId = placingId = null; $("optMsg").hidden = true; $("manualBox").hidden = true; $("btnManual").classList.remove("on");
+  try{ localStorage.setItem(STORE_OPEN, id); }catch(e){}
+  saveJSON(STORE_CUR, route);
+  $("home").hidden = true; render(); setTimeout(() => { map.invalidateSize(); route.stops.length ? fitAll() : (has(myLoc) && map.setView([myLoc.lat, myLoc.lon], 13)); }, 50);
+  if (startMeOn && has(myLoc) && !route.start) try{ useMyLocAsStart(); }catch(e){}
+  if (route.stops.some(x => x.geo === "pending")) try{ locatePending(); }catch(e){}
+}
+function createRoute(name){
+  const r = blankRoute(); r.name = name || defaultName(); r.createdAt = Date.now();
+  const a = lib(); a[r.id] = r; if (!saveLib(a)) toast("This phone blocked saving."); openRoute(r.id); }
+function copyRoute(id){
+  const a = lib(), src = a[id]; if (!src) return;
+  const r = JSON.parse(JSON.stringify(src)); r.id = uid(); r.name = (src.name || "Route") + " (copy)"; r.createdAt = r.updatedAt = Date.now();
+  r.stops.forEach(x => { x.status = "pending"; delete x.reason; delete x.doneAt; });
+  if (r.opt) r.opt.stale = true;
+  a[r.id] = r; saveLib(a); return r; }
+let menuId = null;
+function openMenu(id){ const r = lib()[id]; if (!r) return; menuId = id;
+  $("menuTitle").textContent = r.name || "Untitled route"; $("menuName").value = r.name || ""; $("menuDelConfirm").hidden = true; $("menuSheet").hidden = false; }
+$("homeCreate").addEventListener("click", () => { $("createName").value = defaultName(); $("createSheet").hidden = false; setTimeout(() => { $("createName").focus(); $("createName").select(); }, 50); });
+$("createGo").addEventListener("click", () => { $("createSheet").hidden = true; createRoute($("createName").value.trim()); });
+$("createName").addEventListener("keydown", e => { if (e.key === "Enter") $("createGo").click(); });
+$("createCancel").addEventListener("click", () => $("createSheet").hidden = true);
+$("routeList").addEventListener("click", e => { const o = e.target.closest("[data-open]"), m = e.target.closest("[data-menu]");
+  if (m) openMenu(m.dataset.menu); else if (o) openRoute(o.dataset.open); });
+$("btnRoutes").addEventListener("click", showHome);
+$("btnRouteMenu").addEventListener("click", () => { persist(); openMenu(route.id); });
+$("menuRename").addEventListener("click", () => { const a = lib(), r = a[menuId]; if (!r) return; r.name = $("menuName").value.trim() || r.name;
+  if (route.id === menuId) route.name = r.name; saveLib(a); $("menuTitle").textContent = r.name; renderHome(); render(); toast("Renamed to “"+r.name+"”"); $("menuSheet").hidden = true; });
+$("menuCopy").addEventListener("click", () => { const r = copyRoute(menuId); $("menuSheet").hidden = true; if (!r) return;
+  if ($("home").hidden) openRoute(r.id); else renderHome(); toast("Copied as “"+r.name+"”"); });
+$("menuExport").addEventListener("click", () => { const r = lib()[menuId]; if (!r) return;
+  const blob = new Blob([JSON.stringify(r, null, 1)], {type:"application/json"}); const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = (r.name || "dropline-route").replace(/[^\w-]+/g,"-")+".json"; document.body.appendChild(a); a.click(); a.remove(); });
+$("menuDelete").addEventListener("click", () => $("menuDelConfirm").hidden = false);
+$("menuDelNo").addEventListener("click", () => $("menuDelConfirm").hidden = true);
+$("menuDelYes").addEventListener("click", () => { const a = lib(), r = a[menuId]; delete a[menuId]; saveLib(a); $("menuSheet").hidden = true;
+  if (route.id === menuId){ route = blankRoute(); saveJSON(STORE_CUR, route); showHome(); } else renderHome();
+  toast("Deleted “"+((r && r.name) || "route")+"”"); });
+$("menuClose").addEventListener("click", () => $("menuSheet").hidden = true);
+$("importIn").addEventListener("change", e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
+  rd.onload = () => { try{ const r = JSON.parse(rd.result); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0;
+      r.id = uid(); r.createdAt = r.createdAt || Date.now(); const a = lib(); a[r.id] = r; saveLib(a); openRoute(r.id); toast("Opened “"+(r.name||"route")+"” with "+r.stops.length+" stops"); }catch(err){ toast("That file is not a Dropline route."); } };
+  rd.readAsText(f); e.target.value = ""; });
+$("btnManual").addEventListener("click", () => { const box = $("manualBox"); box.hidden = !box.hidden; $("btnManual").classList.toggle("on", !box.hidden); if (!box.hidden) $("addrIn").focus(); });
+$("btnAbout").addEventListener("click", () => $("aboutSheet").hidden = false);
+$("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
+document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
+
+function startUp(){
+  const a = lib();
+  // older versions kept one current route (and "saved copies"); give every route a name and creation date
+  Object.values(a).forEach(r => { r.createdAt = r.createdAt || r.updatedAt || Date.now(); });
+  if (route.stops.length && !a[route.id]){ route.name = route.name || "My route"; route.createdAt = route.createdAt || route.updatedAt || Date.now(); a[route.id] = route; }
+  saveLib(a);
+  let open = null; try{ open = localStorage.getItem(STORE_OPEN); }catch(e){}
+  if (open === null && route.stops.length) open = route.id;      // first run after the update: keep the driver where they were
+  if (open && a[open]) openRoute(open); else showHome();
+}
+["gesturestart","gesturechange"].forEach(t => document.addEventListener(t, e => { if (!e.target.closest || !e.target.closest(".leaflet-container")) e.preventDefault(); }, {passive:false}));
+let lastTouchEnd = 0;
+document.addEventListener("touchend", e => { const now = Date.now(); if (now - lastTouchEnd < 350 && !(e.target.closest && e.target.closest(".leaflet-container"))) e.preventDefault(); lastTouchEnd = now; }, {passive:false});
+/* Ask for the location when the app opens: nearby addresses first, start point, navigation. */
+function isNativeApp(){ const C = window.Capacitor; return !!(C && (C.isNativePlatform ? C.isNativePlatform() : C.isNative)) || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.bridge); }
+function askLocation(fromTap){
+  if (!navigator.geolocation){ showLocBanner("Location is not available on this device."); return; }
+  $("locBtn").textContent = "Finding you…";
+  navigator.geolocation.getCurrentPosition(p => {
+    myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; drawMe();
+    $("locBanner").hidden = true; useMyLocAsStart();
+    if (!route.stops.length && !has(route.start)) map.setView([myLoc.lat, myLoc.lon], 14);
+  }, err => {
+    updateStartMeTxt();
+    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Open the iPhone Settings app → Dropline → Location → \"While Using the App\", then come back." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
+    else showLocBanner("Could not get your location yet. Try again outdoors or check that Location Services is on.", false);
+  }, {enableHighAccuracy:true, maximumAge:120000, timeout:20000});
+}
+/* Start: "my location" (default) or a typed address. */
+let startMeOn = (() => { try{ return localStorage.getItem("dropline.startMe") !== "0"; }catch(e){ return true; } })();
+function setStartMode(on, quiet){
+  startMeOn = on; try{ localStorage.setItem("dropline.startMe", on ? "1" : "0"); }catch(e){}
+  $("startMe").checked = on; $("startAddrBox").hidden = on;
+  if (on){ if (has(myLoc)) useMyLocAsStart(); else { updateStartMeTxt(); askLocation(true); } }
+  else {
+    if (route.start && route.start.me){ route.start = null; markStale(); persist(); render(); }
+    updateStartMeTxt(); if (!quiet) setTimeout(() => $("startIn").focus(), 100);
+  }
+}
+function updateStartMeTxt(){
+  const t = $("startMeTxt");
+  if (!startMeOn){ t.textContent = "Type the address where the run starts (for example the depot)."; return; }
+  if (route.start && route.start.me) t.textContent = "📍 Starting from where you are" + (myLoc && myLoc.at ? " (updated " + new Date(myLoc.at).toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}) + ")" : "") + ".";
+  else if (has(myLoc) && farFromStops(myLoc)) t.textContent = "You are more than 150 km from these stops. Switch this off and type a start address near the deliveries.";
+  else t.textContent = "Waiting for your location… If location is off, switch this off and type a start address.";
+}
+function useMyLocAsStart(){
+  if (!startMeOn || !has(myLoc)) { updateStartMeTxt(); return; }
+  if (farFromStops(myLoc)){ if (route.start && route.start.me){ route.start = null; persist(); render(); } updateStartMeTxt(); return; }
+  const prev = route.start, moved = !prev || !prev.me || hav(prev, myLoc) > 300;
+  route.start = {label:"My location", lat:myLoc.lat, lon:myLoc.lon, me:true};
+  updateStartMeTxt();
+  if (moved && prev) startChanged(); else { persist(); render(); }
+  if (!$("nextStep").hidden && !route.opt) showNextStep(lastStepPages);
+}
+function showLocBanner(text, blocked){ $("locBanner").hidden = false; $("locText").textContent = text; $("locBtn").textContent = blocked ? "Try again" : "Allow location"; }
+$("locBtn").addEventListener("click", () => askLocation(true));
+$("startMe").addEventListener("change", e => setStartMode(e.target.checked));
+$("locClose").addEventListener("click", () => { $("locBanner").hidden = true; });
+$("startMe").checked = startMeOn; $("startAddrBox").hidden = startMeOn; updateStartMeTxt();
+setTimeout(() => {
+  if (isNativeApp()) askLocation(false);
+  else if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(r => {
+    if (r.state === "granted") askLocation(false); else showLocBanner("Turn on location so the app can suggest nearby addresses and start routes from where you are.", false); }).catch(() => {});
+}, 600);
+if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
+window.RP = {solve, tourCost, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+startUp();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+name: Build iPhone app
+
+# Runs only when asked: a commit message containing [build ios], or "Run workflow" on GitHub.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ios:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build ios]')
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Prepare web app
+        working-directory: android-app
+        run: |
+          npm ci
+          mkdir -p www && cp ../index.html www/index.html && cp offline.html www/offline.html
+          npx cap copy ios
+          mkdir -p ../ios-results
+      - name: Build for the iPhone Simulator
+        run: |
+          set -o pipefail
+          xcodebuild -version | tee ios-results/build.txt
+          xcodebuild -project android-app/ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -60 | tee -a ios-results/build.txt
+      - name: Launch in a simulator and take a screenshot
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          echo "simulator $UDID" | tee -a ios-results/build.txt
+          xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/App.app
+          xcrun simctl launch "$UDID" au.dropline.routeplanner.sandip | tee -a ios-results/build.txt
+          sleep 25
+          xcrun simctl io "$UDID" screenshot ios-results/simulator.png
+          cd build/Build/Products/Debug-iphonesimulator && zip -qry ../../../../ios-results/Dropline-simulator.app.zip App.app
+      - name: Test Apple text recognition on look-alike run-sheet pages
+        run: |
+          cd ios-results && swiftc -O ../android-app/ios-test/vision_lines.swift -o vision_lines && ./vision_lines ../android-app/ios-test/pages/page-*.jpg 2>&1 | tee -a build.txt
+          cp ../android-app/ios-test/pages/answers.csv .
+      - name: Publish results
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p ios-results && cd ios-results
+          rm -f vision_lines
+          zip -q -r ../ios-results.zip .
+          cd ..
+          gh release delete ios-results --yes --cleanup-tag || true
+          gh release create ios-results ios-results.zip --prerelease --title "iPhone build #${{ github.run_number }}" --notes "Simulator build, screenshot and Vision text-recognition test (synthetic pages only)."

@@ -12,6 +12,7 @@
   },
   "ios": {
     "contentInset": "never",
-    "backgroundColor": "#123b3a"
+    "backgroundColor": "#123b3a",
+    "limitsNavigationsToAppBoundDomains": true
   }
 }

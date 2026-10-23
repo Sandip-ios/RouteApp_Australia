@@ -304,6 +304,11 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
         <button class="btn primary grow" id="btnOpt">Optimise route</button>
         <button class="btn ghost" id="btnFit" title="Show all stops on map">Fit map</button>
       </div>
+      <div class="row" id="offRow" hidden style="margin-top:8px;flex-wrap:nowrap">
+        <button class="btn ghost grow" id="btnOffline">Prepare for no signal</button>
+      </div>
+      <p class="hint" id="offTxt" hidden style="margin:6px 0 0"></p>
+      <div class="bar" id="offBar" hidden style="margin-top:6px"><i id="offBarI"></i></div>
       <div class="bar" id="optBar" hidden><i></i></div>
       <p class="msg" id="optMsg" hidden></p>
     </section>
@@ -318,6 +323,9 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
         <div class="sugg" id="startSugg" hidden></div>
       </div>
       <button class="btn ghost" id="btnMyLoc" hidden>Use my location as start</button>
+      <label class="switchrow" for="avoidTolls" style="margin-top:10px"><span class="label" style="font-size:13px">Avoid toll roads</span>
+        <span class="switch"><input type="checkbox" id="avoidTolls" role="switch"><span class="knob"></span></span></label>
+      <p class="hint" id="tollTxt" hidden style="margin:4px 0 0"></p>
     </section>
 
     <section class="panel" aria-label="Add stops">
@@ -357,7 +365,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <div class="home" id="home" hidden>
   <header class="top">
-    <div class="brand">Dropline<small>Your routes · prototype v5.5</small></div>
+    <div class="brand">Dropline<small>Your routes · prototype v5.6</small></div>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
   <div class="hlist">
@@ -470,6 +478,8 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
     <h4 style="color:var(--ok)">Fully working (needs internet)</h4>
     <ul>
       <li>Several routes on this phone: create, open, rename, copy, delete</li>
+      <li>Official addresses for every state; your state's list is kept on the phone (Download for offline)</li>
+      <li>Opens with no signal after the first online use; Prepare for no signal saves directions and the map for the whole run</li>
       <li>Each stop is a Delivery or a Pickup, with a parcel count you can change</li>
       <li>After Delivered / Failed / Skip the next stop slides in, with the following two shown</li>
       <li>Up to 200 stops; import a run sheet (.csv) or pasted address list</li>
@@ -509,7 +519,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
   <div id="navMap"></div>
   <div class="nav-bottom">
     <div class="nav-eta"><b id="navEta"></b><span id="navRemain"></span></div>
-    <div style="position:relative"><div class="stamp" id="navStamp" hidden></div><div class="nav-stop" id="navStop"></div><span class="snote" id="navNote" hidden></span></div>
+    <div style="position:relative"><div class="stamp" id="navStamp" hidden></div><div class="nav-stop" id="navStop"></div><span class="snote" id="navOffline" hidden style="background:var(--pend-soft);color:var(--ink)">📵 No signal: following directions saved earlier</span><span class="snote" id="navNote" hidden></span></div>
     <div id="navArriveBox" class="nav-arrive" hidden>
       <div class="acts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
         <button class="btn act-d" id="navDelivered">Delivered</button><button class="btn act-f" id="navFailed">Failed</button><button class="btn act-k" id="navSkip">Skip</button>
@@ -805,6 +815,13 @@ if (typeof module !== "undefined" && module.exports) module.exports = api; else 
 "use strict";
 const MAX_STOPS = 200;
 const OSRM = "https://router.project-osrm.org";
+/* "Avoid toll roads": sent to the routing server as exclude=toll. The public server does not support it yet;
+   our own routing server (planned) will, and then this switch works with no app change. */
+const tollX = () => route.avoidTolls ? "&exclude=toll" : "";
+async function tollSupported(){
+  try{ const j = await fetchJSON(OSRM + "/route/v1/driving/151.2093,-33.8688;151.1240,-33.7760?overview=false&exclude=toll", 10000); return !!(j && j.code === "Ok"); }
+  catch(e){ return e.body && e.body.code === "InvalidValue" ? false : null; }
+}
 const PHOTON = "https://photon.komoot.io/api/";
 const NOMINATIM = "https://nominatim.openstreetmap.org/search";
 const AU_BBOX = "112.9,-43.7,153.7,-10.6";
@@ -1131,6 +1148,7 @@ function tokScore(tok, words, isLast, fuzzy){
 }
 async function streetSearch(q, c, max){
   const P = parseQuery(q); if (!P.toks.length) return [];
+  c = c || knownCentre();
   let extra = [];
   if (P.pc){ try{ const st = stateOfPostcode(P.pc, await pcIndex()); if (st) extra = [st]; }catch(e){} }   // a typed postcode brings in its state
   const all = await loadStreets(extra);
@@ -1429,7 +1447,7 @@ async function travelMatrix(pts, onProgress){
   const fillEst = (I,J) => { for (const i of I) for (const j of J){ const [t,d] = est(i,j); D[i][j] = t; Dist[i][j] = d; } };
   const req = async (idx, src, dst) => {
     const coords = idx.map(i => pts[i].lon.toFixed(6)+","+pts[i].lat.toFixed(6)).join(";");
-    let url = OSRM+"/table/v1/driving/"+coords+"?annotations=duration,distance";
+    let url = OSRM+"/table/v1/driving/"+coords+"?annotations=duration,distance"+tollX();
     if (src) url += "&sources="+src.join(";")+"&destinations="+dst.join(";");
     const j = await fetchJSON(url, 25000); if (!j || j.code !== "Ok" || !j.durations) throw new Error((j && j.code) || "table failed"); return j;
   };
@@ -1500,6 +1518,81 @@ async function optimise(){
   btn.disabled = false; btn.textContent = "Re-optimise"; bar.hidden = true;
   await drawRoad();
 }
+/* ---------- no-signal support: directions and map for the whole run, saved on the phone ---------- */
+const idb = (() => { let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => { const r = indexedDB.open("dropline", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+  const run = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction("kv", mode); const q = fn(t.objectStore("kv")); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); };
+  return {get: k => run("readonly", st => st.get(k)), set: (k, v) => run("readwrite", st => st.put(v, k))};
+})();
+async function saveLegs(onProgress){
+  const pend = route.stops.filter(s => s.status === "pending" && has(s)); if (!pend.length) return 0;
+  const origin = route.opt && has(route.opt.origin) ? route.opt.origin : (has(route.start) ? route.start : pend[0]);
+  const pts = [origin].concat(pend); let saved = 0;
+  for (let i = 0; i < pts.length - 1; i += 50){
+    const part = pts.slice(i, Math.min(i + 51, pts.length));
+    const j = await fetchJSON(OSRM + "/route/v1/driving/" + part.map(p => p.lon.toFixed(6) + "," + p.lat.toFixed(6)).join(";") + "?overview=false&geometries=geojson&steps=true" + tollX(), 40000);
+    if (!j || j.code !== "Ok") throw new Error("route");
+    for (let k = 0; k < j.routes[0].legs.length; k++){
+      const leg = j.routes[0].legs[k], stop = part[k + 1], coords = [];
+      leg.steps.forEach(st => ((st.geometry && st.geometry.coordinates) || []).forEach(c => { const l = coords[coords.length - 1]; if (!l || l[0] !== c[0] || l[1] !== c[1]) coords.push([+c[0].toFixed(6), +c[1].toFixed(6)]); }));
+      const steps = leg.steps.map(st => ({maneuver: st.maneuver, name: st.name, ref: st.ref, distance: st.distance, rotary_name: st.rotary_name, destinations: st.destinations}));
+      await idb.set("leg:" + stop.id, {at: Date.now(), resp: {code: "Ok", routes: [{geometry: {coordinates: coords}, legs: [{steps}], distance: leg.distance, duration: leg.duration}]}});
+      saved++;
+    }
+    if (onProgress) onProgress(saved, pts.length - 1);
+    if (i + 50 < pts.length - 1) await sleep(400);
+  }
+  route.offlineLegs = {at: Date.now(), n: saved, key: pend.map(s => s.id).join(",")}; persist();
+  return saved;
+}
+function tileXY(lat, lon, z){ const n = 2 ** z, x = Math.floor((lon + 180) / 360 * n), r = lat * Math.PI / 180;
+  return [x, Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)]; }
+function routeTiles(maxTiles){
+  const pts = (route.opt && route.opt.geometry && route.opt.geometry.length ? route.opt.geometry : route.stops.filter(has).map(s => [s.lat, s.lon]));
+  if (!pts.length) return [];
+  const set = new Set(), add = (z, x, y) => set.add(z + "/" + x + "/" + y);
+  let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180; pts.forEach(([la, lo]) => { la0 = Math.min(la0, la); la1 = Math.max(la1, la); lo0 = Math.min(lo0, lo); lo1 = Math.max(lo1, lo); });
+  for (const z of [11, 12, 13]){ const [x0, y0] = tileXY(la1, lo0, z), [x1, y1] = tileXY(la0, lo1, z);   // the whole area, overview zooms
+    if ((x1 - x0 + 3) * (y1 - y0 + 3) > 400) continue; for (let x = x0 - 1; x <= x1 + 1; x++) for (let y = y0 - 1; y <= y1 + 1; y++) add(z, x, y); }
+  for (const z of [14, 15, 16]){ const ring = z === 16 ? 0 : 1;                                            // along the roads driven
+    pts.forEach(([la, lo]) => { const [x, y] = tileXY(la, lo, z); for (let dx = -ring; dx <= ring; dx++) for (let dy = -ring; dy <= ring; dy++) add(z, x + dx, y + dy); }); }
+  route.stops.filter(has).forEach(s => { const [x, y] = tileXY(s.lat, s.lon, 17); add(17, x, y); });           // close-up at each stop
+  return [...set].slice(0, maxTiles || 3000);
+}
+async function saveTiles(onProgress){
+  if (!window.caches) return {n: 0, kb: 0, skipped: true};
+  const C = await caches.open("dropline-tiles-v1"), list = routeTiles(3000); let done = 0, kb = 0, failed = 0; const q = list.slice();
+  const worker = async () => { while (q.length){ const t = q.shift(), url = "https://tile.openstreetmap.org/" + t + ".png";
+    try{ let r = await C.match(url); if (!r){ r = await fetch(url, {mode: "cors"}); if (r.ok) await C.put(url, r.clone()); else failed++; }
+      const b = r && r.headers.get("content-length"); kb += b ? +b / 1024 : 15; }catch(e){ failed++; }
+    done++; if (onProgress && done % 10 === 0) onProgress(done, list.length); } };
+  await Promise.all([1, 2, 3].map(worker));
+  return {n: done - failed, kb, failed};
+}
+function updateOffTxt(){
+  const o = route.offlineLegs, t = $("offTxt"), pend = route.stops.filter(s => s.status === "pending" && has(s));
+  $("offRow").hidden = !(route.opt && !route.opt.stale) || !pend.length;
+  if (!o){ t.hidden = true; return; }
+  const cur = o.key && pend.every(s => o.key.split(",").includes(s.id));
+  t.hidden = false;
+  t.textContent = cur ? "✓ Ready for no signal: directions for " + o.n + " stops" + (o.tiles ? ", map saved (" + o.tiles.n + " pieces, " + fmtMB(o.tiles.kb) + ")" : "") + " · " + new Date(o.at).toLocaleTimeString("en-AU", {hour: "numeric", minute: "2-digit"})
+                  : "Stops changed since the last save. Tap Prepare for no signal again.";
+}
+async function prepareOffline(){
+  const b = $("btnOffline"), bar = $("offBar"), t = $("offTxt");
+  if (!route.opt || route.opt.stale){ toast("Optimise the route first."); return; }
+  b.disabled = true; bar.hidden = false; t.hidden = false;
+  try{
+    t.textContent = "Saving directions for every stop…";
+    await saveLegs((d, n) => { $("offBarI").style.width = (40 * d / n).toFixed(0) + "%"; });
+    t.textContent = "Saving the map along the route…";
+    const tiles = await saveTiles((d, n) => { $("offBarI").style.width = (40 + 60 * d / n).toFixed(0) + "%"; t.textContent = "Saving the map along the route: " + d + " of " + n + "…"; });
+    route.offlineLegs.tiles = tiles.skipped ? null : {n: tiles.n, kb: tiles.kb}; persist();
+    const sts = await activeStates().catch(() => []); if (sts.length) downloadStates().catch(() => {});   // and this state's addresses
+    toast(tiles.failed ? "Directions saved. Some map pieces could not be saved." : "Ready for no signal.");
+  }catch(e){ toast("Could not save everything. Check your internet connection and try again."); }
+  b.disabled = false; bar.hidden = true; updateOffTxt();
+}
 async function drawRoad(){
   if (!route.opt || route.opt.method === "estimate") return;
   const pend = route.stops.filter(s => s.status === "pending" && has(s));
@@ -1510,7 +1603,7 @@ async function drawRoad(){
     for (let i = 0; i < pts.length - 1; i += 60){
       const part = pts.slice(i, Math.min(i + 61, pts.length));
       const coords = part.map(p => p.lon.toFixed(6)+","+p.lat.toFixed(6)).join(";");
-      const j = await fetchJSON(OSRM+"/route/v1/driving/"+coords+"?overview=full&geometries=geojson&steps=false", 25000);
+      const j = await fetchJSON(OSRM+"/route/v1/driving/"+coords+"?overview=full&geometries=geojson&steps=false"+tollX(), 25000);
       if (!j || j.code !== "Ok") throw new Error("route failed");
       const r = j.routes[0]; dur += r.duration; dist += r.distance; r.legs.forEach(l => legs.push(l.duration));
       r.geometry.coordinates.forEach(c => geom.push([+(c[1].toFixed(5)), +(c[0].toFixed(5))]));
@@ -1520,6 +1613,7 @@ async function drawRoad(){
     route.opt.geometry = geom; route.opt.legs = {}; pend.forEach((st,i) => { route.opt.legs[st.id] = legs[i]; });
     if (route.opt.method === "road"){ route.opt.duration = dur; route.opt.distance = dist; }
     persist(); render();
+    saveLegs().then(() => updateOffTxt()).catch(() => {});      // directions for every stop, kept for when there is no signal
   }catch(e){ /* keep straight connector lines */ }
 }
 function showMsg(t, warn){ const m = $("optMsg"); m.textContent = t; m.hidden = false; m.classList.toggle("err", !!warn); }
@@ -1642,6 +1736,8 @@ function render(){
   $("routeSub").textContent = st.length ? st.length+" stop"+(st.length===1?"":"s")+" · "+cnt.delivered+" delivered" : "No stops yet";
   $("sumPanel").hidden = !st.length;
   $("btnClear").hidden = !st.length;
+  $("avoidTolls").checked = !!route.avoidTolls;
+  try{ updateOffTxt(); }catch(e){}
 
   const nSearch = st.filter(s => s.geo === "searching").length, nPend = st.filter(s => s.geo === "pending").length, nMiss = st.filter(s => s.geo === "missing").length, nChk = st.filter(s => s.geo === "street").length;
   $("geoAlert").hidden = !(nPend || nMiss || nChk || nSearch || refining);
@@ -1702,6 +1798,16 @@ wireSearch($("addrIn"), $("addrSugg"), addStop);
 wireSearch($("startIn"), $("startSugg"), setStart);
 $("btnOpt").addEventListener("click", optimise);
 $("btnFit").addEventListener("click", fitAll);
+$("btnOffline").addEventListener("click", prepareOffline);
+$("avoidTolls").addEventListener("change", async e => {
+  const on = e.target.checked, t = $("tollTxt");
+  if (!on){ route.avoidTolls = false; t.hidden = true; markStale(); persist(); render(); return; }
+  t.hidden = false; t.textContent = "Checking the routing server…";
+  const ok = await tollSupported();
+  if (ok){ route.avoidTolls = true; t.textContent = "Routes will avoid toll roads. Re-optimise to apply."; markStale(); persist(); render(); }
+  else { e.target.checked = false; route.avoidTolls = false;
+    t.textContent = ok === false ? "Not available yet: the free public routing server cannot avoid tolls. It will work once Dropline has its own routing server. For now routes may use toll roads." : "Could not check (no internet?). Try again when you have signal."; }
+});
 $("btnMyLoc").addEventListener("click", () => startLocation());
 $("nsOpt").addEventListener("click", () => { $("nextStep").hidden = true; optimise(); });
 $("nsLocOpt").addEventListener("click", () => { $("nsLocOpt").textContent = "Finding your location…"; setStartMode(true, true); startLocation(() => { $("nextStep").hidden = true; optimise(); }); });
@@ -2041,8 +2147,14 @@ function snap(pos){
 }
 async function navRoute(from){
   const to = nav.stop;
-  const j = await fetchJSON(OSRM + "/route/v1/driving/" + from.lon.toFixed(6) + "," + from.lat.toFixed(6) + ";" + to.lon.toFixed(6) + "," + to.lat.toFixed(6) + "?overview=full&geometries=geojson&steps=true", 20000);
-  if (!j || j.code !== "Ok") throw new Error("route");
+  let j = null;
+  try{ j = await fetchJSON(OSRM + "/route/v1/driving/" + from.lon.toFixed(6) + "," + from.lat.toFixed(6) + ";" + to.lon.toFixed(6) + "," + to.lat.toFixed(6) + "?overview=full&geometries=geojson&steps=true" + tollX(), navigator.onLine === false ? 1500 : 12000); }catch(e){ j = null; }
+  if (!j || j.code !== "Ok"){
+    const saved = await idb.get("leg:" + to.id).catch(() => null);         // no signal: directions saved earlier
+    if (!saved) throw new Error("route");
+    j = saved.resp; nav.offline = true;
+  } else { nav.offline = false; nav.saidOff = false; }
+  $("navOffline").hidden = !nav.offline;
   const r = j.routes[0];
   nav.coords = r.geometry.coordinates.map(c => [c[1], c[0]]); nav.coordsFor = to;
   nav.cum = [0]; for (let i = 1; i < nav.coords.length; i++) nav.cum.push(nav.cum[i-1] + hav({lat:nav.coords[i-1][0], lon:nav.coords[i-1][1]}, {lat:nav.coords[i][0], lon:nav.coords[i][1]}));
@@ -2090,6 +2202,9 @@ function navUpdate(pos){
   if (toStep <= 45 && !nav.said[key+"now"]){ nav.said[key+"now"] = 1; nav.said[key+"far"] = 1; speak(stepText(st) + (nx && nx.maneuver.type !== "arrive" && nx.at - st.at < 120 ? ", then " + lcFirst(stepText(nx)) : "")); }
 }
 async function navReroute(pos){
+  if (nav.offline && Date.now() - (nav.offTry || 0) < 60000){ nav.off = 0;      // no signal: no new road route possible; guide back to the saved one
+    if (!nav.saidOff){ nav.saidOff = true; speak("No signal. Head back to the blue line."); } return; }
+  nav.offTry = Date.now();
   nav.rerouting = true; $("navInstr").textContent = "Finding a new route…"; speak("Rerouting");
   try{ await navRoute(pos); nav.simDist = 0; }catch(e){ toast("No route found. Check your internet connection."); }
   nav.rerouting = false; nav.off = 0;
@@ -2387,6 +2502,8 @@ setTimeout(() => {
     if (r.state === "granted") askLocation(false); else showLocBanner("Turn on location so the app can suggest nearby addresses and start routes from where you are.", false); }).catch(() => {});
 }, 600);
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
+/* keep a copy of the app on the phone so it opens with no signal (website only; not in local tests) */
+try{ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {}); }catch(e){}
 window.RP = {solve, tourCost, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();

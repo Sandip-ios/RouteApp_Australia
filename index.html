@@ -128,6 +128,15 @@ header.top{display:flex;align-items:center;gap:10px;padding:12px max(14px,env(sa
 
 /* switches */
 .switchrow{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
+.startshow{display:flex;align-items:center;gap:12px;margin:2px 14px 12px;padding:10px 12px;border-radius:12px;background:var(--pale,#E1F5F1);color:var(--navy,#102A43)}
+.startshow .spin{flex:none;width:30px;height:30px;border-radius:50%;background:#1B6FE6;color:#fff;display:grid;place-items:center;font:700 15px/1 var(--f-display);box-shadow:0 0 0 3px #fff}
+.startshow small{display:block;font:600 11.5px/1.2 var(--f-display);text-transform:uppercase;letter-spacing:.07em;color:#0E8F83;margin-bottom:2px}
+.startshow b{display:block;font-weight:600;font-size:15px;line-height:1.3;overflow-wrap:anywhere}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .startshow{background:rgba(43,211,193,.12);color:#E8F0F6}:root:not([data-theme="light"]) .startshow small{color:#2BD3C1}}
+:root[data-theme="dark"] .startshow{background:rgba(43,211,193,.12);color:#E8F0F6}:root[data-theme="dark"] .startshow small{color:#2BD3C1}
+.soon{flex:none;font:600 12px/1 var(--f-display);text-transform:uppercase;letter-spacing:.07em;padding:6px 9px;border-radius:7px;background:var(--pale,#E1F5F1);color:#0E8F83;white-space:nowrap}
+#tollRow.off .tile,#tollRow.off b{opacity:.55}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .soon{background:rgba(43,211,193,.16);color:#2BD3C1}}
 .switch{position:relative;width:54px;height:32px;flex:none}
 .switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1}
 .switch .knob{position:absolute;inset:0;border-radius:99px;background:#CDD6DE;transition:background .2s}
@@ -673,9 +682,11 @@ textarea:focus{border-color:var(--teal);outline:none}
       <div class="lsub" id="startAddrBox" hidden><div class="addr">
         <input id="startIn" type="text" placeholder="Depot or starting address" autocomplete="off" aria-label="Start address">
         <div class="sugg" id="startSugg" hidden></div></div></div>
+      <div class="startshow" id="startShow" hidden><span class="spin">S</span><span class="lt"><small>Starting point</small><b id="startShowAddr"></b></span></div>
       <button class="btn ghost" id="btnMyLoc" hidden>Use my location as start</button>
-      <label class="lrow switchrow" for="avoidTolls"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-road"/></svg></span><span class="lt"><b>Avoid toll roads</b><small id="tollTxt" hidden></small></span>
-        <span class="switch"><input type="checkbox" id="avoidTolls" role="switch"><span class="knob"></span></span></label>
+      <label class="lrow switchrow" for="avoidTolls" id="tollRow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-road"/></svg></span><span class="lt"><b>Avoid toll roads</b><small id="tollTxt">For now routes may use toll roads</small></span>
+        <span class="soon" id="tollSoon">Coming soon</span>
+        <span class="switch" id="tollSw" hidden><input type="checkbox" id="avoidTolls" role="switch" disabled><span class="knob"></span></span></label>
     </section>
 
     <div class="sect vs-map"><span class="label">Add stops</span></div>
@@ -947,7 +958,7 @@ textarea:focus{border-color:var(--teal);outline:none}
       <li>Add stops by typing (type-ahead from the official address list for every state), scanning the paper run sheet, or importing a CSV / address list</li>
       <li>Up to 200 stops; several parcels at one address grouped into one stop</li>
       <li>Delivery or pickup per stop, parcel count, and notes with quick options</li>
-      <li>Route optimisation of every pending stop using road travel times; start from your location or a typed address</li>
+      <li>Route optimisation of every pending stop using road travel times; start from your location (shown as the nearest street address) or a typed address</li>
       <li>Voice turn-by-turn navigation inside the app, with Previous / Next stop</li>
       <li>Delivered, failed (with reason) and skipped; the next stop slides in</li>
       <li>Works with no signal: the app opens, saved addresses, and "Prepare for no signal" directions and map</li>
@@ -958,7 +969,7 @@ textarea:focus{border-color:var(--teal);outline:none}
     <div class="label" style="color:#B26E00">Limits today</div>
     <ul class="wlist">
       <li>Free public map and routing services: no live traffic and no guaranteed uptime</li>
-      <li>Avoid toll roads needs DropLine's own routing server (planned)</li>
+      <li>Avoid toll roads: coming soon (needs DropLine's own routing server)</li>
       <li>Navigation works while the app is open and the screen is on</li>
       <li>Photo scanning is tuned to the current run-sheet layout</li>
     </ul>
@@ -1319,7 +1330,8 @@ const MAX_STOPS = 200;
 const OSRM = "https://router.project-osrm.org";
 /* "Avoid toll roads": sent to the routing server as exclude=toll. The public server does not support it yet;
    our own routing server (planned) will, and then this switch works with no app change. */
-const tollX = () => route.avoidTolls ? "&exclude=toll" : "";
+let tollOK = false;
+const tollX = () => tollOK && route.avoidTolls ? "&exclude=toll" : "";
 async function tollSupported(){
   try{ const j = await fetchJSON(OSRM + "/route/v1/driving/151.2093,-33.8688;151.1240,-33.7760?overview=false&exclude=toll", 10000); return !!(j && j.code === "Ok"); }
   catch(e){ return e.body && e.body.code === "InvalidValue" ? false : null; }
@@ -2200,7 +2212,7 @@ function showNextStep(pages, busyText){
   $("nsOpt").hidden = !hasStart; $("nsLocOpt").hidden = hasStart || !startMeOn; $("nsStart").hidden = hasStart && !startMeOn;
   $("nsLocOpt").textContent = "Allow location and optimise"; $("nsLocOpt").className = "btn primary";
   $("nsStart").textContent = startMeOn ? "Type a start address instead" : "Change the start address";
-  if (hasStart) $("nsText").textContent = (miss ? miss + " stop" + (miss > 1 ? "s" : "") + " still need a map location (shown at the end of the list). " : "") + "Next: optimise the delivery order from " + (route.start.me ? "your location" : route.start.label) + ".";
+  if (hasStart) $("nsText").textContent = (miss ? miss + " stop" + (miss > 1 ? "s" : "") + " still need a map location (shown at the end of the list). " : "") + "Next: optimise the delivery order from " + (route.start.me ? (route.start.addr || "your location") : route.start.label) + ".";
   else if (startMeOn && has(myLoc) && farFromStops(myLoc)){ $("nsText").textContent = "You are more than 150 km from these stops, so the route can't start from your location. Type a start address near the deliveries."; $("nsLocOpt").hidden = true; $("nsStart").className = "btn primary"; }
   else $("nsStart").className = "btn ghost";
   fitAll();
@@ -2245,7 +2257,7 @@ function drawMe(){ meLayer.clearLayers(); if (!has(myLoc)) return;
   L.marker([myLoc.lat, myLoc.lon], {icon:L.divIcon({className:"", html:'<div class="medot"></div>', iconSize:[22,22], iconAnchor:[11,11]}), interactive:false, zIndexOffset:2000}).addTo(meLayer); }
 function drawMap(){
   layer.clearLayers();
-  if (has(route.start)) L.marker([route.start.lat, route.start.lon], {icon:pin("start","S"), zIndexOffset:1000, title:"Start"}).addTo(layer).bindTooltip("Start: "+route.start.label).on("click", ev => { if (placingId) map.fire("click", {latlng:ev.latlng}); });
+  if (has(route.start)) L.marker([route.start.lat, route.start.lon], {icon:pin("start","S"), zIndexOffset:1000, title:"Start"}).addTo(layer).bindTooltip("Start: "+startName(route.start)).on("click", ev => { if (placingId) map.fire("click", {latlng:ev.latlng}); });
   const seen = {};
   route.stops.forEach((s,i) => { if (!has(s)) return;
     const key = s.lat.toFixed(5)+","+s.lon.toFixed(5), k = seen[key] = (seen[key] || 0) + 1;
@@ -2278,9 +2290,9 @@ function renderDetails(){
   const rows = [["Name", route.name || "Untitled"], ["Created", new Date(route.createdAt || route.updatedAt || Date.now()).toLocaleDateString("en-AU", {weekday:"short", day:"numeric", month:"short", year:"numeric"})],
     ["Stops", st.length + (st.reduce((a, x) => a + pcount(x), 0) !== st.length ? " (" + st.reduce((a, x) => a + pcount(x), 0) + " parcels)" : "")], ["Pickups", st.filter(isPick).length],
     ["Done", c.delivered + " delivered · " + c.failed + " failed · " + c.skipped + " skipped"],
-    ["Start", route.start ? (route.start.me ? "My location" : route.start.label) : "Not set"],
+    ["Start", route.start ? startName(route.start) : "Not set"],
     ["Drive time", o && !o.stale ? fmtTime(o.duration) : "–"], ["Distance", o && !o.stale ? fmtDist(o.distance) : "–"],
-    ["Toll roads", route.avoidTolls ? "Avoided" : "Allowed"]];
+    ["Toll roads", route.avoidTolls ? "Avoided" : "Allowed (avoiding tolls coming soon)"]];
   $("detailsList").innerHTML = rows.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(String(v)) + '</dd>').join("");
 }
 function render(){
@@ -2300,12 +2312,13 @@ function render(){
   if (!busy) setOptLabel(o && !o.stale ? "Re-optimise" : "Optimise route");
   $("btnOpt2").disabled = $("btnOpt").disabled;
   if (document.activeElement !== $("startIn")) $("startIn").value = route.start && !route.start.me ? route.start.label : "";
+  showStart();
   $("emptyHint").hidden = st.length > 0;
   $("routeTitle").firstChild.nodeValue = route.name || "Route";
   $("routeSub").textContent = st.length ? st.length+" stop"+(st.length===1?"":"s")+" · "+cnt.delivered+" delivered" : "No stops yet";
   $("sumPanel").hidden = !st.length;
   $("btnClear").hidden = !st.length;
-  $("avoidTolls").checked = !!route.avoidTolls;
+  $("avoidTolls").checked = tollOK && !!route.avoidTolls;
   try{ updateOffTxt(); }catch(e){}
 
   const nSearch = st.filter(s => s.geo === "searching").length, nPend = st.filter(s => s.geo === "pending").length, nMiss = st.filter(s => s.geo === "missing").length, nChk = st.filter(s => s.geo === "street").length;
@@ -2381,14 +2394,30 @@ $("btnOpt").addEventListener("click", optimise);
 $("btnOpt2").addEventListener("click", () => { setView("map"); optimise(); });
 $("btnFit").addEventListener("click", fitAll);
 $("btnOffline").addEventListener("click", prepareOffline);
-$("avoidTolls").addEventListener("change", async e => {
-  const on = e.target.checked, t = $("tollTxt");
-  if (!on){ route.avoidTolls = false; t.hidden = true; markStale(); persist(); render(); return; }
-  t.hidden = false; t.textContent = "Checking the routing server…";
-  const ok = await tollSupported();
-  if (ok){ route.avoidTolls = true; t.textContent = "Routes will avoid toll roads. Re-optimise to apply."; markStale(); persist(); render(); }
-  else { e.target.checked = false; route.avoidTolls = false;
-    t.textContent = ok === false ? "Not available yet: the free public routing server cannot avoid tolls. It will work once DropLine has its own routing server. For now routes may use toll roads." : "Could not check (no internet?). Try again when you have signal."; }
+/* Avoid toll roads shows "Coming soon" until the routing server supports it; checked quietly once per session,
+   so when DropLine's own routing server arrives the switch turns on by itself. */
+function showTollState(){
+  $("tollRow").classList.toggle("off", !tollOK);
+  $("tollSoon").hidden = tollOK; $("tollSw").hidden = !tollOK; $("avoidTolls").disabled = !tollOK;
+  if (!tollOK){ $("avoidTolls").checked = false; $("tollTxt").textContent = "For now routes may use toll roads"; }
+  else $("tollTxt").textContent = route.avoidTolls ? "Routes avoid toll roads" : "Routes may use toll roads";
+}
+(async () => {
+  let k = null; try{ k = sessionStorage.getItem("dropline.toll"); }catch(e){}
+  if (k === null && navigator.onLine !== false){ const ok = await tollSupported(); if (ok !== null){ k = ok ? "1" : "0"; try{ sessionStorage.setItem("dropline.toll", k); }catch(e){} } }
+  tollOK = k === "1";
+  if (!tollOK && route && route.avoidTolls){ route.avoidTolls = false; persist(); }
+  showTollState();
+})();
+$("tollRow").addEventListener("click", e => {
+  if (tollOK) return;
+  e.preventDefault();
+  toast("Avoid toll roads is coming soon. It needs DropLine's own routing server. For now, routes may use toll roads.");
+});
+$("avoidTolls").addEventListener("change", e => {
+  if (!tollOK){ e.target.checked = false; return; }
+  route.avoidTolls = e.target.checked; markStale(); persist(); render(); showTollState();
+  if (route.avoidTolls) toast("Routes will avoid toll roads. Re-optimise to apply.");
 });
 $("btnMyLoc").addEventListener("click", () => startLocation());
 $("nsOpt").addEventListener("click", () => { $("nextStep").hidden = true; optimise(); });
@@ -3101,7 +3130,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "6.2";
+const APP_VERSION = "6.3";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -3298,10 +3327,49 @@ function setStartMode(on, quiet){
     updateStartMeTxt(); if (!quiet) setTimeout(() => $("startIn").focus(), 100);
   }
 }
+/* The address at a map point, from the official address list on the phone (no extra internet service):
+   the nearest address within 120 m, else "Near <street>" within 400 m. */
+async function nearestAddress(p){
+  let idx; try{ idx = await pcIndex(); }catch(e){ return null; }
+  const pcs = Object.keys(idx).map(pc => [pc, hav(p, {lat: idx[pc][0], lon: idx[pc][1]})]).sort((a,b) => a[1]-b[1]).slice(0, 3);
+  let best = null, bd = Infinity;
+  for (const [pc] of pcs){
+    const f = await gnafFile(pc); if (!f) continue;
+    for (const x of Object.values(f)){
+      for (const n in x.nums){ const q = x.nums[n], d = hav(p, {lat:q[0], lon:q[1]}); if (d < bd){ bd = d; best = {n, x, pc}; } }
+    }
+  }
+  if (!best || bd > 400) return null;
+  const street = titleCaseWords(best.x.st), place = titleCaseWords(best.x.loc) + " " + best.x.state + " " + best.pc;
+  return bd <= 120 ? best.n + " " + street + ", " + place : "Near " + street + ", " + place;
+}
+const startAddrCache = {};   // "lat,lon" (about 10 m) → address, or null when none was found
+let startAddrBusy = false;
+async function lookupStartAddr(){
+  const s = route.start; if (!s || !s.me || !has(s)) return;
+  if (s.addr && s.addrFor && hav(s.addrFor, s) < 40) return;
+  const key = s.lat.toFixed(4) + "," + s.lon.toFixed(4);
+  if (!(key in startAddrCache)){
+    if (startAddrBusy === key) return;
+    startAddrBusy = key; showStart();
+    const a = await nearestAddress({lat: s.lat, lon: s.lon}).catch(() => null);
+    startAddrCache[key] = a; if (startAddrBusy === key) startAddrBusy = false;
+  }
+  const r = route.start, a = startAddrCache[key];
+  if (r && r.me && has(r) && r.lat.toFixed(4) + "," + r.lon.toFixed(4) === key && a){ r.addr = a; r.addrFor = {lat: r.lat, lon: r.lon}; persist(); }
+  showStart();
+}
+function startName(s){ return !s ? "" : s.me ? (s.addr || "Your current location") : s.label; }
+function showStart(){
+  const s = route.start, box = $("startShow"); if (!box) return;
+  box.hidden = !has(s);
+  if (has(s) && s.me && !s.addr) setTimeout(lookupStartAddr, 0);
+  if (has(s)) $("startShowAddr").textContent = s.me ? (s.addr || (startAddrBusy || !((s.lat.toFixed(4) + "," + s.lon.toFixed(4)) in startAddrCache) ? "Your current location · finding the address…" : "Your current location (" + s.lat.toFixed(5) + ", " + s.lon.toFixed(5) + ")")) : s.label;
+}
 function updateStartMeTxt(){
   const t = $("startMeTxt");
   if (!startMeOn){ t.textContent = "Type the address where the run starts (for example the depot)."; return; }
-  if (route.start && route.start.me) t.textContent = "Starting from where you are" + (myLoc && myLoc.at ? " (updated " + new Date(myLoc.at).toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}) + ")" : "") + ".";
+  if (route.start && route.start.me) t.textContent = "Using where you are now" + (myLoc && myLoc.at ? " (updated " + new Date(myLoc.at).toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}) + ")" : "") + ".";
   else if (has(myLoc) && farFromStops(myLoc)) t.textContent = "You are more than 150 km from these stops. Switch this off and type a start address near the deliveries.";
   else t.textContent = "Waiting for your location… If location is off, switch this off and type a start address.";
 }
@@ -3313,8 +3381,8 @@ function useMyLocAsStart(){
   if (!startMeOn || !has(myLoc)) { updateStartMeTxt(); return; }
   if (farFromStops(myLoc)){ if (route.start && route.start.me){ route.start = null; persist(); render(); } updateStartMeTxt(); return; }
   const prev = route.start, moved = !prev || !prev.me || hav(prev, myLoc) > 300;
-  route.start = {label:"My location", lat:myLoc.lat, lon:myLoc.lon, me:true};
-  updateStartMeTxt();
+  route.start = prev && prev.me && hav(prev, myLoc) < 40 ? Object.assign(prev, {lat:myLoc.lat, lon:myLoc.lon}) : {label:"My location", lat:myLoc.lat, lon:myLoc.lon, me:true};
+  updateStartMeTxt(); lookupStartAddr();
   if (moved && prev) startChanged(); else { persist(); render(); }
   if (!$("nextStep").hidden && !route.opt) showNextStep(lastStepPages);
 }

@@ -3,288 +3,588 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Dropline Route Planner</title>
-<meta name="theme-color" content="#123b3a">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<title>DropLine Route Planner</title>
+<meta name="theme-color" content="#0E2B4B">
+<link rel="icon" href="assets/icon-32.png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-/* Layout: phone = map on top, stop list below; wide screens = list column left, map right. Road-sign condensed type. */
+@font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:url("assets/fonts/inter-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:swap;src:url("assets/fonts/inter-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:url("assets/fonts/inter-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:700;font-display:swap;src:url("assets/fonts/inter-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:600;font-display:swap;src:url("assets/fonts/barlow-condensed-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:700;font-display:swap;src:url("assets/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2")}
+/* DropLine theme: Deep Navy headers and text, Electric Teal for actions and active route info, Cloud White pages, white cards. */
 :root{
-  --bg:#f3f5f4; --surface:#ffffff; --ink:#15211f; --muted:#5b6a67; --line:#d9e0de;
-  --accent:#0f5c5a; --accent-ink:#ffffff; --accent-soft:#dcecea;
-  --ok:#23773a; --fail:#c0392b; --skip:#a86400; --pend:#55636a;
-  --ok-soft:#e1f1e4; --fail-soft:#f8e3e0; --skip-soft:#f6ecd9; --pend-soft:#e8ecee;
+  --navy:#102A43; --teal:#20C7B7; --cloud:#F4F7F9; --white:#FFFFFF; --pale:#E1F5F1; --slate:#526574;
+  --bg:var(--cloud); --surface:#fff; --ink:var(--navy); --muted:var(--slate); --line:#E3E9EE; --line2:#D5DEE5;
+  --accent:#12A99B; --accent-ink:#fff; --accent-soft:var(--pale);
+  --blue:#1B6FE6; --blue-soft:#E7F0FD;
+  --ok:#1E9A55; --ok-soft:#E5F6EC; --fail:#E0464B; --fail-soft:#FDECEC; --skip:#E3961B; --skip-soft:#FFF3DF; --pend:var(--navy); --pend-soft:#E9EEF3;
+  --cta:linear-gradient(90deg,#1ED6C3 0%,#17B4D3 52%,#1B6FE6 100%);
+  --hero:linear-gradient(160deg,#0E2B4B 0%,#0F3A63 55%,#0F5A7A 100%);
+  --shadow:0 1px 2px rgba(16,42,67,.06),0 4px 14px rgba(16,42,67,.06);
+  --r-card:16px; --r-ctl:12px;
   --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root{
-  --bg:#0f1514; --surface:#18201f; --ink:#e7eeec; --muted:#9aaba7; --line:#2b3634;
-  --accent:#4fb3ad; --accent-ink:#06201f; --accent-soft:#163533;
-  --ok:#5cc173; --fail:#ef7a6c; --skip:#e3a54a; --pend:#9aa8ae;
-  --ok-soft:#173222; --fail-soft:#3a1f1c; --skip-soft:#352812; --pend-soft:#222b2e;
+  --bg:#0B1724; --surface:#132235; --ink:#E8F0F6; --muted:#9DB0C2; --line:#22344A; --line2:#2B4058;
+  --accent:#2BD3C1; --accent-ink:#06201F; --accent-soft:#103A3A; --blue-soft:#14284A;
+  --ok:#47C27C; --ok-soft:#123222; --fail:#FF7A7E; --fail-soft:#3A1C20; --skip:#F2B54D; --skip-soft:#3A2C12; --pend:#E8F0F6; --pend-soft:#1C2E44;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
   color-scheme:dark;
 }}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent}
-button,input,select{font:inherit;color:inherit}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
-:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button svg,a svg,label svg{pointer-events:none}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
 [hidden]{display:none!important}
+.ico{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ico.fill{fill:currentColor;stroke:none}
 
-.app{display:grid;grid-template-rows:auto auto 1fr;position:fixed;inset:0}
-header.top{display:flex;align-items:center;gap:10px;padding:10px max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));padding-top:max(10px,env(safe-area-inset-top));background:var(--accent);color:var(--accent-ink)}
-.brand{font:700 22px/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase;flex:1;min-width:0}
-.brand small{display:block;font:500 12px/1.2 var(--f-body);letter-spacing:.04em;text-transform:none;opacity:.85;margin-top:2px}
-.hbtn{background:transparent;border:1.5px solid currentColor;border-radius:8px;padding:6px 10px;font-weight:600;font-size:13px;color:inherit}
+/* ---------- app shell & headers ---------- */
+.app{display:grid;grid-template-rows:auto auto auto 1fr;position:fixed;inset:0;background:var(--bg)}
+header.top{display:flex;align-items:center;gap:10px;padding:12px max(14px,env(safe-area-inset-right)) 12px max(10px,env(safe-area-inset-left));padding-top:max(12px,env(safe-area-inset-top));background:var(--hero);color:#fff}
+.hback{display:flex;align-items:center;gap:2px;background:none;border:0;color:#fff;font-weight:600;font-size:16px;padding:6px 4px;min-height:44px;flex:none}
+.hback .ico{width:24px;height:24px;stroke-width:2.4}
+.htitle{flex:1;min-width:0;line-height:1.15}
+.htitle b,.brand{display:block;font:700 22px/1.1 var(--f-display);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:none}
+.htitle small,.brand small{display:block;font:500 13px/1.3 var(--f-body);opacity:.85;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbtn{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.75);border-radius:12px;min-width:44px;height:44px;padding:0 10px;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14px;flex:none}
+.hbtn .ico{width:22px;height:22px}
+.hlink{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:#fff;font-weight:600;font-size:15px;padding:6px;min-height:44px}
+.hlink .ico{width:22px;height:22px}
 
-#map{height:40vh;min-height:230px;background:var(--line);z-index:0}
-.main{overflow:auto;padding:12px max(14px,env(safe-area-inset-right)) 28px max(14px,env(safe-area-inset-left));padding-bottom:max(28px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;min-width:0}
+/* tabs (Map / Stops / Details) */
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));background:var(--bg)}
+.tabs button{display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:var(--r-ctl);border:1px solid var(--line);background:var(--pend-soft);color:var(--ink);font-weight:600;font-size:15px}
+.tabs button.on{background:var(--teal);border-color:var(--teal);color:#06302C}
+@media (prefers-color-scheme:dark){.tabs button.on{color:#04211F}}
+
+/* map */
+.mapwrap{position:relative;z-index:0}
+#map{height:38vh;min-height:220px;background:#E6EDF2;z-index:0}
+.mapbtn{position:absolute;right:12px;bottom:12px;z-index:500;width:48px;height:48px;border-radius:14px;border:0;background:#fff;color:var(--navy);box-shadow:0 2px 8px rgba(16,42,67,.25);display:grid;place-items:center}
+.mapbtn .ico{width:24px;height:24px}
+.leaflet-container{font-family:var(--f-body);background:#E6EDF2}
+.leaflet-bar{border:0!important;border-radius:12px!important;box-shadow:0 2px 8px rgba(16,42,67,.22)!important;overflow:hidden}
+.leaflet-bar a{width:40px!important;height:40px!important;line-height:40px!important;font-size:22px!important;color:var(--navy)!important;border-bottom-color:var(--line)!important}
+.leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.8)!important;border-radius:6px 0 0 0}
+
+.main{overflow:auto;padding:4px max(14px,env(safe-area-inset-right)) 28px max(14px,env(safe-area-inset-left));padding-bottom:max(28px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;min-width:0}
+.main>*{flex-shrink:0}
+.v-map .main{padding-top:14px}
 @media (min-width:900px){
-  .app{grid-template-columns:440px 1fr;grid-template-rows:auto 1fr}
+  .app{grid-template-columns:460px 1fr;grid-template-rows:auto auto 1fr}
   header.top{grid-column:1/-1}
-  #map{grid-column:2;grid-row:2;height:auto}
-  .main{grid-column:1;grid-row:2;border-right:1px solid var(--line)}
+  .tabs{grid-column:1;grid-row:2}
+  .mapwrap{grid-column:2;grid-row:2/4}
+  #map{height:100%}
+  .main{grid-column:1;grid-row:3;border-right:1px solid var(--line)}
 }
 
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
-.label{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+/* ---------- cards & text ---------- */
+.panel,.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:14px;box-shadow:var(--shadow)}
+.label{font:600 13px/1.1 var(--f-display);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.sect{display:flex;align-items:center;justify-content:space-between;margin:6px 2px -2px}
+.sect .label{font-size:15px;letter-spacing:.08em}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-
-/* summary */
-.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
-.summary div{border-radius:8px;padding:6px 2px;font-variant-numeric:tabular-nums}
-.summary b{display:block;font:700 22px/1 var(--f-display)}
-.summary span{font-size:11px;letter-spacing:.06em;text-transform:uppercase}
-.s-p{background:var(--pend-soft);color:var(--pend)} .s-d{background:var(--ok-soft);color:var(--ok)}
-.s-f{background:var(--fail-soft);color:var(--fail)} .s-k{background:var(--skip-soft);color:var(--skip)}
-.metrics{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
-.metrics .v{font:700 20px/1 var(--f-display)}
-.badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--pend-soft);color:var(--pend)}
-.badge.live{background:var(--ok-soft);color:var(--ok)} .badge.est{background:var(--skip-soft);color:var(--skip)} .badge.stale{background:var(--fail-soft);color:var(--fail)}
-
-.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:600;background:var(--pend-soft);color:var(--ink);min-height:44px}
-.btn.primary{background:var(--accent);color:var(--accent-ink)}
-.btn.ghost{background:transparent;border:1.5px solid var(--line)}
-.btn:disabled{opacity:.5;cursor:default}
-.btn.grow{flex:1}
-
-/* address entry */
-.addr{position:relative}
-.addr input{font-size:16px;width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--bg);min-height:46px}
-.addr input:focus{border-color:var(--accent);outline:none}
-.sugg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:20;overflow:hidden;max-height:300px;overflow-y:auto}
-.sugg button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 12px}
-.sugg button:last-child{border-bottom:0}
-.sugg button:hover,.sugg button:focus{background:var(--accent-soft)}
-.sugg .sub{display:block;font-size:12px;color:var(--muted)}
 .hint{font-size:13px;color:var(--muted);margin:6px 0 0}
-.msg{font-size:13px;padding:8px 10px;border-radius:8px;background:var(--accent-soft)}
+.msg{font-size:13px;padding:9px 11px;border-radius:10px;background:var(--pale);color:var(--ink)}
 .msg.err{background:var(--fail-soft);color:var(--fail)}
+.tile{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--pale);color:#119C8F;flex:none}
+.tile .ico{width:22px;height:22px}
+.tile.blue{background:var(--blue-soft);color:var(--blue)}
+@media (prefers-color-scheme:dark){.tile{color:var(--teal)}}
 
-/* next stop */
-.next{border:2px solid var(--accent)}
-.next h2{margin:4px 0 2px;font:700 24px/1.1 var(--f-display);text-wrap:balance}
-.next{position:relative;overflow:hidden}
-.main>*{flex-shrink:0}
+/* list rows inside a card (settings rows, add-stop rows) */
+.list{padding:0;overflow:hidden}
+.lrow{display:flex;align-items:center;gap:14px;width:100%;padding:12px 14px;border:0;background:none;text-align:left;color:inherit;font:inherit;text-decoration:none;min-height:68px}
+.list > .lrow + .lrow,.list > * + .lrow,.list > .lrow + *:not([hidden]){border-top:1px solid var(--line)}
+.lrow .lt{flex:1;min-width:0}
+.lrow b{display:block;font-weight:600;font-size:16px}
+.lrow small{display:block;color:var(--muted);font-size:13.5px;line-height:1.35;margin-top:1px}
+.lrow > .ico:last-child{color:var(--slate);width:22px;height:22px}
+.lrow.on{background:var(--pale)}
+.lsub{padding:0 14px 12px}
+
+/* buttons */
+.btn{border:0;border-radius:var(--r-ctl);padding:11px 16px;font-weight:600;background:var(--pend-soft);color:var(--ink);min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn .ico{width:20px;height:20px}
+.btn.primary,.btn.cta{background:var(--cta);color:#fff;box-shadow:0 4px 12px rgba(27,111,230,.22)}
+.btn.ghost,.btn.outline{background:var(--surface);border:1.5px solid var(--line2);color:var(--ink)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.grow{flex:1}
+.btn.big{min-height:54px;font-size:17px;border-radius:14px}
+.act-d{background:var(--ok-soft);color:var(--ok)}.act-f{background:var(--fail-soft);color:var(--fail)}.act-k{background:var(--skip-soft);color:#B26E00}
+@media (prefers-color-scheme:dark){.act-k{color:var(--skip)}}
+
+/* switches */
+.switchrow{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
+.switch{position:relative;width:54px;height:32px;flex:none}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1}
+.switch .knob{position:absolute;inset:0;border-radius:99px;background:#CDD6DE;transition:background .2s}
+.switch .knob::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.switch input:checked + .knob{background:#18B6A6}
+.switch input:checked + .knob::after{transform:translateX(22px)}
+.switch input:focus-visible + .knob{outline:3px solid var(--teal);outline-offset:2px}
+@media (prefers-color-scheme:dark){.switch .knob{background:#3A4E66}}
+
+/* inputs */
+.addr{position:relative}
+.addr input,.field input,.search input{font-size:16px;width:100%;border:1.5px solid var(--line2);border-radius:var(--r-ctl);padding:11px 14px;background:var(--surface);min-height:48px;color:var(--ink)}
+.addr input:focus,.field input:focus,.search input:focus{border-color:var(--teal);outline:none;box-shadow:0 0 0 3px rgba(32,199,183,.18)}
+.sugg{position:absolute;left:0;right:0;top:100%;margin-top:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgba(16,42,67,.18);z-index:20;overflow:hidden;max-height:320px;overflow-y:auto}
+.sugg button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:11px 14px;font-weight:600}
+.sugg button:last-child{border-bottom:0}
+.sugg button:hover,.sugg button:focus{background:var(--pale)}
+.sugg .sub{display:block;font-size:12.5px;color:var(--muted);font-weight:400}
+.field{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+textarea{width:100%;min-height:140px;border:1.5px solid var(--line2);border-radius:var(--r-ctl);padding:11px 13px;background:var(--surface);font:16px/1.45 var(--f-body);color:var(--ink);resize:vertical}
+textarea:focus{border-color:var(--teal);outline:none}
+.toggle{display:flex;gap:10px;align-items:center;font-size:14.5px}
+.toggle input{width:20px;height:20px;accent-color:#12A99B}
+.search{flex:1;position:relative}
+.search .ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--slate)}
+.search input{padding-left:44px}
+.iconbtn{position:relative;width:48px;height:48px;border-radius:var(--r-ctl);border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--navy);flex:none;box-shadow:var(--shadow)}
+.iconbtn select{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:16px}
+.iconbtn.on{border-color:var(--teal);color:#119C8F}
+
+/* ---------- summary tiles & metrics ---------- */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+.summary > div{border-radius:14px;padding:10px 2px 9px;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;gap:2px}
+.summary .ico{width:22px;height:22px;margin-bottom:2px}
+.summary b{display:block;font:700 22px/1 var(--f-display)}
+.summary span{font:600 12.5px/1.1 var(--f-display);letter-spacing:.07em;text-transform:uppercase}
+.s-p{background:var(--pend-soft);color:var(--navy)} .s-d{background:var(--ok-soft);color:var(--ok)}
+.s-f{background:var(--fail-soft);color:var(--fail)} .s-k{background:var(--skip-soft);color:#B26E00}
+@media (prefers-color-scheme:dark){.s-p{color:var(--ink)}.s-k{color:var(--skip)}}
+.metrics{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:14px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.metrics .label{font-size:13px}
+.metrics .v{font:700 24px/1.15 var(--f-display);margin-top:4px}
+.badge{display:inline-flex;align-items:center;font:600 12.5px/1 var(--f-display);letter-spacing:.07em;text-transform:uppercase;padding:7px 11px;border-radius:999px;background:var(--pend-soft);color:var(--navy)}
+.badge.live{background:var(--ok-soft);color:var(--ok)} .badge.est{background:var(--skip-soft);color:#B26E00} .badge.stale{background:var(--fail-soft);color:var(--fail)}
+.optrow{display:flex;gap:10px;margin-top:14px}
+.alert{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:10px 12px;border-radius:12px;background:var(--skip-soft);color:var(--ink);margin-top:12px}
+.alert span{flex:1;min-width:0}
+.bar{height:8px;border-radius:99px;background:var(--pend-soft);overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;width:0;background:var(--cta)}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
+
+/* ---------- next stop (delivering) ---------- */
+.next{position:relative;overflow:hidden;border:1.5px solid rgba(32,199,183,.55)}
+.nc-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nstop{display:flex;align-items:flex-start;gap:12px;margin-top:10px}
+.nstop .lt{flex:1;min-width:0}
+.nstop h2,.nstop b.t{display:block;margin:0;font:700 20px/1.2 var(--f-body);letter-spacing:-.01em;text-wrap:balance;overflow-wrap:anywhere}
+.nstop .a{display:block;color:var(--muted);font-size:14px;margin-top:2px;overflow-wrap:anywhere}
+.nmeta{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-top:8px;color:var(--ink);font-size:14px}
+.nmeta span{display:inline-flex;align-items:center;gap:6px}
+.nmeta .ico{width:18px;height:18px;color:var(--slate)}
+.acts3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+.acts3 .btn{flex-direction:column;gap:6px;min-height:84px;border-radius:14px;font:700 15px/1.15 var(--f-display);letter-spacing:.02em;text-align:center;padding:10px 6px}
+.acts3 .btn .ico{width:28px;height:28px;stroke-width:2.2}
+.acts3 .act-d .ico{color:#fff;background:var(--ok);border-radius:50%;padding:5px;stroke-width:3}
+.acts3 .act-f .ico{color:#fff;background:var(--fail);border-radius:50%;padding:6px;stroke-width:3}
+.acts3 .act-k .ico{color:#fff;background:var(--skip);border-radius:50%;padding:6px;stroke-width:3}
 .nc-body,.nav-stop{transition:transform .26s cubic-bezier(.2,.8,.2,1),opacity .26s}
 .nc-body.out,.nav-stop.out{transform:translateX(-105%);opacity:0}
 .nc-body.in,.nav-stop.in{transform:translateX(60%);opacity:0;transition:none}
-.stamp{position:absolute;top:12px;right:12px;z-index:2;font:700 16px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:7px 10px;border-radius:8px;color:#fff;animation:stampin .26s cubic-bezier(.2,1.4,.4,1)}
+.stamp{position:absolute;top:12px;right:12px;z-index:2;font:700 16px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:8px 12px;border-radius:10px;color:#fff;animation:stampin .26s cubic-bezier(.2,1.4,.4,1)}
 .stamp.delivered{background:var(--ok)}.stamp.failed{background:var(--fail)}.stamp.skipped{background:var(--skip)}
 @keyframes stampin{from{transform:scale(1.6) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
-.upnext{list-style:none;margin:10px 0 0;padding:8px 0 0;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:4px}
-.upnext li{display:flex;gap:8px;align-items:baseline;font-size:13.5px;color:var(--muted);min-width:0}
-.upnext li b{flex:none;min-width:34px;font:700 15px/1 var(--f-display);color:var(--ink)}
+.upnext{list-style:none;margin:12px 0 0;padding:10px 0 0;border-top:1px dashed var(--line2);display:flex;flex-direction:column;gap:6px}
+.upnext li{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--muted);min-width:0}
+.upnext li b{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--pend-soft);color:var(--navy);font:700 14px/1 var(--f-display)}
 .upnext li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .upnext li.new{animation:upin .3s ease-out}
 @keyframes upin{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.nc-body,.nav-stop{transition:none}.stamp,.upnext li.new{animation:none}}
-.next .acts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
-.act-d{background:var(--ok);color:#fff}.act-f{background:var(--fail);color:#fff}.act-k{background:var(--skip);color:#fff}
+.reasons{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.reasons .btn{min-height:40px;padding:8px 12px;font-size:14px}
 
-/* stops list */
-.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.stop{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px}
-.stop.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
-.num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 17px/1 var(--f-display);color:#fff;background:var(--pend);font-variant-numeric:tabular-nums}
+/* ---------- stops list ---------- */
+.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.stop{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:14px 12px 14px 14px;box-shadow:var(--shadow)}
+.stop.sel{border-color:var(--teal);box-shadow:0 0 0 3px rgba(32,199,183,.18)}
+.num{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:700 20px/1 var(--f-display);color:#fff;background:var(--navy);font-variant-numeric:tabular-nums;flex:none}
+@media (prefers-color-scheme:dark){.num{background:#0A1A2B;border:1.5px solid #3A5574}}
 .num.delivered{background:var(--ok)}.num.failed{background:var(--fail)}.num.skipped{background:var(--skip)}
 .stop .txt{min-width:0}
-.stop .a{font-weight:600;overflow-wrap:anywhere}
-.stop .m{font-size:12px;color:var(--muted)}
-.chip{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:5px}
-.chip.pending{background:var(--pend-soft);color:var(--pend)}.chip.delivered{background:var(--ok-soft);color:var(--ok)}
-.chip.failed{background:var(--fail-soft);color:var(--fail)}.chip.skipped{background:var(--skip-soft);color:var(--skip)}
-.handle{touch-action:none;border:0;background:transparent;padding:8px 6px;color:var(--muted);font-size:18px;line-height:1}
-.more{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px;border-top:1px dashed var(--line)}
-.more .btn{padding:8px 10px;min-height:40px;font-size:14px}
+.stop .a{font:700 17px/1.25 var(--f-body);overflow-wrap:anywhere}
+.stop .s2{font-size:14px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.stop .m{font-size:13.5px;color:var(--ink);display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:8px}
+.stop .m .pc{display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
+.stop .m .pc .ico{width:18px;height:18px;color:var(--slate)}
+.stop .m .eta{color:var(--muted)}
+.sctl{display:flex;align-items:center;gap:6px}
+.handle{touch-action:none;border:0;background:transparent;width:34px;height:40px;color:var(--slate);display:grid;place-items:center;padding:0}
+.handle .ico{width:22px;height:22px}
+.ud{width:40px;height:40px;border-radius:10px;border:0;background:var(--pend-soft);color:var(--navy);display:grid;place-items:center;padding:0}
+.ud .ico{width:16px;height:16px;fill:currentColor;stroke:none}
+.more{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px dashed var(--line2)}
+.more .btn{padding:8px 12px;min-height:42px;font-size:14px}
 .sortable-ghost{opacity:.35}
-.reasons{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.chip,.pill{display:inline-flex;align-items:center;font:600 12.5px/1 var(--f-display);text-transform:uppercase;letter-spacing:.07em;padding:6px 9px;border-radius:7px}
+.chip.pending,.pill.pending{background:var(--pend-soft);color:var(--navy)}.chip.delivered,.pill.delivered{background:var(--ok-soft);color:var(--ok)}
+.chip.failed,.pill.failed{background:var(--fail-soft);color:var(--fail)}.chip.skipped,.pill.skipped{background:var(--skip-soft);color:#B26E00}
+@media (prefers-color-scheme:dark){.chip.pending,.pill.pending{color:var(--ink)}}
+.chip.warn{background:var(--skip-soft);color:#B26E00}
+.chip.miss{background:var(--fail-soft);color:var(--fail)}
+.chip.big{background:var(--blue-soft);color:var(--blue)}
+.chip.mark{background:var(--pend-soft);color:var(--ink);text-transform:none;letter-spacing:0;font:500 12.5px/1.2 var(--f-body)}
+.chip.pick{background:#ECE6FA;color:#5B35B0}
+@media (prefers-color-scheme:dark){.chip.pick{background:#2C2346;color:#C9B5F5}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.kindrow{display:flex;align-items:center;gap:10px;width:100%;flex-wrap:wrap;padding:2px 0 6px}
+.seg{display:inline-flex;border:1.5px solid var(--line2);border-radius:12px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:9px 16px;font-weight:600;min-height:42px}
+.seg button.on{background:var(--teal);color:#06302C}
+.qty{display:inline-flex;align-items:center;border:1.5px solid var(--line2);border-radius:12px;overflow:hidden;background:var(--surface)}
+.qty button{border:0;background:none;width:46px;min-height:42px;font-size:20px;font-weight:600;color:var(--navy)}
+.qty b{min-width:70px;text-align:center;font-variant-numeric:tabular-nums}
+.snote{display:block;margin-top:8px;padding:8px 11px;border-radius:10px;background:#FFF6D9;color:#5A4300;font-size:13.5px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}
+@media (prefers-color-scheme:dark){.snote{background:#3A3110;color:#F3DD8C}}
+.notebox{width:100%;margin:2px 0 4px}
+.notebox textarea{display:block;width:100%;min-height:66px;margin-top:6px;font-size:16px}
+.qnotes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.qnotes button{border:1.5px solid var(--line2);background:var(--surface);border-radius:99px;padding:7px 12px;font-size:13.5px;font-weight:600}
+.qnotes button.on{background:var(--pale);border-color:var(--teal);color:#0D6F66}
+.stopsbar{position:sticky;bottom:calc(-1 * max(28px,env(safe-area-inset-bottom)));margin:4px -14px calc(-1 * max(28px,env(safe-area-inset-bottom)));padding:12px 14px max(14px,env(safe-area-inset-bottom));background:linear-gradient(to bottom,rgba(244,247,249,0),var(--bg) 22%);display:flex;flex-direction:column;gap:8px;z-index:5}
+.stopsbar .row{flex-wrap:nowrap}
+.stopsbar .btn{min-height:54px;font-size:16px;border-radius:14px}
+@media (prefers-color-scheme:dark){.stopsbar{background:linear-gradient(to bottom,rgba(11,23,36,0),var(--bg) 22%)}}
+.dorder{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 2px -2px}
+.dorder .m{font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
 
-/* sheets */
-.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--surface);width:100%;max-width:560px;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px max(16px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
-.sheet h3{font:700 22px/1.1 var(--f-display);margin:0 0 10px;text-transform:uppercase;letter-spacing:.02em}
-.sheet h4{margin:14px 0 6px;font-size:14px}
+/* views */
+.v-map .vs-stops,.v-map .vs-details,.v-stops .vs-map,.v-stops .vs-details,.v-details .vs-map,.v-details .vs-stops,.v-stops .mapwrap,.v-details .mapwrap{display:none!important}
+.v-stops #sumPanel{background:none;border:0;box-shadow:none;padding:0}
+.v-stops #sumPanel .maponly{display:none!important}
+
+/* details view */
+.dl{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;margin:6px 0 0;font-size:15px}
+.dl dt{color:var(--muted)} .dl dd{margin:0;font-weight:600;text-align:right}
+
+/* ---------- sheets ---------- */
+#navMenu,#noteSheet{z-index:1600!important}
+.sheet-bg{position:fixed;inset:0;background:rgba(9,23,38,.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:22px 22px 0 0;padding:10px max(18px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));box-shadow:0 -10px 40px rgba(9,23,38,.25)}
+.sheet::before{content:"";display:block;width:44px;height:5px;border-radius:3px;background:var(--line2);margin:0 auto 12px}
+.sheet h3{font:700 26px/1.1 var(--f-display);margin:0 0 12px;letter-spacing:.01em;text-transform:none}
+.sheet h4{margin:16px 0 6px;font-size:14px}
 .sheet ul{margin:0;padding-left:18px}
 .sheet li{margin:3px 0}
 .saved{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .saved .t{flex:1;min-width:0}
-.field{display:flex;flex-direction:column;gap:4px;margin:8px 0}
-.field input{font-size:16px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
-.toggle{display:flex;gap:8px;align-items:center;font-size:14px}
 
-/* map pins */
-.pin{width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);background:#55636a}
-.pin span{transform:rotate(45deg);color:#fff;font:700 14px/1 "Barlow Condensed",Arial,sans-serif}
-.pin.delivered{background:#23773a}.pin.failed{background:#c0392b}.pin.skipped{background:#a86400}
-.pin.start{background:#0f5c5a}.pin.pickup{border-radius:7px;transform:none}.pin.pickup span{transform:none}.pin.pickup.pending{background:#6b3fa0}.pin.sel{outline:3px solid #f5c400}
-.leaflet-container{font-family:var(--f-body)}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(18px,env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;z-index:2000;font-size:14px;max-width:90vw}
+/* ---------- map pins ---------- */
+.pin{width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(9,23,38,.4);background:#102A43}
+.pin span{transform:rotate(45deg);color:#fff;font:700 17px/1 "Barlow Condensed",Arial,sans-serif}
+.pin.delivered{background:#1E9A55}.pin.failed{background:#E0464B}.pin.skipped{background:#E3961B}
+.pin.start{background:var(--cta);background:#1B6FE6}.pin.pickup{border-radius:9px;transform:none}.pin.pickup span{transform:none}.pin.pickup.pending{background:#6A3FC4}.pin.sel{box-shadow:0 0 0 4px #20C7B7,0 2px 6px rgba(9,23,38,.4)}
+.medot{width:22px;height:22px;border-radius:50%;background:#1B6FE6;border:4px solid #fff;box-shadow:0 0 0 6px rgba(27,111,230,.18),0 2px 6px rgba(9,23,38,.35)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(18px,env(safe-area-inset-bottom));background:var(--navy);color:#fff;padding:12px 16px;border-radius:14px;z-index:2000;font-size:14px;max-width:90vw;box-shadow:0 8px 24px rgba(9,23,38,.3)}
+@media (prefers-color-scheme:dark){.toast{background:#E8F0F6;color:#0B1724}}
 @media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
-.chip.warn{background:var(--skip-soft);color:var(--skip)}
-.chip.miss{background:var(--fail-soft);color:var(--fail)}
-.chip.big{background:var(--accent-soft);color:var(--accent)}
-.chip.mark{background:var(--pend-soft);color:var(--ink)}
-.chip.pick{background:#ece4f6;color:#5b2f91}
-@media (prefers-color-scheme:dark){.chip.pick{background:#2c2140;color:#c9a9f0}}
-.kindrow{display:flex;align-items:center;gap:10px;width:100%;flex-wrap:wrap;padding:2px 0 6px}
-.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
-.seg button{border:0;background:var(--surface);padding:8px 14px;font-weight:600;min-height:40px}
-.seg button.on{background:var(--accent);color:var(--accent-ink)}
-.qty{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
-.qty button{border:0;background:var(--surface);width:44px;min-height:40px;font-size:20px;font-weight:600}
-.qty b{min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
-.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
-textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font:16px/1.4 var(--f-body);color:var(--ink);resize:vertical}
-.bar{height:8px;border-radius:99px;background:var(--pend-soft);overflow:hidden;margin-top:8px}
-.bar i{display:block;height:100%;width:0;background:var(--accent)}
-@media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
-.alert{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--skip-soft);color:var(--ink);margin-top:10px}
-.alert span{flex:1;min-width:0}
-.switchrow{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
-.switch{position:relative;width:52px;height:30px;flex:none}
-.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
-.switch .knob{position:absolute;inset:0;border-radius:99px;background:var(--line);transition:background .2s}
-.switch .knob::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
-.switch input:checked + .knob{background:var(--accent)}
-.switch input:checked + .knob::after{transform:translateX(22px)}
-.switch input:focus-visible + .knob{outline:3px solid var(--accent);outline-offset:2px}
-.locbanner{border:2px solid var(--accent);background:var(--accent-soft)}
+
+/* banners */
+.locbanner{border:1.5px solid rgba(27,111,230,.35);background:var(--blue-soft)}
 .locbanner p{margin:0 0 10px;font-size:14px}
-.nextstep{border:2px solid var(--ok);background:var(--ok-soft)}
-.nextstep b{display:block;font:700 20px/1.2 var(--f-display);color:var(--ok)}
-.nextstep p{margin:6px 0 10px;font-size:14px}
+.nextstep{border:1.5px solid rgba(30,154,85,.35);background:var(--ok-soft)}
+.nextstep b{display:block;font:700 21px/1.2 var(--f-display);color:var(--ok)}
+.nextstep p{margin:6px 0 12px;font-size:14px}
 .ns-acts{display:flex;flex-direction:column;gap:8px}
+
+/* ---------- navigation ---------- */
 .nav{position:fixed;inset:0;z-index:1500;background:var(--bg);display:flex;flex-direction:column}
-.nav-top{display:flex;gap:12px;align-items:center;background:#0f5c5a;color:#fff;padding:12px max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left));padding-top:max(12px,env(safe-area-inset-top))}
-.nav-arrow{font:700 46px/1 var(--f-display);width:56px;text-align:center}
-.nav-back{background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.6);border-radius:10px;padding:8px 10px;font-weight:600;min-height:44px;align-self:flex-start}
-.nav-txt{min-width:0}
+.navmapwrap{position:relative;flex:1;min-height:180px}
+#navMap{position:absolute;inset:0}
+.ninstr{position:absolute;left:12px;top:12px;z-index:600;width:min(62%,300px);border-radius:16px;overflow:hidden;box-shadow:0 6px 20px rgba(9,23,38,.28)}
+.ninstr .top{display:flex;gap:12px;align-items:center;background:var(--navy);color:#fff;padding:14px}
+.nav-arrow{width:50px;height:50px;flex:none;display:grid;place-items:center}
+.nav-arrow .ico{width:48px;height:48px;stroke-width:2.6}
 .nav-dist{font:700 30px/1 var(--f-display)}
-.nav-instr{font:600 19px/1.2 var(--f-body);margin-top:2px;overflow-wrap:anywhere}
-.nav-then{font-size:13px;opacity:.85;margin-top:3px}
-#navMap{flex:1;min-height:200px}
-.nav-bottom{background:var(--surface);border-top:1px solid var(--line);padding:10px max(14px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
-.nav-eta{display:flex;gap:10px;align-items:baseline}
-.nav-eta b{font:700 24px/1 var(--f-display);color:var(--ok)}
-.nav-eta span{color:var(--muted);font-size:14px}
-.nav-stop{font-size:14px;margin-top:4px;overflow-wrap:anywhere}
-.snote{display:block;margin-top:4px;padding:5px 8px;border-radius:6px;background:#fff6d6;color:#5a4300;font-size:13px;line-height:1.35;overflow-wrap:anywhere;white-space:pre-wrap}
-@media (prefers-color-scheme:dark){.snote{background:#3a3110;color:#f3dd8c}}
-.notebox{width:100%;margin:2px 0 4px}
-.notebox textarea{display:block;width:100%;min-height:62px;margin-top:4px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);font:16px/1.35 var(--f-body);color:var(--ink);resize:vertical}
-.guide{position:fixed;inset:0;z-index:1200;background:rgba(10,30,29,.72);display:flex;align-items:center;justify-content:center;padding:16px}
-.gcard{position:relative;background:var(--surface);border-radius:18px;width:100%;max-width:420px;padding:22px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
-.gskip{position:absolute;top:10px;right:10px;border:0;background:none;color:var(--muted);font-weight:600;padding:8px}
-.gslides section{display:none;text-align:center;min-height:250px}
+.nav-instr{font:500 15px/1.25 var(--f-body);margin-top:4px;overflow-wrap:anywhere}
+.nav-then{font-size:12.5px;opacity:.75;margin-top:4px}
+.ninstr .eta{display:flex;gap:12px;align-items:flex-start;background:var(--surface);color:var(--ink);padding:12px 14px}
+.ninstr .eta .ico{width:24px;height:24px;color:var(--navy);margin-top:2px}
+@media (prefers-color-scheme:dark){.ninstr .eta .ico{color:var(--ink)}}
+.ninstr .eta b{display:block;font:700 22px/1.1 var(--f-display)}
+.ninstr .eta span{display:block;color:var(--muted);font-size:13.5px}
+.nctl{position:absolute;right:12px;top:12px;z-index:600;display:flex;flex-direction:column;gap:12px}
+.round{width:52px;height:52px;border-radius:50%;border:0;background:#fff;color:var(--navy);display:grid;place-items:center;box-shadow:0 3px 10px rgba(9,23,38,.25)}
+.round .ico{width:24px;height:24px}
+.round.off{color:var(--slate)}
+.destcall{background:#fff!important;border:0!important;border-radius:12px!important;box-shadow:0 4px 14px rgba(9,23,38,.25)!important;padding:8px 12px!important;font:600 14px/1.25 var(--f-body)!important;color:var(--navy)!important}
+.destcall small{display:block;font-weight:400;color:var(--slate)}
+.navme{width:46px;height:46px;border-radius:50%;background:#1B6FE6;border:4px solid #fff;box-shadow:0 0 0 8px rgba(27,111,230,.18),0 3px 8px rgba(9,23,38,.35);display:grid;place-items:center;color:#fff}
+.navme .ico{width:20px;height:20px;fill:#fff;stroke:#fff}
+.nsheet{background:var(--surface);border-radius:22px 22px 0 0;margin-top:-18px;position:relative;z-index:700;padding:8px max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));box-shadow:0 -8px 30px rgba(9,23,38,.18);max-height:62vh;overflow:auto}
+.nsheet .grab{display:block;width:44px;height:5px;border-radius:3px;background:var(--line2);margin:2px auto 10px}
+.nstopcard{border:1px solid var(--line);border-radius:var(--r-card);padding:14px;box-shadow:var(--shadow)}
+.nav-stop{min-width:0}
+.nrowlist{margin-top:12px}
+.navbtm{display:flex;gap:10px;margin-top:12px}
+.navbtm .btn{min-height:54px;font-size:16px;border-radius:14px}
+.arrived{display:flex;align-items:center;gap:8px;margin-top:10px;padding:9px 12px;border-radius:12px;background:var(--ok-soft);color:var(--ok);font-weight:600;font-size:14px}
+
+/* ---------- routes home ---------- */
+.home{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column}
+.hero{background:var(--hero);color:#fff;padding:max(16px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) 46px max(18px,env(safe-area-inset-left));display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 85% -10%,rgba(32,199,183,.25),transparent 60%);pointer-events:none}
+.logo{display:flex;align-items:center;gap:10px;flex:1;min-width:0;position:relative;z-index:1}
+.logo .mk{height:64px;width:auto;flex:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
+.logo .wm{height:52px;width:auto;max-width:100%;object-fit:contain;object-position:left}
+.avatar{position:relative;z-index:1;width:54px;height:54px;border-radius:50%;border:1.5px solid rgba(255,255,255,.7);background:rgba(255,255,255,.06);color:#fff;display:grid;place-items:center;flex:none}
+.avatar .ico{width:26px;height:26px}
+.avatar i{position:absolute;right:-1px;bottom:3px;width:13px;height:13px;border-radius:50%;background:#22D3A6;border:2px solid #0F3A63}
+.home .hlist{flex:1;overflow:auto;margin-top:-26px;position:relative;z-index:2;background:var(--bg);border-radius:24px 24px 0 0;padding:16px max(14px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:12px}
+.home .hlist > *{max-width:640px;width:100%;margin-left:auto;margin-right:auto}
+.create{display:flex;align-items:center;gap:12px;width:100%;min-height:68px;border:0;border-radius:18px;background:var(--cta);color:#fff;font:700 26px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase;padding:0 18px 0 24px;box-shadow:0 8px 20px rgba(27,111,230,.25)}
+.create .ico{width:28px;height:28px;stroke-width:3}
+.create span{flex:1;text-align:center;margin-right:24px}
+.create .ico:last-child{width:26px;height:26px}
+.sortbtn{display:inline-flex;align-items:center;gap:8px;background:none;border:0;color:var(--muted);font-size:15px;padding:6px 2px}
+.sortbtn .ico{width:22px;height:22px;color:var(--navy)}
+@media (prefers-color-scheme:dark){.sortbtn .ico{color:var(--ink)}}
+#routeList{display:flex;flex-direction:column;gap:12px}
+.rcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow)}
+.rcard .ro{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:none;border:0;padding:16px 14px 14px 16px;color:inherit}
+.rcard .rb{flex:1;min-width:0}
+.rcard .rtop{display:flex;align-items:center;gap:8px;padding-right:40px}
+.rcard .rn{flex:1;min-width:0;font:700 22px/1.15 var(--f-display);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcard .rm{font-size:14.5px;color:var(--muted);margin-top:4px}
+.rcard .rprog{display:flex;align-items:center;gap:10px;margin-top:10px;padding-right:2px}
+.rcard .rbar{flex:1;height:8px;border-radius:5px;background:var(--pend-soft);overflow:hidden;display:flex}
+.rcard .rbar i{display:block;height:100%}
+.rcard .rpc{font:600 15px/1 var(--f-body);min-width:38px;text-align:right;font-variant-numeric:tabular-nums}
+.rcard .ro > .ico:last-child{color:var(--slate);width:22px;height:22px;align-self:flex-end;margin-bottom:-2px}
+.rcard .more{position:absolute;right:6px;top:10px;border:0;background:none;width:40px;height:40px;color:var(--navy);display:grid;place-items:center;padding:0}
+.rcard .more .ico{width:22px;height:22px}
+@media (prefers-color-scheme:dark){.rcard .more{color:var(--ink)}}
+.rstate{display:inline-flex;align-items:center;font:600 13px/1 var(--f-display);letter-spacing:.07em;text-transform:uppercase;padding:7px 11px;border-radius:999px;white-space:nowrap}
+.rstate.new{background:var(--pend-soft);color:var(--slate)} .rstate.go{background:var(--skip-soft);color:#B26E00} .rstate.done{background:var(--ok-soft);color:var(--ok)}
+.icard{display:flex;gap:14px;align-items:flex-start}
+.icard .lt{flex:1;min-width:0}
+.icard .label{font-size:15px;color:var(--ink);opacity:.8}
+.permrow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:8px;font-size:14.5px}
+.permrow .btn{min-height:40px;padding:6px 12px}
+.homeill{display:block;width:100%;height:auto;margin-top:6px;opacity:.95}
+.madeby{text-align:center;color:var(--muted);font-size:12.5px;margin:6px 0 0}
+.madeby b{color:var(--ink);font-weight:600}
+
+/* ---------- splash & guide ---------- */
+.splash{position:fixed;inset:0;z-index:3000;background:#EAF5FB url("assets/splash.jpg") center/cover no-repeat;pointer-events:none;transition:opacity .35s}
+.splash.go{opacity:0}
+.guide{position:fixed;inset:0;z-index:1200;background:rgba(9,23,38,.62);display:flex;align-items:flex-end;justify-content:center}
+@media (min-height:700px){.guide{align-items:center;padding:16px}}
+.gcard{position:relative;background:var(--surface);border-radius:26px 26px 0 0;width:100%;max-width:440px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+@media (min-height:700px){.gcard{border-radius:26px}}
+.ghero{background:var(--hero);padding:18px 18px 34px;display:flex;align-items:center;gap:10px;position:relative}
+.ghero img.mk{height:44px} .ghero img.wm{height:36px;max-width:70%;object-fit:contain;object-position:left}
+.gskip{position:absolute;top:12px;right:12px;border:1.5px solid rgba(255,255,255,.6);background:rgba(255,255,255,.08);color:#fff;font-weight:600;padding:6px 12px;border-radius:99px;z-index:2}
+.gbody{background:var(--surface);border-radius:22px 22px 0 0;margin-top:-20px;position:relative;padding:18px 18px max(18px,env(safe-area-inset-bottom))}
+.gslides section{display:none;min-height:300px}
 .gslides section.on{display:block;animation:gin .28s ease-out}
 @keyframes gin{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
-.gic{width:64px;height:64px;margin:6px auto 10px;border-radius:18px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:30px}
-.gslides h3{font:700 24px/1.15 var(--f-display);letter-spacing:.02em;text-transform:uppercase;margin:0 0 8px}
-.gslides p{color:var(--muted);margin:0 4px 10px;font-size:15.5px}
+.gstep{font:600 13px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:#119C8F}
+.gslides h3{font:700 28px/1.1 var(--f-display);margin:6px 0 8px}
+.gslides p{color:var(--muted);margin:0 0 12px;font-size:15px;line-height:1.5}
 .gslides p b{color:var(--ink)}
-.gperm{display:flex;flex-direction:column;gap:8px;margin-top:8px}
-.gdots{display:flex;justify-content:center;gap:6px;margin:10px 0 12px}
-.gdots i{width:8px;height:8px;border-radius:50%;background:var(--line)} .gdots i.on{background:var(--accent);width:20px;border-radius:4px}
-@media (prefers-reduced-motion:reduce){.gslides section.on{animation:none}}
-.madeby{text-align:center;color:var(--muted);font-size:12.5px;margin:18px 0 4px}
-.madeby b{color:var(--ink);font-weight:600}
-.setgroup{border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden;background:var(--surface)}
-.setgroup .switchrow,.setrow{padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.gdemo{pointer-events:none;margin:6px 0 4px}
+.gdemo .card,.gdemo .rcard{box-shadow:var(--shadow)}
+.gperm{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.gperm .btn{min-height:52px}
+.gdots{display:flex;justify-content:center;gap:6px;margin:12px 0 14px}
+.gdots i{width:8px;height:8px;border-radius:50%;background:var(--line2)} .gdots i.on{background:var(--teal);width:24px;border-radius:4px}
+.gnav{display:flex;gap:10px} .gnav .btn{min-height:54px;font-size:16px;border-radius:14px}
+@media (prefers-reduced-motion:reduce){.gslides section.on{animation:none}.splash{transition:none}}
+
+/* ---------- settings & misc sheets ---------- */
+.setgroup{border:1px solid var(--line);border-radius:var(--r-card);margin:10px 0;overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.setgroup .switchrow,.setrow{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .setgroup .switchrow + .setrow{border-top:1px solid var(--line)}
-.setgroup b{display:block;font-size:15px}
-.setgroup small{display:block;color:var(--muted);font-size:12.5px;line-height:1.3;margin-top:2px}
-.setlink{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:0;border-top:1px solid var(--line);background:none;text-align:left;color:inherit;text-decoration:none;font:inherit}
+.setgroup b{display:block;font-size:15.5px;font-weight:600}
+.setgroup small{display:block;color:var(--muted);font-size:13px;line-height:1.35;margin-top:2px}
+.setlink{display:flex;align-items:center;gap:14px;width:100%;padding:12px 14px;border:0;border-top:1px solid var(--line);background:none;text-align:left;color:inherit;text-decoration:none;font:inherit}
 .setgroup .setlink:first-child{border-top:0}
-.setlink > span:first-child{font-size:20px;width:28px;text-align:center}
 .setlink > span:nth-child(2){flex:1}
-.setlink i{font-style:normal;color:var(--muted);font-size:22px}
-.setfoot{text-align:center;color:var(--muted);font-size:13px;line-height:1.6;margin-top:14px}
+.setlink > .ico:last-child{color:var(--slate)}
+.setfoot{text-align:center;color:var(--muted);font-size:13px;line-height:1.6;margin-top:16px}
 .setfoot b{color:var(--ink)}
-.brandmark{font:700 22px/1 var(--f-display);letter-spacing:.06em;color:var(--accent);margin-bottom:4px}
+.setfoot img{height:40px;width:auto;display:block;margin:0 auto 6px}
 .setsmall{font-size:11.5px;margin-top:6px}
-.bugtext{display:block;width:100%;min-height:110px;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);font:16px/1.4 var(--f-body);color:var(--ink);resize:vertical}
-.buginfo{white-space:pre-wrap;font-size:11.5px;color:var(--muted);background:var(--bg);border-radius:8px;padding:8px;margin:0 0 10px;max-height:120px;overflow:auto}
-.permrow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:8px;font-size:14.5px}
-.permrow .btn{min-height:38px;padding:6px 12px}
-.qnotes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.qnotes button{border:1.5px solid var(--line);background:var(--surface);border-radius:16px;padding:6px 11px;font-size:13.5px;font-weight:600}
-.qnotes button.on{background:#fff6d6;border-color:#d8b64a;color:#5a4300}
-.nav-arrive{margin-top:8px}
-.slist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.bugtext{display:block;width:100%;min-height:110px}
+.buginfo{white-space:pre-wrap;font-size:11.5px;color:var(--muted);background:var(--bg);border-radius:10px;padding:10px;margin:0 0 10px;max-height:120px;overflow:auto}
+.addgrid{display:none}
+.placing #map{outline:4px solid var(--skip);outline-offset:-4px}
+
+/* scan + import */
+.slist{display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .sprogress{margin:0 0 10px;font-size:14px;color:var(--muted)}
-.sresult{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:10px;margin-top:4px}
-.sresult b{font:700 20px/1.2 var(--f-display)}
+.sresult{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:14px;margin-top:6px}
+.sresult b{font:700 21px/1.2 var(--f-display)}
 .sresult.good{background:var(--ok-soft);color:var(--ok)}
 .sresult.warn{background:var(--skip-soft);color:var(--ink)}
 .sresult span{font-size:14px}
+.srow{border:1px solid var(--line);border-radius:14px;padding:10px;background:var(--surface)}
 .srow.ok,.srow.confirmed,.srow.fixed{border-color:var(--line)}
-.srow.confirmed,.srow.fixed{background:var(--ok-soft);border-color:var(--ok)}
-.sok{margin-top:6px;width:100%}
+.srow.confirmed,.srow.fixed{background:var(--ok-soft);border-color:rgba(30,154,85,.45)}
+.srow.check{border-color:rgba(227,150,27,.6);background:var(--skip-soft)}
+.srow.missing{border-color:rgba(224,70,75,.55);background:var(--fail-soft)}
+.srow.edited{border-color:var(--teal)}
+.sok{margin-top:8px;width:100%}
+.ssug{width:100%;margin-top:8px;text-align:left;white-space:normal;font-weight:500;justify-content:flex-start}
 .smore{margin-top:12px;font-size:14px;color:var(--muted)}
 .smore summary{cursor:pointer;padding:6px 0}
-.srow{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface)}
-.srow.check{border-color:var(--skip);background:var(--skip-soft)}
-.srow.missing{border-color:var(--fail);background:var(--fail-soft)}
-.srow.edited{border-color:var(--accent)}
-.ssug{width:100%;margin-top:6px;text-align:left;white-space:normal;font-weight:500}
 .srow-h{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
-.sprob{font-size:12px;color:var(--muted)}
-.sthumb{display:block;width:100%;height:auto;max-height:70px;object-fit:contain;object-position:left;margin-top:6px;border-radius:4px;background:#fff}
-.sinput{display:block;width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);font:16px/1.35 var(--f-body);color:var(--ink);resize:none;overflow:hidden;min-height:44px;white-space:pre-wrap;overflow-wrap:anywhere}
-/* routes home */
-.home{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column}
-.home .hlist{flex:1;overflow:auto;padding:14px max(14px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px;max-width:640px;width:100%;margin:0 auto}
-.create{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;border:0;border-radius:14px;background:var(--accent);color:var(--accent-ink);font:700 21px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
-.create b{font-size:30px;line-height:0;font-weight:600}
-.rcard{display:flex;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.rcard .ro{flex:1;min-width:0;text-align:left;background:none;border:0;padding:12px 12px 10px}
-.rcard .rn{font:700 19px/1.15 var(--f-display);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rcard .rm{font-size:13px;color:var(--muted);margin-top:3px}
-.rcard .rbar{height:5px;border-radius:3px;background:var(--pend-soft);margin-top:8px;overflow:hidden;display:flex}
-.rcard .rbar i{display:block;height:100%}
-.rcard .more{border:0;border-left:1px solid var(--line);background:none;width:52px;font-size:22px;color:var(--muted)}
-.rstate{display:inline-block;font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:5px;margin-right:6px;vertical-align:1px}
-.rstate.new{background:var(--accent-soft);color:var(--accent)} .rstate.go{background:var(--skip-soft);color:var(--skip)} .rstate.done{background:var(--ok-soft);color:var(--ok)}
-.addgrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
-.addbtn{display:flex;align-items:center;gap:12px;text-align:left;min-height:56px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg)}
-.addbtn .ic{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:19px;flex:none}
-.addbtn b{display:block;font-size:15px} .addbtn small{display:block;color:var(--muted);font-size:12.5px;line-height:1.3}
-.addbtn.on{border-color:var(--accent)}
-.placing #map{outline:4px solid var(--skip);outline-offset:-4px}
+.sprob{font-size:12.5px;color:var(--muted)}
+.sthumb{display:block;width:100%;height:auto;max-height:70px;object-fit:contain;object-position:left;margin-top:8px;border-radius:6px;background:#fff}
+.sinput{display:block;width:100%;margin-top:8px;border:1.5px solid var(--line2);border-radius:10px;padding:10px 12px;background:var(--surface);font:16px/1.35 var(--f-body);color:var(--ink);resize:none;overflow:hidden;min-height:46px;white-space:pre-wrap;overflow-wrap:anywhere}
+.nav-arrive{margin-top:8px}
+
+
+/* review fixes */
+.rcard .rtop{padding-right:0}
+.rcard .rstate{font-size:12px;padding:6px 10px}
+.rcard .more{right:8px;top:8px}
+.metrics{display:grid;grid-template-columns:auto auto auto 1fr;column-gap:22px;align-items:end}
+.metrics > div:last-child{justify-self:end;padding-bottom:4px}
+.metrics .v{font-size:23px}
+.htitle{font:700 19px/1.2 var(--f-body);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htitle b{font:700 19px/1.2 var(--f-body);letter-spacing:-.01em}
+.htitle small{font-weight:500}
+.stop{grid-template-columns:auto 1fr auto;gap:12px;padding:12px 10px 12px 12px}
+.stop .num{width:40px;height:40px;font-size:19px}
+.stop .a{font-size:16px}
+.stop .s2{font-size:13.5px}
+.stop .m{margin-top:6px}
+.sctl{gap:4px}
+.handle{width:26px}
+.ud{width:34px;height:34px;border-radius:9px}
+.v-details #sumPanel{display:none!important}
+#navScreen header.top{gap:4px;padding-left:max(4px,env(safe-area-inset-left))}
+#navScreen .hlink{font-size:14px;padding:6px 4px;gap:4px}
+#navScreen .hlink .ico{width:20px;height:20px}
+#navScreen .htitle b{font-size:18px}
+#navScreen .htitle small{font-size:12.5px}
+.nstopcard .nmeta{gap:4px 12px;font-size:13.5px}
+.nstopcard .nstop .a{font-size:13.5px}
+.nstopcard .t{font-size:18px!important}
+
+.rcard .ro{gap:12px;padding-left:14px}
+.rcard .rstate{font-size:11.5px;padding:5px 8px;letter-spacing:.06em}
+.rcard .rn{font-size:21px}
+.metrics{column-gap:12px}
+.metrics .label{font-size:12px;white-space:nowrap}
+.metrics .v{font-size:21px;white-space:nowrap}
+.metrics .badge{font-size:11px;padding:6px 9px;white-space:nowrap}
+.metrics{display:flex!important;flex-wrap:wrap;gap:8px 18px;align-items:flex-end}
+.metrics > div:last-child{margin-left:auto}
+.rcard .rstate{font-size:13.5px;padding:6px 10px}
+.summary span{font-size:14px}
+.summary b{font-size:24px}
+.chip,.pill{font-size:13.5px;padding:6px 9px}
+.badge,.metrics .badge{font-size:13.5px;padding:7px 11px}
+.metrics .label{font-size:14px}
+.metrics .v{font-size:24px}
+.label{font-size:14px}
+.sect .label,.dorder .label{font-size:16px!important}
+.acts3 .btn{font-size:17.5px}
+.rcard .rn{font-size:23px}
+.upnext li b{font-size:15px}
+@media (prefers-color-scheme:dark){.ud,.iconbtn,.upnext li b,.qty button,.mapbtn,.round,.leaflet-bar a{color:var(--ink)!important}
+  .mapbtn,.round{background:#1C2E44}.leaflet-bar a{background:#1C2E44!important}.destcall{background:#1C2E44!important;color:var(--ink)!important}
+  .nstopcard,.stop,.panel,.card{border-color:var(--line)}}
 </style>
 </head>
 <body>
-<div class="app">
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+<symbol id="i-chev-l" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-dots-v" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-dots-h" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><rect x="7" y="13" width="3" height="3" rx=".6" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-sort" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z" fill="currentColor" stroke="none"/><circle cx="12" cy="9.5" r="2.6" fill="#fff" stroke="none"/></symbol>
+<symbol id="i-pin-o" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+<symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5H6a4 4 0 01-.6-7.96A6 6 0 0117.2 9 4.5 4.5 0 0118 18.5h-1"/><path d="M12 12v8M8.8 15.2L12 12l3.2 3.2"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 015.5 7h2.2l1.5-2.2h5.6L16.3 7h2.2A1.5 1.5 0 0120 8.5v9a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 17.5z"/><circle cx="12" cy="13" r="3.6"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></symbol>
+<symbol id="i-road" viewBox="0 0 24 24"><path d="M8 3L4 21M16 3l4 18M12 4v2.5M12 10v3M12 16.5V20"/></symbol>
+<symbol id="i-pkg" viewBox="0 0 24 24"><path d="M12 2.8l8 4.4v9.6l-8 4.4-8-4.4V7.2z"/><path d="M4 7.2l8 4.4 8-4.4M12 11.6v9.6M8 5l8 4.4"/></symbol>
+<symbol id="i-check-c" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor" stroke="none"/><path d="M7.8 12.3l2.8 2.8 5.6-5.8" stroke="#fff" stroke-width="2.4"/></symbol>
+<symbol id="i-x-c" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor" stroke="none"/><path d="M8.8 8.8l6.4 6.4M15.2 8.8l-6.4 6.4" stroke="#fff" stroke-width="2.4"/></symbol>
+<symbol id="i-minus-c" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor" stroke="none"/><path d="M8 12h8" stroke="#fff" stroke-width="2.6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="currentColor" stroke="none"/><path d="M18 13l.9 2.5 2.6.9-2.6.9L18 19.9l-.9-2.6-2.6-.9 2.6-.9z" fill="currentColor" stroke="none"/><path d="M17.5 3l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-map" viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M10 7V4.8h4V7M6.5 7l.9 12.2A1.5 1.5 0 008.9 20.6h6.2a1.5 1.5 0 001.5-1.4L17.5 7M10 11v6M14 11v6"/></symbol>
+<symbol id="i-grip" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M12 6l7 10H5z"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M12 18L5 8h14z"/></symbol>
+<symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4.2 4.2 0 010 6M18 6.5a7.8 7.8 0 010 11"/></symbol>
+<symbol id="i-vol-off" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
+<symbol id="i-nav" viewBox="0 0 24 24"><path d="M20 4L4 11l7 2 2 7z" fill="currentColor"/></symbol>
+<symbol id="i-navup" viewBox="0 0 24 24"><path d="M12 3l7 17-7-4-7 4z"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2.5" fill="currentColor" stroke="none"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4.5" stroke="#fff"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 000-3l2-1.6-2-3.4-2.4.9a7.5 7.5 0 00-2.6-1.5L14 2.5h-4l-.4 2.4A7.5 7.5 0 007 6.4l-2.4-.9-2 3.4 2 1.6a7.6 7.6 0 000 3l-2 1.6 2 3.4 2.4-.9a7.5 7.5 0 002.6 1.5l.4 2.4h4l.4-2.4a7.5 7.5 0 002.6-1.5l2.4.9 2-3.4z"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3.8 7l8.2 6 8.2-6"/></symbol>
+<symbol id="i-bug" viewBox="0 0 24 24"><rect x="7" y="7.5" width="10" height="12" rx="5"/><path d="M12 7.5v12M7 12H3.5M20.5 12H17M7.5 16.5L4.5 18.5M16.5 16.5l3 2M8 9L5 7M16 9l3-2M9.5 7.5a2.5 2.5 0 015 0"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 018 0v2.5"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4.5 5.5A2 2 0 016.5 3.5H19v14H6.5a2 2 0 00-2 2z"/><path d="M4.5 19.5a2 2 0 002 2H19v-4"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 004 0"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></symbol>
+<symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M3 3l18 18M8.5 16.5a5 5 0 017 0M5 12.8a10 10 0 015.2-2.6M14 10.3a10 10 0 015 2.5M2 9.2a14.5 14.5 0 015.5-3M12 5.5a14.5 14.5 0 0110 3.7"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3.5H7a2 2 0 00-2 2v13a2 2 0 002 2h10a2 2 0 002-2V8.5z"/><path d="M14 3.5v5h5"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.3" r="1" fill="currentColor" stroke="none"/></symbol>
+<!-- turn arrows for navigation -->
+<symbol id="t-straight" viewBox="0 0 48 48"><path d="M24 42V8M13 19L24 8l11 11"/></symbol>
+<symbol id="t-right" viewBox="0 0 48 48"><path d="M14 42V24c0-4 3-7 7-7h17M28 7l10 10-10 10"/></symbol>
+<symbol id="t-left" viewBox="0 0 48 48"><path d="M34 42V24c0-4-3-7-7-7H10M20 7L10 17l10 10"/></symbol>
+<symbol id="t-slight-right" viewBox="0 0 48 48"><path d="M18 42V28c0-4 2-7 5-10l11-11M23 7h11v11"/></symbol>
+<symbol id="t-slight-left" viewBox="0 0 48 48"><path d="M30 42V28c0-4-2-7-5-10L14 7M25 7H14v11"/></symbol>
+<symbol id="t-sharp-right" viewBox="0 0 48 48"><path d="M16 42V12c0-3 3-5 6-3l15 15M37 13v11H26"/></symbol>
+<symbol id="t-sharp-left" viewBox="0 0 48 48"><path d="M32 42V12c0-3-3-5-6-3L11 24M11 13v11h11"/></symbol>
+<symbol id="t-uturn" viewBox="0 0 48 48"><path d="M32 42V18a9 9 0 00-18 0v8M7 20l7 8 7-8"/></symbol>
+<symbol id="t-round" viewBox="0 0 48 48"><circle cx="24" cy="22" r="8"/><path d="M24 42V30M30 16l7-7M37 17V9h-8"/></symbol>
+<symbol id="t-arrive" viewBox="0 0 48 48"><path d="M24 44s-13-11.5-13-21.5a13 13 0 0126 0C37 32.5 24 44 24 44z"/><circle cx="24" cy="22.5" r="5"/></symbol>
+<symbol id="t-warn" viewBox="0 0 48 48"><path d="M24 6l19 34H5z"/><path d="M24 19v10"/><circle cx="24" cy="34.5" r="1.8" fill="currentColor" stroke="none"/></symbol>
+</svg>
+
+<div class="splash" id="splash" hidden></div>
+<div class="app v-map" id="appView">
   <header class="top">
-    <button class="hbtn" id="btnRoutes" aria-label="Back to all routes">‹ Routes</button>
-    <div class="brand" id="routeTitle">Route<small id="routeSub">Dropline</small></div>
-    <button class="hbtn" id="btnRouteMenu" aria-label="Route options">⋯</button>
+    <button class="hback" id="btnRoutes" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span id="backLbl">Routes</span></button>
+    <div class="htitle" id="routeTitle">Route<small id="routeSub">DropLine</small></div>
+    <button class="hbtn" id="btnRouteMenu" aria-label="Route options"><svg class="ico" aria-hidden="true"><use href="#i-dots-h"/></svg></button>
   </header>
-  <div id="map" aria-label="Map of delivery stops"></div>
+  <nav class="tabs" id="routeTabs" aria-label="Route views">
+    <button data-view="map" class="on"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Map</button>
+    <button data-view="stops"><svg class="ico" aria-hidden="true"><use href="#i-list"/></svg>Stops</button>
+    <button data-view="details"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>Details</button>
+  </nav>
+  <div class="mapwrap"><div id="map" aria-label="Map of delivery stops"></div><button class="mapbtn" id="btnCentre" aria-label="Show where I am"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></button></div>
   <main class="main" id="app-main">
     <section class="panel locbanner" id="locBanner" hidden>
       <p id="locText">Turn on location so the app can suggest nearby addresses and start routes from where you are.</p>
@@ -301,144 +601,187 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
       </div>
     </section>
 
-    <section class="panel next" id="nextCard" hidden aria-label="Next stop">
+    <div class="row vs-stops" style="flex-wrap:nowrap">
+      <label class="search"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="stopSearch" type="search" placeholder="Search stops or address" autocomplete="off" aria-label="Search stops"></label>
+      <label class="iconbtn" id="filterBtn" title="Filter"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><select id="stopFilter" aria-label="Filter stops">
+        <option value="all">All stops</option><option value="pending">Pending</option><option value="delivered">Delivered</option><option value="failed">Failed</option><option value="skipped">Skipped</option><option value="pickup">Pickups</option><option value="check">Check pin</option></select></label>
+    </div>
+
+    <section class="panel next vs-map" id="nextCard" hidden aria-label="Next stop">
       <div class="stamp" id="nextStamp" hidden></div>
       <div class="nc-body" id="nextBody">
-      <div class="label">Next stop <span id="nextNum"></span></div>
-      <h2 id="nextAddr"></h2>
-      <div class="m" id="nextMeta" style="font-size:13px;color:var(--muted)"></div>
-      <div class="chips" id="nextChips"></div>
-      <span class="snote" id="nextNote" hidden></span>
+        <div class="nc-head"><div class="label">Next stop <span id="nextNum"></span></div><span class="pill pending" id="nextPill">Pending</span></div>
+        <div class="nstop"><span class="num" id="nextN">1</span><div class="lt"><h2 id="nextAddr"></h2><span class="a" id="nextSub"></span>
+          <div class="nmeta"><span><svg class="ico" aria-hidden="true"><use href="#i-pkg"/></svg><i id="nextMeta" style="font-style:normal"></i></span></div></div></div>
+        <div class="chips" id="nextChips"></div>
+        <span class="snote" id="nextNote" hidden></span>
       </div>
-      <div class="acts">
-        <button class="btn act-d" data-next="delivered">Delivered</button>
-        <button class="btn act-f" data-next="failed">Failed</button>
-        <button class="btn act-k" data-next="skipped">Skip</button>
+      <div class="acts acts3">
+        <button class="btn act-d" data-next="delivered"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span class="t">Delivered</span></button>
+        <button class="btn act-f" data-next="failed"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg><span class="t">Failed</span></button>
+        <button class="btn act-k" data-next="skipped"><svg class="ico" aria-hidden="true"><use href="#i-minus"/></svg><span class="t">Skip</span></button>
       </div>
-      <div class="reasons" id="nextReasons" hidden style="margin-top:8px"></div>
-      <button class="btn primary" id="nextGo" style="width:100%;margin-top:8px">▶ Navigate (voice)</button>
+      <div class="reasons" id="nextReasons" hidden style="margin-top:10px"></div>
+      <button class="btn cta big" id="nextGo" style="width:100%;margin-top:12px"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg>Navigate (voice)</button>
       <ol class="upnext" id="upNext" hidden></ol>
-      <div class="row" style="margin-top:8px;flex-wrap:nowrap"><a class="btn ghost grow" id="nextNav" style="text-align:center;text-decoration:none">Directions in Google Maps ↗</a><a class="btn ghost" id="nextPin" style="text-decoration:none">Show pin</a></div>
+      <div class="row" style="margin-top:10px;flex-wrap:nowrap"><a class="btn outline grow" id="nextNav"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Google Maps</a><a class="btn outline grow" id="nextPin"><svg class="ico" aria-hidden="true"><use href="#i-pin-o"/></svg>Show pin</a></div>
     </section>
+
     <section class="panel" aria-label="Route summary" id="sumPanel">
       <div class="summary">
-        <div class="s-p"><b id="cP">0</b><span>Pending</span></div>
-        <div class="s-d"><b id="cD">0</b><span>Delivered</span></div>
-        <div class="s-f"><b id="cF">0</b><span>Failed</span></div>
-        <div class="s-k"><b id="cK">0</b><span>Skipped</span></div>
+        <div class="s-p"><svg class="ico" aria-hidden="true"><use href="#i-pkg"/></svg><b id="cP">0</b><span>Pending</span></div>
+        <div class="s-d"><svg class="ico" aria-hidden="true"><use href="#i-check-c"/></svg><b id="cD">0</b><span>Delivered</span></div>
+        <div class="s-f"><svg class="ico" aria-hidden="true"><use href="#i-x-c"/></svg><b id="cF">0</b><span>Failed</span></div>
+        <div class="s-k"><svg class="ico" aria-hidden="true"><use href="#i-minus-c"/></svg><b id="cK">0</b><span>Skipped</span></div>
       </div>
-      <div class="metrics">
-        <div><div class="label">Stops</div><div class="v"><span id="nStops">0</span>/200</div><div id="nParcels" style="font-size:12px;color:var(--muted)"></div></div>
+      <div class="metrics maponly">
+        <div><div class="label">Stops</div><div class="v"><span id="nStops">0</span> / 200</div><div id="nParcels" style="font-size:12.5px;color:var(--muted)"></div></div>
         <div><div class="label">Drive time</div><div class="v" id="mTime">–</div></div>
         <div><div class="label">Distance</div><div class="v" id="mDist">–</div></div>
         <div style="align-self:center"><span class="badge" id="optBadge">Not optimised</span></div>
       </div>
-      <div class="alert" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:36px;padding:6px 10px">Find locations</button><button class="btn" id="btnShowProb" style="min-height:36px;padding:6px 10px">Check pins</button></div>
-      <div class="row" style="margin-top:12px">
-        <button class="btn primary grow" id="btnOpt">Optimise route</button>
-        <button class="btn ghost" id="btnFit" title="Show all stops on map">Fit map</button>
+      <div class="alert maponly" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:38px;padding:6px 12px">Find locations</button><button class="btn" id="btnShowProb" style="min-height:38px;padding:6px 12px">Check pins</button></div>
+      <div class="optrow maponly">
+        <button class="btn cta grow big" id="btnOpt"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg><span class="optlabel">Optimise route</span></button>
+        <button class="btn outline big" id="btnFit" title="Show all stops on map"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Fit map</button>
       </div>
-      <div class="row" id="offRow" hidden style="margin-top:8px;flex-wrap:nowrap">
-        <button class="btn ghost grow" id="btnOffline">Prepare for no signal</button>
-      </div>
-      <p class="hint" id="offTxt" hidden style="margin:6px 0 0"></p>
-      <div class="bar" id="offBar" hidden style="margin-top:6px"><i id="offBarI"></i></div>
-      <div class="bar" id="optBar" hidden><i></i></div>
-      <p class="msg" id="optMsg" hidden></p>
+      <div class="bar maponly" id="optBar" hidden><i></i></div>
+      <p class="msg maponly" id="optMsg" hidden></p>
     </section>
 
-
-    <section class="panel" aria-label="Start location">
-      <label class="switchrow" for="startMe"><span class="label" style="font-size:13px">Start from my location</span>
+    <section class="panel list vs-map" aria-label="Start and roads">
+      <label class="lrow switchrow" for="startMe"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></span><span class="lt"><b>Start from my location</b><small id="startMeTxt">Finding your location…</small></span>
         <span class="switch"><input type="checkbox" id="startMe" role="switch" checked><span class="knob"></span></span></label>
-      <p class="hint" id="startMeTxt" style="margin:6px 0 0">Finding your location…</p>
-      <div class="addr" id="startAddrBox" style="margin-top:8px" hidden>
+      <div class="lsub" id="startAddrBox" hidden><div class="addr">
         <input id="startIn" type="text" placeholder="Depot or starting address" autocomplete="off" aria-label="Start address">
-        <div class="sugg" id="startSugg" hidden></div>
-      </div>
+        <div class="sugg" id="startSugg" hidden></div></div></div>
       <button class="btn ghost" id="btnMyLoc" hidden>Use my location as start</button>
-      <label class="switchrow" for="avoidTolls" style="margin-top:10px"><span class="label" style="font-size:13px">Avoid toll roads</span>
+      <label class="lrow switchrow" for="avoidTolls"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-road"/></svg></span><span class="lt"><b>Avoid toll roads</b><small id="tollTxt" hidden></small></span>
         <span class="switch"><input type="checkbox" id="avoidTolls" role="switch"><span class="knob"></span></span></label>
-      <p class="hint" id="tollTxt" hidden style="margin:4px 0 0"></p>
     </section>
 
-    <section class="panel" aria-label="Add stops">
-      <div class="label">Add stops</div>
-      <div class="addgrid">
-        <button class="addbtn" id="btnManual"><span class="ic">＋</span><span><b>Add stop</b><small>Type an address</small></span></button>
-        <div id="manualBox" hidden>
-          <div class="addr">
-            <input id="addrIn" type="text" placeholder="e.g. 100 King William Street, Adelaide" autocomplete="off" aria-label="Stop address">
-            <div class="sugg" id="addrSugg" hidden></div>
-          </div>
-          <p class="hint">Type at least 4 characters and pick a suggestion. Nearby addresses come first.</p>
+    <div class="sect vs-map"><span class="label">Add stops</span></div>
+    <section class="panel list vs-map" aria-label="Add stops">
+      <button class="lrow" id="btnManual"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      <div class="lsub" id="manualBox" hidden>
+        <div class="addr">
+          <input id="addrIn" type="text" placeholder="e.g. 12 John St, Burnside" autocomplete="off" aria-label="Stop address">
+          <div class="sugg" id="addrSugg" hidden></div>
         </div>
-        <button class="addbtn" id="btnScan"><span class="ic">▣</span><span><b>Scan run sheet</b><small>Photo of the paper manifest, page by page</small></span></button>
-        <button class="addbtn" id="btnImport"><span class="ic">⇪</span><span><b>Import manifest</b><small>CSV file or a pasted address list</small></span></button>
+        <p class="hint">Type a few letters of the address and pick a suggestion. Nearby addresses come first.</p>
       </div>
-      <div class="row" style="margin-top:8px">
-        <button class="btn ghost grow" id="btnClear">Clear all stops</button>
+      <button class="lrow" id="btnScan"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg></span><span class="lt"><b>Scan run sheet</b><small>Photo of the paper manifest, page by page</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      <button class="lrow" id="btnImport"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or a pasted address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+    </section>
+
+    <section class="vs-details" aria-label="Route details">
+      <div class="panel">
+        <div class="label">Route details</div>
+        <dl class="dl" id="detailsList"></dl>
       </div>
-      <div class="row" id="clearConfirm" hidden style="margin-top:8px">
-        <span style="flex:1">Remove all stops?</span>
-        <button class="btn" id="clearNo">Keep</button>
-        <button class="btn act-f" id="clearYes">Remove all</button>
+      <div class="panel list" style="margin-top:12px">
+        <div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Saves directions and the map for the whole run. Do it at the depot before you leave.</small></span></div>
+        <div class="lsub">
+          <div class="row" id="offRow" hidden style="flex-wrap:nowrap"><button class="btn cta grow big" id="btnOffline"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Prepare for no signal</button></div>
+          <p class="hint" id="offTxt" hidden></p>
+          <div class="bar" id="offBar" hidden><i id="offBarI"></i></div>
+          <p class="hint" id="offNeedOpt">Optimise the route first, then prepare.</p>
+        </div>
+      </div>
+      <div class="panel list" style="margin-top:12px">
+        <button class="lrow" id="dRename"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></span><span class="lt"><b>Rename route</b></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="lrow" id="dCopy"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg></span><span class="lt"><b>Copy route</b><small>Same stops, all set back to pending</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="lrow" id="dExport"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lt"><b>Save as file</b><small>To move this route to another phone</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="lrow" id="dDelete"><span class="tile" style="background:var(--fail-soft);color:var(--fail)"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></span><span class="lt"><b>Delete route</b></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       </div>
     </section>
 
-    <section aria-label="Stops">
-      <div class="row" style="justify-content:space-between;margin:2px 2px 8px">
-        <div class="label">Delivery order</div>
-        <div class="m" style="font-size:12px;color:var(--muted)">Drag ☰ or use ▲▼ to reorder</div>
+    <section class="vs-stops" aria-label="Stops">
+      <div class="dorder">
+        <span class="label" style="font-size:15px">Delivery order</span>
+        <span class="m">Drag <svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg> or use ▲▼ to reorder</span>
       </div>
-      <ol class="stops" id="stops"></ol>
-      <p class="hint" id="emptyHint">No stops yet. Use Add stop, Scan run sheet or Import manifest above.</p>
+      <ol class="stops" id="stops" style="margin-top:10px"></ol>
+      <p class="hint" id="emptyHint">No stops yet. Use Add stop, Scan run sheet or Import manifest on the Map tab.</p>
+      <p class="hint" id="noMatch" hidden>No stops match your search.</p>
     </section>
+
+    <div class="stopsbar vs-stops">
+      <div class="row" id="clearConfirm" hidden>
+        <span style="flex:1;font-weight:600">Remove all stops?</span>
+        <button class="btn" id="clearNo">Keep</button>
+        <button class="btn act-f" id="clearYes" style="background:var(--fail);color:#fff">Remove all</button>
+      </div>
+      <div class="row">
+        <button class="btn outline grow" id="btnClear"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>Clear all stops</button>
+        <button class="btn cta grow" id="btnOpt2"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg><span class="optlabel">Optimise route</span></button>
+      </div>
+    </div>
   </main>
 </div>
 
 <div class="home" id="home" hidden>
-  <header class="top">
-    <div class="brand">Dropline<small>Your routes</small></div>
-    <button class="hbtn" id="btnSettings" aria-label="Settings">⚙ Settings</button>
+  <header class="hero">
+    <div class="logo"><img class="mk" src="assets/logo-mark.png" alt=""><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine — Multi-Stop Route Planner"></div>
+    <button class="avatar" id="btnSettings" aria-label="Settings"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg><i></i></button>
   </header>
   <div class="hlist">
-    <button class="create" id="homeCreate"><b>+</b> Create route</button>
+    <button class="create" id="homeCreate"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+    <div class="sect"><span class="label">Your routes</span><button class="sortbtn" id="routeSort"><span id="routeSortTxt">Latest first</span><svg class="ico" aria-hidden="true"><use href="#i-sort"/></svg></button></div>
     <div id="routeList"></div>
-    <p class="hint" id="homeEmpty" style="text-align:center;margin-top:18px">No routes yet. Create one for today's run, then add stops by typing, scanning the paper run sheet, or importing the manifest.</p>
-    <section class="panel" id="permPanel" aria-label="Phone permissions" hidden>
-      <div class="label">Phone permissions</div>
-      <div class="permrow"><span id="permLocTxt">📍 Location…</span><button class="btn" id="permLocBtn" hidden>Allow</button></div>
-      <div class="permrow" id="permNotRow"><span id="permNotTxt">🔔 Notifications…</span><button class="btn" id="permNotBtn" hidden>Allow</button></div>
+    <p class="hint" id="homeEmpty" style="text-align:center;margin:6px 0">No routes yet. Create one for today's run, then add stops by typing, scanning the paper run sheet, or importing the manifest.</p>
+    <section class="panel icard" id="permPanel" aria-label="Phone permissions" hidden>
+      <span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+      <div class="lt"><div class="label">Phone permissions</div>
+      <div class="permrow"><span id="permLocTxt">Location…</span><button class="btn outline" id="permLocBtn" hidden>Allow</button></div>
+      <div class="permrow" id="permNotRow"><span id="permNotTxt">Notifications…</span><button class="btn outline" id="permNotBtn" hidden>Allow</button></div></div>
     </section>
-    <section class="panel" id="dataPanel" aria-label="Addresses on this phone">
-      <div class="label">Addresses on this phone</div>
-      <p class="hint" id="dataTxt" style="margin:6px 0 0">Finding your state…</p>
-      <div class="bar" id="dataBar" hidden style="margin-top:8px"><i id="dataBarI"></i></div>
-      <div class="row" style="margin-top:8px;flex-wrap:nowrap">
-        <button class="btn primary grow" id="dataDl" hidden>Download for offline</button>
-        <button class="btn ghost" id="dataChange">Change state</button>
-      </div>
+    <section class="panel icard" id="dataPanel" aria-label="Addresses on this phone">
+      <span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg></span>
+      <div class="lt"><div class="label">Addresses on this phone</div>
+      <p class="hint" id="dataTxt" style="margin:6px 0 0;font-size:14px">Finding your state…</p>
+      <div class="bar" id="dataBar" hidden><i id="dataBarI"></i></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn cta" id="dataDl" hidden><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Download for offline</button>
+        <button class="btn outline" id="dataChange">Change state<svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      </div></div>
     </section>
-    <label class="btn ghost" style="text-align:center;margin-top:6px">Open a route file from another phone<input type="file" id="importIn" accept=".json,application/json" hidden></label>
-    <p class="madeby">Dropline <span class="appver"></span> · Made by <b>Enterprise Analytic</b></p>
+    <label class="panel list" style="cursor:pointer"><span class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Open a route file from another phone</b><small>Import your saved route file (JSON)</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
+    <p class="madeby">DropLine <span class="appver"></span> · Made by <b>Enterprise Analytic</b></p>
+    <svg class="homeill" viewBox="0 0 400 120" aria-hidden="true">
+      <defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#D9ECF8"/><stop offset="1" stop-color="#E4F6F3"/></linearGradient></defs>
+      <path d="M0 70 C80 40 160 95 240 70 S360 40 400 55 V120 H0z" fill="url(#hg)"/>
+      <path d="M-10 112 C70 100 120 92 170 80 S280 50 330 58 400 70 420 66" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
+      <path d="M-10 112 C70 100 120 92 170 80 S280 50 330 58 400 70 420 66" fill="none" stroke="#8FC7EE" stroke-width="2.5" stroke-dasharray="10 9"/>
+      <g transform="translate(60 52)"><path d="M14 46S0 32 0 18a14 14 0 0128 0c0 14-14 28-14 28z" fill="#1B6FE6"/><circle cx="14" cy="18" r="6" fill="#fff"/><ellipse cx="14" cy="50" rx="11" ry="3.5" fill="#20C7B7" opacity=".55"/></g>
+      <g transform="translate(330 16)"><path d="M12 38S0 27 0 15a12 12 0 0124 0c0 12-12 23-12 23z" fill="#20C7B7"/><circle cx="12" cy="15" r="5" fill="#fff"/><ellipse cx="12" cy="42" rx="9" ry="3" fill="#20C7B7" opacity=".45"/></g>
+    </svg>
   </div>
 </div>
 
-<div class="guide" id="guide" hidden role="dialog" aria-label="How Dropline works">
+<div class="guide" id="guide" hidden role="dialog" aria-label="How DropLine works">
   <div class="gcard">
-    <button class="gskip" id="gSkip">Skip</button>
+    <div class="ghero"><img class="mk" src="assets/logo-mark.png" alt=""><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine"><button class="gskip" id="gSkip">Skip</button></div>
+    <div class="gbody">
     <div class="gslides" id="gSlides">
-      <section><div class="gic">📦</div><h3>Welcome to Dropline</h3><p>Plan your delivery run, put the stops in the best order, and drive it with voice directions. This takes 30 seconds.</p></section>
-      <section><div class="gic">＋</div><h3>1. Create a route</h3><p>Make one route for each run or day. Tap <b>⋯</b> on a route to rename, copy (for the same run tomorrow) or delete it.</p></section>
-      <section><div class="gic">▣</div><h3>2. Add your stops</h3><p><b>Scan run sheet</b>: photograph the paper manifest page by page and check any yellow rows. Or <b>Import manifest</b> (CSV), or <b>Add stop</b> and type a few letters of the address.</p></section>
-      <section><div class="gic">⇄</div><h3>3. Optimise and prepare</h3><p>Tap <b>Optimise</b> to get the fastest order from where you are. Before leaving the depot, tap <b>Prepare for no signal</b> so directions and the map work in areas without coverage.</p></section>
-      <section><div class="gic">▶</div><h3>4. Deliver</h3><p>Tap <b>Navigate</b> for spoken turn-by-turn directions. At each stop tap <b>Delivered</b>, <b>Failed</b> or <b>Skip</b> and the next stop slides in. Tap a stop to add <b>notes</b>, mark a <b>pickup</b> or change parcels.</p></section>
-      <section><div class="gic">✓</div><h3>Allow access</h3><p>Dropline needs your location to start routes from where you are, and can notify you when a download or your run is finished.</p>
-        <div class="gperm"><button class="btn primary" id="gLoc">Allow location</button><button class="btn" id="gNot">Allow notifications</button></div></section>
+      <section><div class="gstep">Welcome</div><h3>Plan, optimise, deliver</h3><p>DropLine puts your delivery stops in the fastest order and guides you with spoken directions. Here's how it works in 30 seconds.</p>
+        <div class="gdemo"><div class="summary"><div class="s-p"><svg class="ico" aria-hidden="true"><use href="#i-pkg"/></svg><b>155</b><span>Pending</span></div><div class="s-d"><svg class="ico" aria-hidden="true"><use href="#i-check-c"/></svg><b>12</b><span>Delivered</span></div><div class="s-f"><svg class="ico" aria-hidden="true"><use href="#i-x-c"/></svg><b>1</b><span>Failed</span></div><div class="s-k"><svg class="ico" aria-hidden="true"><use href="#i-minus-c"/></svg><b>2</b><span>Skipped</span></div></div></div></section>
+      <section><div class="gstep">Step 1</div><h3>Create a route</h3><p>Make one route for each run or day. Tap <b>⋮</b> on a route to rename it, copy it for tomorrow's run, or delete it.</p>
+        <div class="gdemo"><div class="create" style="min-height:58px;font-size:22px"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div>
+        <div class="rcard" style="margin-top:10px"><div class="ro"><div class="rb"><div class="rtop"><b class="rn">Run Fri, 23 Oct</b><span class="rstate go">In progress</span></div><div class="rm">23 Oct 2026 · 53 stops · 13 delivered</div><div class="rprog"><span class="rbar"><i style="width:24%;background:var(--ok)"></i><i style="width:2%;background:var(--fail)"></i></span><b class="rpc">25%</b></div></div></div></div></div></section>
+      <section><div class="gstep">Step 2</div><h3>Add your stops</h3><p><b>Scan run sheet</b> to photograph the paper manifest page by page, <b>Import manifest</b> for a CSV file, or <b>Add stop</b> and type a few letters of the address.</p>
+        <div class="gdemo panel list"><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg></span><span class="lt"><b>Scan run sheet</b><small>Photo of the paper manifest</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div></div></section>
+      <section><div class="gstep">Step 3</div><h3>Optimise &amp; prepare</h3><p>Tap <b>Optimise route</b> for the fastest order from where you are. In <b>Details</b>, tap <b>Prepare for no signal</b> before leaving the depot.</p>
+        <div class="gdemo"><div class="optrow" style="margin-top:0"><span class="btn cta grow big"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg>Optimise route</span><span class="btn outline big"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Fit map</span></div>
+        <div class="panel list" style="margin-top:10px"><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Directions and map saved for the whole run</small></span></div></div></div></section>
+      <section><div class="gstep">Step 4</div><h3>Deliver</h3><p>Tap <b>Navigate</b> for turn-by-turn voice directions. Mark each stop <b>Delivered</b>, <b>Failed</b> or <b>Skipped</b> and the next one slides in. Tap a stop to add <b>notes</b> or mark a <b>pickup</b>.</p>
+        <div class="gdemo acts3" style="margin-top:6px"><span class="btn act-d"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Mark as Delivered</span><span class="btn act-f"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>Mark as Failed</span><span class="btn act-k"><svg class="ico" aria-hidden="true"><use href="#i-minus"/></svg>Mark as Skipped</span></div></section>
+      <section><div class="gstep">Last step</div><h3>Allow access</h3><p>DropLine uses your location to start routes from where you are, and can let you know when a download or your run is finished.</p>
+        <div class="gperm"><button class="btn cta" id="gLoc"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg><span>Allow location</span></button><button class="btn outline" id="gNot"><svg class="ico" aria-hidden="true"><use href="#i-bell"/></svg><span>Allow notifications</span></button></div></section>
     </div>
     <div class="gdots" id="gDots"></div>
-    <div class="row" style="flex-wrap:nowrap"><button class="btn ghost" id="gBack">Back</button><button class="btn primary grow" id="gNext">Next</button></div>
+    <div class="gnav"><button class="btn outline" id="gBack">Back</button><button class="btn cta grow" id="gNext">Next</button></div>
+    </div>
   </div>
 </div>
 
@@ -480,7 +823,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
   <div class="sheet" role="dialog" aria-label="Scan run sheet" style="max-height:94vh">
     <h3 id="scanTitle">Scan page 1</h3>
     <div id="scanNoApp">
-      <p class="hint" style="margin-top:0">Photo scanning uses Google's on-device text recognition, which works in the Dropline Android app.</p>
+      <p class="hint" style="margin-top:0">Photo scanning uses Google's on-device text recognition, which works in the DropLine Android app.</p>
       <a class="btn primary" style="display:block;text-align:center;text-decoration:none" href="https://github.com/Sandip-ios/RouteApp_Australia/releases/download/app-latest/dropline.apk">Download the Android app (test version)</a>
       <p class="hint">After downloading, open the file to install. Android may ask you to allow installs from your browser.</p>
     </div>
@@ -534,21 +877,21 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
   <div class="sheet" role="dialog" aria-label="Settings" style="max-height:92vh">
     <h3>Settings</h3>
     <div class="setgroup">
-      <label class="switchrow" for="setNotif"><span><b>Notifications</b><small id="setNotifTxt">Run finished, downloads done, arrival when the app is in the background</small></span>
+      <label class="switchrow" for="setNotif"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span style="flex:1"><b>Notifications</b><small id="setNotifTxt">Run finished, downloads done, arrival when the app is in the background</small></span>
         <span class="switch"><input type="checkbox" id="setNotif" role="switch"><span class="knob"></span></span></label>
-      <div class="setrow"><span><b>Location</b><small id="setLocTxt">…</small></span><button class="btn" id="setLocBtn" hidden>Open Settings</button></div>
+      <div class="setrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></span><span style="flex:1"><b>Location</b><small id="setLocTxt">…</small></span><button class="btn" id="setLocBtn" hidden>Open Settings</button></div>
     </div>
     <div class="setgroup">
-      <a class="setlink" id="setContact" href="#"><span>✉️</span><span><b>Contact the developer</b><small>Questions, ideas or help</small></span><i>›</i></a>
-      <button class="setlink" id="setBug"><span>🐞</span><span><b>Report a bug</b><small>Tell us what went wrong; phone details are added for you</small></span><i>›</i></button>
-      <a class="setlink" href="privacy.html" id="setPrivacy"><span>🔒</span><span><b>Privacy policy</b><small>What Dropline keeps and what it sends</small></span><i>›</i></a>
+      <a class="setlink" id="setContact" href="#"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg></span><span><b>Contact the developer</b><small>Questions, ideas or help</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></a>
+      <button class="setlink" id="setBug"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-bug"/></svg></span><span><b>Report a bug</b><small>Tell us what went wrong; phone details are added for you</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      <a class="setlink" href="privacy.html" id="setPrivacy"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Privacy policy</b><small>What DropLine keeps and what it sends</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></a>
     </div>
     <div class="setgroup">
-      <button class="setlink" id="setGuide"><span>📘</span><span><b>How-to guide</b><small>The 30-second walkthrough</small></span><i>›</i></button>
-      <button class="setlink" id="setAbout"><span>ℹ️</span><span><b>What works</b><small>Features in this version</small></span><i>›</i></button>
+      <button class="setlink" id="setGuide"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg></span><span><b>How-to guide</b><small>The 30-second walkthrough</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      <button class="setlink" id="setAbout"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg></span><span><b>What works</b><small>Features in this version</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     </div>
     <div class="setfoot">
-      <div class="brandmark">DROPLINE</div>
+      <img src="assets/wordmark.png" alt="DropLine" style="height:46px">
       <div id="setVersion">Version</div>
       <div>Made by <b>Enterprise Analytic</b></div>
       <div class="setsmall">Addresses: G-NAF © Geoscape Australia (CC BY 4.0) · Maps © OpenStreetMap contributors</div>
@@ -610,26 +953,66 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
   </div>
 </div>
 <div class="nav" id="navScreen" hidden>
-  <div class="nav-top">
-    <button class="nav-back" id="navBack" aria-label="Back to the stop list">‹ Back</button>
-    <div class="nav-arrow" id="navArrow">↑</div>
-    <div class="nav-txt"><div class="nav-dist" id="navDist"></div><div class="nav-instr" id="navInstr"></div><div class="nav-then" id="navThen"></div></div>
+  <header class="top">
+    <button class="hback" id="navBack" aria-label="Back to the route"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg></button>
+    <div class="htitle"><b id="navTitle">Route</b><small id="navSub"></small></div>
+    <button class="hlink" id="navToStops"><svg class="ico" aria-hidden="true"><use href="#i-list"/></svg>Stops</button>
+    <button class="hlink" id="navToMap"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Map</button>
+    <button class="hbtn" id="navMore" aria-label="Navigation options"><svg class="ico" aria-hidden="true"><use href="#i-dots-h"/></svg></button>
+  </header>
+  <div class="navmapwrap">
+    <div id="navMap"></div>
+    <div class="ninstr">
+      <div class="top"><div class="nav-arrow" id="navArrow"></div><div class="nav-txt" style="min-width:0"><div class="nav-dist" id="navDist"></div><div class="nav-instr" id="navInstr"></div><div class="nav-then" id="navThen"></div></div></div>
+      <div class="eta"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg><div><b id="navRemain">–</b><span id="navArrTxt">Arrive at stop</span><b id="navEta" style="font-size:18px;margin-top:2px"></b></div></div>
+    </div>
+    <div class="nctl"><button class="round" id="navVoice" aria-label="Voice on"><svg class="ico" aria-hidden="true"><use href="#i-vol"/></svg></button><button class="round" id="navCentre" aria-label="Follow my position"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg></button></div>
   </div>
-  <div id="navMap"></div>
-  <div class="nav-bottom">
-    <div class="nav-eta"><b id="navEta"></b><span id="navRemain"></span></div>
-    <div style="position:relative"><div class="stamp" id="navStamp" hidden></div><div class="nav-stop" id="navStop"></div><span class="snote" id="navOffline" hidden style="background:var(--pend-soft);color:var(--ink)">📵 No signal: following directions saved earlier</span><span class="snote" id="navNote" hidden></span></div>
-    <div id="navArriveBox" class="nav-arrive" hidden>
-      <div class="acts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-        <button class="btn act-d" id="navDelivered">Delivered</button><button class="btn act-f" id="navFailed">Failed</button><button class="btn act-k" id="navSkip">Skip</button>
+  <div class="nsheet">
+    <i class="grab"></i>
+    <div style="position:relative">
+      <div class="stamp" id="navStamp" hidden></div>
+      <div class="nstopcard">
+        <div class="nav-stop" id="navStop">
+          <div class="nstop" style="margin-top:0"><span class="num" id="navNum">1</span><div class="lt"><b class="t" id="navStopTitle"></b><span class="a" id="navStopAddr"></span>
+            <div class="nmeta"><span><svg class="ico" aria-hidden="true"><use href="#i-pkg"/></svg><i id="navParcels" style="font-style:normal"></i></span><span><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg><i id="navEst" style="font-style:normal"></i></span></div></div>
+            <span class="pill pending" id="navPill">Pending</span></div>
+        </div>
+        <span class="snote" id="navOffline" hidden style="background:var(--pend-soft);color:var(--ink)">No signal: following directions saved earlier</span>
       </div>
-      <div class="reasons" id="navReasons" hidden style="margin-top:6px"><button class="btn" data-nr="No one home">No one home</button><button class="btn" data-nr="Address not found">Address not found</button><button class="btn" data-nr="Refused">Refused</button><button class="btn" data-nr="Unsafe access">Unsafe access</button><button class="btn" data-nr="Other">Other</button></div>
     </div>
-    <div class="row" style="margin-top:8px;flex-wrap:nowrap">
-      <button class="btn ghost grow" id="navVoice">🔊 Voice on</button>
-      <button class="btn" id="navExit">Exit</button>
+    <div id="navArriveBox" class="arrived" hidden><svg class="ico" aria-hidden="true"><use href="#i-flag"/></svg>You have arrived</div>
+    <div class="acts3">
+      <button class="btn act-d" id="navDelivered"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span class="t">Mark as Delivered</span></button>
+      <button class="btn act-f" id="navFailed"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg><span class="t">Mark as Failed</span></button>
+      <button class="btn act-k" id="navSkip"><svg class="ico" aria-hidden="true"><use href="#i-minus"/></svg><span class="t">Mark as Skipped</span></button>
     </div>
-    <label class="toggle" style="margin-top:6px;font-size:13px"><input type="checkbox" id="navSim"> Simulate driving (for testing at a desk)</label>
+    <div class="reasons" id="navReasons" hidden style="margin-top:10px"><button class="btn" data-nr="No one home">No one home</button><button class="btn" data-nr="Address not found">Address not found</button><button class="btn" data-nr="Refused">Refused</button><button class="btn" data-nr="Unsafe access">Unsafe access</button><button class="btn" data-nr="Other">Other</button></div>
+    <div class="panel list nrowlist">
+      <button class="lrow" id="navNoteRow"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-note"/></svg></span><span class="lt"><b>Delivery notes</b><small id="navNote">Add a note for this stop</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+    </div>
+    <div class="navbtm"><button class="btn outline grow" id="navPrev"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg>Previous stop</button><button class="btn cta grow" id="navNext">Next stop<svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button></div>
+  </div>
+</div>
+
+<div class="sheet-bg" id="navMenu" hidden>
+  <div class="sheet" role="dialog" aria-label="Navigation options">
+    <h3>Navigation</h3>
+    <div class="setgroup">
+      <label class="switchrow" for="navSim" style="padding:12px 14px"><span><b>Simulate driving</b><small>For testing at a desk</small></span><span class="switch"><input type="checkbox" id="navSim" role="switch"><span class="knob"></span></span></label>
+    </div>
+    <button class="btn outline" id="navExit" style="width:100%"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>Exit navigation</button>
+    <button class="btn" id="navMenuClose" style="width:100%;margin-top:8px">Close</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="noteSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Delivery notes">
+    <h3>Delivery notes</h3>
+    <textarea id="noteText" maxlength="300" style="min-height:90px" placeholder="e.g. Front door, big box, call on arrival"></textarea>
+    <div class="qnotes" id="noteQuick"></div>
+    <button class="btn cta" id="noteSave" style="width:100%;margin-top:12px">Save note</button>
+    <button class="btn" id="noteCancel" style="width:100%;margin-top:8px">Cancel</button>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -637,7 +1020,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
-/* Dropline run-sheet reader: turns recognised text lines (with positions) from one photographed page
+/* DropLine run-sheet reader: turns recognised text lines (with positions) from one photographed page
    into numbered delivery rows, and checks them. Works for tables with columns
    Code | Tracking ID | Seq | Address (ending "<Suburb> SA 5xxx AU") | Dimensions. */
 (function(root){
@@ -996,12 +1379,12 @@ function parcels(s){ return s.parcels && s.parcels.length ? s.parcels : [{seq:nu
 function isBig(size){ const n = String(size||"").match(/[\d.]+/g); return !!n && Math.max(...n.map(Number)) >= 60; }
 function chipsFor(s){
   const ps = parcels(s), out = [];
-  if (isPick(s)) out.push('<span class="chip pick">↑ Pickup</span>');
+  if (isPick(s)) out.push('<span class="chip pick">Pickup</span>');
   if (s.geo === "missing") out.push('<span class="chip miss">No location</span>');
   else if (s.geo === "pending" || s.geo === "searching") out.push('<span class="chip warn">Finding location…</span>');
   else if (s.geo === "street" || s.approx) out.push('<span class="chip warn">Check pin</span>');
   if (ps.some(p => isBig(p.size))) out.push('<span class="chip big">Large parcel</span>');
-  const notes = [...new Set(ps.map(p => p.note).filter(Boolean))]; notes.forEach(n => out.push('<span class="chip mark">★ '+esc(n)+'</span>'));
+  const notes = [...new Set(ps.map(p => p.note).filter(Boolean))]; notes.forEach(n => out.push('<span class="chip mark">'+esc(n)+'</span>'));
   return out.join("");
 }
 const QUICK_NOTES = ["Front door", "Back door", "Side gate", "Big box", "Small box", "Heavy", "Fragile", "Leave with neighbour", "Call on arrival", "Signature needed"];
@@ -1011,6 +1394,9 @@ function toggleNote(s, q){
   parts = hasNote(s, q) ? parts.filter(x => x.toLowerCase() !== q.toLowerCase()) : parts.concat(q);
   s.notes = parts.join(", ");
 }
+const ico = (n, c) => '<svg class="ico' + (c ? " " + c : "") + '" aria-hidden="true"><use href="#i-' + n + '"/></svg>';
+function splitLabel(label){ const p = String(label || "").split(", "); return p.length > 1 ? [p[0], p.slice(1).join(", ")] : [p[0], ""]; }
+function setOptLabel(t){ document.querySelectorAll(".optlabel").forEach(x => x.textContent = t); }
 function pcount(s){ return s.qty > 0 ? s.qty : parcels(s).length; }
 const isPick = s => s && s.kind === "pickup";
 function statusWord(s){ return s.status === "delivered" && isPick(s) ? "picked up" : s.status; }
@@ -1598,16 +1984,16 @@ async function optimise(){
   const closed = false;   // runs end at the last stop; the driver knows where to go after
   const pts = [origin].concat(pend); let endIdx = null;
   if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
-  btn.disabled = true; btn.textContent = "Getting road times…"; const bar = $("optBar"); bar.hidden = false; bar.firstElementChild.style.width = "0";
+  btn.disabled = true; setOptLabel("Getting road times…"); const bar = $("optBar"); bar.hidden = false; bar.firstElementChild.style.width = "0";
   const M = await travelMatrix(pts, f => { bar.firstElementChild.style.width = Math.round(f*90)+"%"; });
-  btn.textContent = "Optimising…"; await sleep(30);
+  setOptLabel("Optimising…"); await sleep(30);
   const method = M.estimated === 0 ? "road" : (M.road === 0 ? "estimate" : "partial");
   const D = M.D.map(r => r.map(v => v == null ? 1e7 : v)), Dist = M.Dist;
   const before = tourCost(D, pend.map((_,i)=>i+1), endIdx);
   const res = solve(D, endIdx);
   bar.firstElementChild.style.width = "100%";
   const ordered = res.order.map(k => pts[k]);
-  if (new Set(ordered.map(s=>s.id)).size !== pend.length){ showMsg("Optimisation failed a safety check. Your order was not changed.", true); btn.disabled=false; btn.textContent="Optimise route"; bar.hidden = true; return; }
+  if (new Set(ordered.map(s=>s.id)).size !== pend.length){ showMsg("Optimisation failed a safety check. Your order was not changed.", true); btn.disabled=false; setOptLabel("Optimise route"); bar.hidden = true; return; }
   route.stops = done.concat(ordered, noLoc);
   let distSum = 0, prev = 0; for (const k of res.order){ distSum += Dist[prev][k]; prev = k; } if (endIdx!=null) distSum += Dist[prev][endIdx];
   route.opt = {method, duration:res.cost, distance:distSum, before, stops:pend.length, matrix:pts.length, solveMs:res.ms, at:Date.now(), stale:false, geometry:null, legs:null, closed:!!closed, origin:{lat:origin.lat, lon:origin.lon}};
@@ -1620,7 +2006,7 @@ async function optimise(){
   t += saved > 30 ? " Saves about "+fmtTime(saved)+" ("+Math.round(saved/before*100)+"%) versus the previous order." : " The previous order was already close to the best found.";
   if (noLoc.length) t += " "+noLoc.length+" stop"+(noLoc.length>1?"s":"")+" without a location were left at the end.";
   showMsg(t, method !== "road");
-  btn.disabled = false; btn.textContent = "Re-optimise"; bar.hidden = true;
+  btn.disabled = false; setOptLabel("Re-optimise"); bar.hidden = true;
   await drawRoad();
 }
 /* ---------- no-signal support: directions and map for the whole run, saved on the phone ---------- */
@@ -1677,6 +2063,7 @@ async function saveTiles(onProgress){
 function updateOffTxt(){
   const o = route.offlineLegs, t = $("offTxt"), pend = route.stops.filter(s => s.status === "pending" && has(s));
   $("offRow").hidden = !(route.opt && !route.opt.stale) || !pend.length;
+  $("offNeedOpt").hidden = !$("offRow").hidden; $("offNeedOpt").textContent = pend.length ? "Optimise the route first, then prepare." : "Add stops and optimise the route first.";
   if (!o){ t.hidden = true; return; }
   const cur = o.key && pend.every(s => o.key.split(",").includes(s.id));
   t.hidden = false;
@@ -1786,7 +2173,7 @@ function startLocation(then){
     drawMe();
   }, err => {
     $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Use my location as start"; $("nsLocOpt").textContent = "Start from my location and optimise"; afterLocate = null;
-    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Tap Open Settings, turn on Location (While Using the App), then come back — the app picks it up straight away." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
+    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for DropLine. Tap Open Settings, turn on Location (While Using the App), then come back — the app picks it up straight away." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
     toast(err.code === 1 ? "Location is off. Type a start address instead, or turn location on." : "Could not get your location. Try again outdoors.");
   }, {enableHighAccuracy:true, maximumAge:10000, timeout:20000});
 }
@@ -1795,10 +2182,10 @@ function startLocation(then){
 const map = L.map("map", {zoomControl:true, attributionControl:true}).setView([-34.9285, 138.6007], 12);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
 const layer = L.layerGroup().addTo(map), meLayer = L.layerGroup().addTo(map);
-function pin(cls, txt){ return L.divIcon({className:"", html:'<div class="pin '+cls+'"><span>'+txt+'</span></div>', iconSize:[28,28], iconAnchor:[14,28]}); }
+function pin(cls, txt){ return L.divIcon({className:"", html:'<div class="pin '+cls+'"><span>'+txt+'</span></div>', iconSize:[34,34], iconAnchor:[17,36]}); }
 function drawMe(){ meLayer.clearLayers(); if (!has(myLoc)) return;
-  L.circle([myLoc.lat, myLoc.lon], {radius:Math.min(myLoc.acc||30, 300), color:"#1a73e8", weight:1, fillOpacity:.12, interactive:false}).addTo(meLayer);
-  L.circleMarker([myLoc.lat, myLoc.lon], {radius:8, color:"#ffffff", weight:3, fillColor:"#1a73e8", fillOpacity:1, interactive:false}).addTo(meLayer); }
+  L.circle([myLoc.lat, myLoc.lon], {radius:Math.min(myLoc.acc||30, 300), color:"#1B6FE6", weight:1, fillOpacity:.1, interactive:false}).addTo(meLayer);
+  L.marker([myLoc.lat, myLoc.lon], {icon:L.divIcon({className:"", html:'<div class="medot"></div>', iconSize:[22,22], iconAnchor:[11,11]}), interactive:false, zIndexOffset:2000}).addTo(meLayer); }
 function drawMap(){
   layer.clearLayers();
   if (has(route.start)) L.marker([route.start.lat, route.start.lon], {icon:pin("start","S"), zIndexOffset:1000, title:"Start"}).addTo(layer).bindTooltip("Start: "+route.start.label).on("click", ev => { if (placingId) map.fire("click", {latlng:ev.latlng}); });
@@ -1807,11 +2194,11 @@ function drawMap(){
     const key = s.lat.toFixed(5)+","+s.lon.toFixed(5), k = seen[key] = (seen[key] || 0) + 1;
     const a = k * 2.4, r = k > 1 ? 0.00012 * Math.sqrt(k) : 0;
     const m = L.marker([s.lat + r*Math.sin(a), s.lon + r*Math.cos(a)], {icon:pin(s.status+(isPick(s)?" pickup":"")+(s.id===selId?" sel":""), i+1), title:(i+1)+". "+s.label}).addTo(layer);
-    m.on("click", ev => { if (placingId){ map.fire("click", {latlng:ev.latlng}); return; } selId = expandedId = s.id; render(); const el = document.querySelector('[data-id="'+s.id+'"]'); if(el) el.scrollIntoView({block:"center", behavior:"smooth"}); });
+    m.on("click", ev => { if (placingId){ map.fire("click", {latlng:ev.latlng}); return; } selId = expandedId = s.id; setView("stops"); render(); const el = document.querySelector('[data-id="'+s.id+'"]'); if(el) el.scrollIntoView({block:"center"}); });
   });
-  if (route.opt && !route.opt.stale && route.opt.geometry) L.polyline(route.opt.geometry, {color:"#0f5c5a", weight:5, opacity:.8}).addTo(layer);
+  if (route.opt && !route.opt.stale && route.opt.geometry) L.polyline(route.opt.geometry, {color:"#1B6FE6", weight:5, opacity:.9}).addTo(layer);
   else { const line = (has(route.start) ? [[route.start.lat, route.start.lon]] : []).concat(route.stops.filter(has).map(s => [s.lat, s.lon]));
-    if (line.length > 1) L.polyline(line, {color:"#55636a", weight:2, dashArray:"6 6", opacity:.7}).addTo(layer); }
+    if (line.length > 1) L.polyline(line, {color:"#526574", weight:2, dashArray:"6 6", opacity:.7}).addTo(layer); }
 }
 function fitAll(){ const pts = route.stops.filter(has).map(s=>[s.lat,s.lon]); if(has(route.start)) pts.push([route.start.lat,route.start.lon]); if(pts.length) map.fitBounds(pts, {padding:[30,30], maxZoom:15}); }
 map.on("click", e => {
@@ -1821,6 +2208,24 @@ map.on("click", e => {
 
 /* ---------- render ---------- */
 const REASONS = ["No one home","Address not found","Refused","Unsafe access","Other"];
+let view = "map";
+function setView(v){
+  view = v; const a = $("appView"); a.classList.remove("v-map", "v-stops", "v-details"); a.classList.add("v-" + v);
+  document.querySelectorAll("#routeTabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+  $("backLbl").textContent = v === "map" ? "Routes" : "Map";
+  $("app-main").scrollTop = 0;
+  if (v === "map") setTimeout(() => map.invalidateSize(), 30);
+}
+function renderDetails(){
+  const st = route.stops, o = route.opt, c = {pending:0,delivered:0,failed:0,skipped:0}; st.forEach(x => c[x.status]++);
+  const rows = [["Name", route.name || "Untitled"], ["Created", new Date(route.createdAt || route.updatedAt || Date.now()).toLocaleDateString("en-AU", {weekday:"short", day:"numeric", month:"short", year:"numeric"})],
+    ["Stops", st.length + (st.reduce((a, x) => a + pcount(x), 0) !== st.length ? " (" + st.reduce((a, x) => a + pcount(x), 0) + " parcels)" : "")], ["Pickups", st.filter(isPick).length],
+    ["Done", c.delivered + " delivered · " + c.failed + " failed · " + c.skipped + " skipped"],
+    ["Start", route.start ? (route.start.me ? "My location" : route.start.label) : "Not set"],
+    ["Drive time", o && !o.stale ? fmtTime(o.duration) : "–"], ["Distance", o && !o.stale ? fmtDist(o.distance) : "–"],
+    ["Toll roads", route.avoidTolls ? "Avoided" : "Allowed"]];
+  $("detailsList").innerHTML = rows.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(String(v)) + '</dd>').join("");
+}
 function render(){
   try { if (startMeOn && route.start && route.start.me && route.stops.length && farFromStops(route.start)){ route.start = null; route.opt = null; } } catch(e){}
   if (typeof updateStartMeTxt === 'function') try { updateStartMeTxt(); } catch(e){}
@@ -1835,7 +2240,8 @@ function render(){
     if (o.stale){ b.className = "badge stale"; b.textContent = "Needs re-optimise"; $("optMsg").hidden = true; }
     else if (o.method === "road"){ b.className = "badge live"; b.textContent = "Optimised"; }
     else { b.className = "badge est"; b.textContent = "Estimate"; } }
-  if (!busy) $("btnOpt").textContent = o && !o.stale ? "Re-optimise" : "Optimise route";
+  if (!busy) setOptLabel(o && !o.stale ? "Re-optimise" : "Optimise route");
+  $("btnOpt2").disabled = $("btnOpt").disabled;
   if (document.activeElement !== $("startIn")) $("startIn").value = route.start && !route.start.me ? route.start.label : "";
   $("emptyHint").hidden = st.length > 0;
   $("routeTitle").firstChild.nodeValue = route.name || "Route";
@@ -1852,17 +2258,18 @@ function render(){
 
   const nextIdx = st.findIndex(s => s.status === "pending"), nx = st[nextIdx];
   $("nextCard").hidden = !nx || !(o && !o.stale) && cnt.delivered+cnt.failed+cnt.skipped === 0;
-  if (nx){ $("nextNum").textContent = "· #"+(nextIdx+1)+" of "+st.length; $("nextAddr").textContent = nx.label;
+  if (nx){ $("nextNum").textContent = "· #"+(nextIdx+1)+" of "+st.length; { const [t1, t2] = splitLabel(nx.label); $("nextAddr").textContent = t1; $("nextSub").textContent = t2; }
     const leg = o && !o.stale && o.legs ? o.legs[nx.id] : null;
     const ups = st.slice(nextIdx+1).map((x,k) => [x, nextIdx+1+k]).filter(([x]) => x.status === "pending").slice(0, 2);
     const upEl = $("upNext"), prevFirst = upEl.dataset.first; upEl.hidden = !ups.length;
     upEl.innerHTML = ups.map(([x,k], q) => '<li class="'+(prevFirst && prevFirst !== x.id && animNext ? "new" : "")+'"><b>#'+(k+1)+'</b><span>'+(q ? "" : "Then: ")+(isPick(x) ? "↑ Pickup · " : "")+esc(x.label)+'</span></li>').join("");
     upEl.dataset.first = ups.length ? ups[0][0].id : "";
-    document.querySelector('#nextCard [data-next="delivered"]').textContent = isPick(nx) ? "Picked up" : "Delivered";
+    document.querySelector('#nextCard [data-next="delivered"] .t').textContent = isPick(nx) ? "Picked up" : "Delivered";
+    $("nextN").textContent = nextIdx + 1; $("nextPill").textContent = isPick(nx) ? "Pickup" : "Pending"; $("nextPill").className = "pill " + (isPick(nx) ? "skipped" : "pending");
     document.querySelector('#nextCard .label').firstChild.nodeValue = isPick(nx) ? "Next pickup " : "Next stop ";
     $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + parcelLine(nx);
     $("nextChips").innerHTML = chipsFor(nx) + parcels(nx).filter(p => p.size).map(p => '<span class="chip pending" style="text-transform:none">'+esc((p.seq!=null?"#"+p.seq+" ":"")+p.size+" cm")+'</span>').join("");
-    $("nextNote").hidden = !nx.notes; $("nextNote").textContent = nx.notes ? "📝 " + nx.notes : "";
+    $("nextNote").hidden = !nx.notes; $("nextNote").textContent = nx.notes || "";
     $("nextNav").href = gmaps(nx, prevPoint(nextIdx)); $("nextPin").href = geoLink(nx); $("nextCard").dataset.id = nx.id;
     const rs = $("nextReasons"); rs.hidden = failPickId !== nx.id;
     rs.innerHTML = '<span class="label" style="width:100%">Why did it fail?</span>' + REASONS.map(r => '<button class="btn" data-nreason="'+esc(r)+'">'+esc(r)+'</button>').join("");
@@ -1870,14 +2277,23 @@ function render(){
 
   let elapsed = 0;
   const typing = document.activeElement && document.activeElement.classList.contains("stopnote");
+  const q = ($("stopSearch").value || "").trim().toLowerCase(), f = $("stopFilter").value;
+  const show = s => (!q || (s.label + " " + (s.notes || "") + " " + parcels(s).map(p => p.seq).join(" ")).toLowerCase().includes(q))
+    && (f === "all" || (f === "pickup" ? isPick(s) : f === "check" ? (s.geo === "street" || s.geo === "missing" || s.approx) : s.status === f));
+  $("filterBtn").classList.toggle("on", f !== "all");
+  let shown = 0;
   if (!typing) $("stops").innerHTML = st.map((s,i) => {
     let eta = "";
-    if (o && !o.stale && o.legs && s.status === "pending" && o.legs[s.id] != null){ elapsed += o.legs[s.id]; eta = " · ~"+fmtTime(elapsed)+" drive"; }
-    const exp = expandedId === s.id;
+    if (o && !o.stale && o.legs && s.status === "pending" && o.legs[s.id] != null){ elapsed += o.legs[s.id]; eta = "~"+fmtTime(elapsed)+" drive"; }
+    if (!show(s)) return "";
+    shown++;
+    const exp = expandedId === s.id, [t1, t2] = splitLabel(s.label);
     return '<li class="stop'+(s.id===selId?" sel":"")+'" data-id="'+s.id+'">' +
       '<div class="num '+s.status+'">'+(i+1)+'</div>' +
-      '<div class="txt" data-tap="'+s.id+'"><div class="a">'+esc(s.label)+'</div><div class="m"><span class="chip '+s.status+'">'+statusWord(s)+'</span>'+(s.reason?" "+esc(s.reason):"")+" · "+esc(parcelLine(s))+eta+'</div><div class="chips">'+chipsFor(s)+'</div>'+(s.notes ? '<span class="snote">📝 '+esc(s.notes)+'</span>' : '')+'</div>' +
-      '<div class="row" style="gap:0;flex-wrap:nowrap"><button class="handle" aria-label="Move up" data-up="'+s.id+'">▲</button><button class="handle" aria-label="Move down" data-down="'+s.id+'">▼</button><button class="handle drag" aria-label="Drag to reorder">☰</button></div>' +
+      '<div class="txt" data-tap="'+s.id+'"><div class="a">'+esc(t1)+'</div>'+(t2 ? '<div class="s2">'+esc(t2)+'</div>' : '') +
+        '<div class="m"><span class="chip '+s.status+'">'+statusWord(s)+'</span>'+(s.reason ? '<span class="eta">'+esc(s.reason)+'</span>' : '')+'<span class="pc">'+ico("pkg")+esc(parcelLine(s))+'</span>'+(eta ? '<span class="eta">'+eta+'</span>' : '')+'</div>' +
+        '<div class="chips">'+chipsFor(s)+'</div>'+(s.notes ? '<span class="snote">'+esc(s.notes)+'</span>' : '')+'</div>' +
+      '<div class="sctl"><button class="handle drag" aria-label="Drag to reorder">'+ico("grip")+'</button><button class="ud" aria-label="Move up" data-up="'+s.id+'">'+ico("up")+'</button><button class="ud" aria-label="Move down" data-down="'+s.id+'">'+ico("down")+'</button></div>' +
       (exp ? '<div class="more">' +
         '<div class="notebox"><label class="label" for="note-'+s.id+'">Notes for this stop</label><textarea class="stopnote" id="note-'+s.id+'" data-note="'+s.id+'" maxlength="300" placeholder="e.g. Front door, big box, call on arrival">'+esc(s.notes||"")+'</textarea>' +
         '<div class="qnotes">'+QUICK_NOTES.map(q => '<button data-qnote="'+esc(q)+'" data-sid="'+s.id+'" class="'+(hasNote(s,q)?"on":"")+'">'+esc(q)+'</button>').join("")+'</div></div>' +
@@ -1887,15 +2303,17 @@ function render(){
         (s.status!=="failed" ? '<button class="btn act-f" data-st="failed" data-sid="'+s.id+'">Failed</button>' : '') +
         (s.status!=="skipped" ? '<button class="btn act-k" data-st="skipped" data-sid="'+s.id+'">Skip</button>' : '') +
         (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') +
-        '<a class="btn ghost" style="text-decoration:none" href="'+gmaps(s, prevPoint(i))+'">Google Maps ↗</a>' +
-        '<a class="btn ghost" style="text-decoration:none" href="'+geoLink(s)+'">Show pin</a>' +
-        '<button class="btn ghost" data-place="'+s.id+'">Move pin</button>' +
-        '<button class="btn ghost" data-rm="'+s.id+'">Remove</button>' +
+        '<a class="btn outline" href="'+gmaps(s, prevPoint(i))+'">Google Maps</a>' +
+        '<a class="btn outline" href="'+geoLink(s)+'">Show pin</a>' +
+        '<button class="btn outline" data-place="'+s.id+'">Move pin</button>' +
+        '<button class="btn outline" data-rm="'+s.id+'">Remove</button>' +
         (parcels(s).some(p => p.size) ? '<div class="m" style="width:100%">'+parcels(s).map(p => esc((p.seq!=null?"#"+p.seq+": ":"")+(p.size ? p.size+" cm" : "size not listed"))).join(" · ")+'</div>' : '') +
         (failPickId===s.id ? '<div class="reasons"><span class="label" style="width:100%">Why did it fail?</span>'+REASONS.map(r=>'<button class="btn" data-reason="'+esc(r)+'" data-sid="'+s.id+'">'+esc(r)+'</button>').join("")+'</div>' : '') +
         '</div>' : '') +
       '</li>';
   }).join("");
+  if (!typing) $("noMatch").hidden = !st.length || shown > 0;
+  renderDetails();
   drawMap();
 }
 
@@ -1903,6 +2321,7 @@ function render(){
 wireSearch($("addrIn"), $("addrSugg"), addStop);
 wireSearch($("startIn"), $("startSugg"), setStart);
 $("btnOpt").addEventListener("click", optimise);
+$("btnOpt2").addEventListener("click", () => { setView("map"); optimise(); });
 $("btnFit").addEventListener("click", fitAll);
 $("btnOffline").addEventListener("click", prepareOffline);
 $("avoidTolls").addEventListener("change", async e => {
@@ -1912,7 +2331,7 @@ $("avoidTolls").addEventListener("change", async e => {
   const ok = await tollSupported();
   if (ok){ route.avoidTolls = true; t.textContent = "Routes will avoid toll roads. Re-optimise to apply."; markStale(); persist(); render(); }
   else { e.target.checked = false; route.avoidTolls = false;
-    t.textContent = ok === false ? "Not available yet: the free public routing server cannot avoid tolls. It will work once Dropline has its own routing server. For now routes may use toll roads." : "Could not check (no internet?). Try again when you have signal."; }
+    t.textContent = ok === false ? "Not available yet: the free public routing server cannot avoid tolls. It will work once DropLine has its own routing server. For now routes may use toll roads." : "Could not check (no internet?). Try again when you have signal."; }
 });
 $("btnMyLoc").addEventListener("click", () => startLocation());
 $("nsOpt").addEventListener("click", () => { $("nextStep").hidden = true; optimise(); });
@@ -1922,18 +2341,18 @@ $("btnLocate").addEventListener("click", locatePending);
 let probIdx = -1;
 $("btnShowProb").addEventListener("click", () => {
   const probs = route.stops.filter(s => s.geo === "missing" || s.geo === "street"); if (!probs.length) return;
-  probIdx = (probIdx + 1) % probs.length; const s = probs[probIdx]; selId = expandedId = s.id; render();
+  probIdx = (probIdx + 1) % probs.length; const s = probs[probIdx]; selId = expandedId = s.id; setView("stops"); render();
   const el = document.querySelector('[data-id="'+s.id+'"]'); if (el) el.scrollIntoView({block:"center", behavior:"smooth"});
   if (has(s)) map.setView([s.lat, s.lon], 17); toast("Pin check "+(probIdx+1)+" of "+probs.length+" — stop #"+(route.stops.indexOf(s)+1)+": "+(s.geo === "missing" ? "no map pin yet. Tap Move pin, then tap the map." : "is the pin in the right place? If not, tap Move pin.")); });
 $("btnClear").addEventListener("click", () => $("clearConfirm").hidden = false);
 $("clearNo").addEventListener("click", () => $("clearConfirm").hidden = true);
 $("clearYes").addEventListener("click", () => { route = emptiedRoute(); $("clearConfirm").hidden = true; $("optMsg").hidden = true; persist(); render(); });
 $("stops").addEventListener("click", e => {
-  const t = e.target;
+  const t = e.target.closest("button,a,[data-tap]") || e.target;
   if (t.dataset.up){ move(t.dataset.up, -1); return; }
   if (t.dataset.down){ move(t.dataset.down, 1); return; }
   if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
-  if (t.dataset.place){ placingId = t.dataset.place; document.body.classList.add("placing"); window.scrollTo({top:0, behavior:"smooth"}); toast("Tap the map where this stop is."); return; }
+  if (t.dataset.place){ setView("map"); placingId = t.dataset.place; document.body.classList.add("placing"); window.scrollTo({top:0, behavior:"smooth"}); toast("Tap the map where this stop is."); return; }
   if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
   if (t.dataset.qnote){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ toggleNote(s, t.dataset.qnote); persist(); render(); } return; }
   if (t.dataset.kind){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ if (t.dataset.kind === "pickup") s.kind = "pickup"; else delete s.kind; persist(); render(); } return; }
@@ -2077,7 +2496,7 @@ function showPrefetch(){
 }
 
 async function scanPhoto(file){
-  const eng = nativeScanner(); if (!eng){ scanMsg("Photo scanning needs the Dropline Android app.", true); return; }
+  const eng = nativeScanner(); if (!eng){ scanMsg("Photo scanning needs the DropLine Android app.", true); return; }
   const n = scan.pages.length + 1, t0 = performance.now();
   scanPage = null; renderScan(); scanMsg("Reading page "+n+"…");
   let canvas, res;
@@ -2215,10 +2634,16 @@ function speak(text){
     if (window.speechSynthesis){ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-AU"; u.rate = 1.0; speechSynthesis.speak(u); }
   }catch(e){}
 }
+function turnIcon(name){ return '<svg class="ico" aria-hidden="true" viewBox="0 0 48 48"><use href="#t-' + name + '"/></svg>'; }
 function arrowFor(st){
   const t = st.maneuver.type, m = st.maneuver.modifier || "";
   if (t === "arrive") return "⚑"; if (t === "roundabout" || t === "rotary" || t === "roundabout turn") return "⟳";
   return ({"left":"←","sharp left":"↙","slight left":"↖","right":"→","sharp right":"↘","slight right":"↗","uturn":"↶","straight":"↑"})[m] || "↑";
+}
+function turnName(st){
+  const t = st.maneuver.type, m = st.maneuver.modifier || "";
+  if (t === "arrive") return "arrive"; if (/roundabout|rotary/.test(t)) return "round";
+  return ({"left":"left","sharp left":"sharp-left","slight left":"slight-left","right":"right","sharp right":"sharp-right","slight right":"slight-right","uturn":"uturn"})[m] || "straight";
 }
 function stepText(st){
   const t = st.maneuver.type, m = st.maneuver.modifier || "", name = st.name || st.ref || "", onto = name ? " onto " + name : "";
@@ -2274,9 +2699,11 @@ async function navRoute(from){
   });
   nav.total = r.distance; nav.duration = r.duration; nav.stepIdx = 1; nav.said = {}; nav.off = 0; nav.arrived = false;
   if (nav.line) nav.line.remove();
-  nav.line = L.polyline(nav.coords, {color:"#1a73e8", weight:7, opacity:.85}).addTo(nav.map);
+  nav.line = L.polyline(nav.coords, {color:"#1B6FE6", weight:8, opacity:.9}).addTo(nav.map);
   if (nav.dest) nav.dest.remove();
-  nav.dest = L.marker([to.lat, to.lon], {icon: pin("pending", route.stops.indexOf(to) + 1)}).addTo(nav.map);
+  { const [t1, t2] = splitLabel(to.label);
+    nav.dest = L.marker([to.lat, to.lon], {icon: pin("pending", route.stops.indexOf(to) + 1)}).addTo(nav.map)
+      .bindTooltip(esc(t1) + (t2 ? "<small>" + esc(t2) + "</small>" : ""), {permanent: true, direction: "top", offset: [0, -36], className: "destcall"}); }
 }
 function navUpdate(pos){
   if (!nav.on || !nav.coords.length) return;
@@ -2290,12 +2717,14 @@ function navUpdate(pos){
   const along = s.along, remaining = Math.max(0, nav.total - along);
   while (nav.stepIdx < nav.steps.length - 1 && nav.steps[nav.stepIdx].at < along - 10) nav.stepIdx++;
   const st = nav.steps[nav.stepIdx], toStep = Math.max(0, st.at - along);
-  $("navArrow").textContent = arrowFor(st);
+  $("navArrow").innerHTML = turnIcon(turnName(st));
   $("navDist").textContent = showDist(toStep);
   $("navInstr").textContent = stepText(st) + (st.maneuver.type === "arrive" ? ": " + nav.stop.label.split(",")[0] : "");
   const nx = nav.steps[nav.stepIdx + 1]; $("navThen").textContent = nx && nx.maneuver.type !== "arrive" ? "Then " + lcFirst(stepText(nx)) : "";
   const mins = Math.max(1, Math.round(remaining / Math.max(1, nav.total) * nav.duration / 60));
-  $("navEta").textContent = mins + " min"; $("navRemain").textContent = showDist(remaining) + " · arrive " + new Date(Date.now() + mins*60000).toLocaleTimeString("en-AU", {hour:"numeric", minute:"2-digit"});
+  $("navEta").textContent = mins + " min"; $("navRemain").textContent = showDist(remaining);
+  $("navArrTxt").textContent = "Arrive at stop " + (route.stops.indexOf(nav.stop) + 1) + " · " + new Date(Date.now() + mins*60000).toLocaleTimeString("en-AU", {hour:"numeric", minute:"2-digit"});
+  $("navEst").textContent = "Est. " + mins + " min · " + showDist(remaining);
   // spoken prompts: early warning, then at the turn
   const key = nav.stepIdx + ":";
   if (st.maneuver.type === "arrive"){
@@ -2321,24 +2750,25 @@ async function navStart(stop){
   const sim = $("navSim").checked;
   nav.on = true; nav.stop = stop; nav.sim = sim; nav.coords = []; nav.coordsFor = null; clearInterval(nav.simTimer);
   if (!sim && nav.watch == null) navWatch();
-  $("navScreen").hidden = false; $("navArriveBox").hidden = true; $("navStop").textContent = "#" + (route.stops.indexOf(stop) + 1) + " · " + stop.label + " · " + (isPick(stop) ? "PICKUP · " : "") + parcelLine(stop); $("navDelivered").textContent = isPick(stop) ? "Picked up" : "Delivered";
-  $("navNote").hidden = !stop.notes; $("navNote").textContent = stop.notes ? "📝 " + stop.notes : "";
+  $("navScreen").hidden = false; $("navArriveBox").hidden = true; renderNavStop(stop);
+
   if (!nav.map){
     nav.map = L.map("navMap", {zoomControl:false, attributionControl:true}).setView([stop.lat, stop.lon], 16);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:"© OpenStreetMap"}).addTo(nav.map);
-    nav.me = L.circleMarker([stop.lat, stop.lon], {radius:9, color:"#fff", weight:3, fillColor:"#1a73e8", fillOpacity:1}).addTo(nav.map);
+    nav.me = L.marker([stop.lat, stop.lon], {icon: L.divIcon({className: "", html: '<div class="navme">' + ico("navup") + '</div>', iconSize: [46, 46], iconAnchor: [23, 23]}), zIndexOffset: 3000, interactive: false}).addTo(nav.map);
+    L.control.zoom({position: "bottomright"}).addTo(nav.map);
   }
   setTimeout(() => nav.map.invalidateSize(), 50);
-  $("navArrow").textContent = "↑"; $("navDist").textContent = ""; $("navThen").textContent = ""; $("navEta").textContent = ""; $("navRemain").textContent = "";
+  $("navArrow").innerHTML = turnIcon("straight"); $("navDist").textContent = ""; $("navThen").textContent = ""; $("navEta").textContent = ""; $("navRemain").textContent = "";
   // real navigation always starts from where the phone is now
   let from = null;
   if (!sim){
     // use the location we already have (up to 5 minutes old) so directions appear at once; live GPS then corrects it and reroutes if needed
     if (!has(myLoc) || Date.now() - myLoc.at > 300000){ $("navInstr").textContent = "Getting your location…"; await freshFix(); }
     if (!nav.on || nav.stop !== stop) return;
-    if (!has(myLoc)){ $("navArrow").textContent = "!"; $("navInstr").textContent = "Turn on location for Dropline to navigate from where you are (phone Settings → Dropline → Location). Or tap Back."; return; }
+    if (!has(myLoc)){ $("navArrow").innerHTML = turnIcon("warn"); $("navInstr").textContent = "Turn on location for DropLine to navigate from where you are (phone Settings → DropLine → Location). Or tap Back."; return; }
     const km = hav(myLoc, stop) / 1000;
-    if (km > 1500){ $("navArrow").textContent = "!"; $("navInstr").textContent = "You are about " + Math.round(km).toLocaleString("en-AU") + " km from this stop, so there is no road route. Navigation starts from your location when you are near the stops. (To try it at a desk, tick Simulate driving below.)"; return; }
+    if (km > 1500){ $("navArrow").innerHTML = turnIcon("warn"); $("navInstr").textContent = "You are about " + Math.round(km).toLocaleString("en-AU") + " km from this stop, so there is no road route. Navigation starts from your location when you are near the stops. (To try it at a desk, tap ⋯ and switch on Simulate driving.)"; return; }
     from = myLoc;
   } else {
     const near = has(myLoc) && hav(myLoc, stop) < 100000;
@@ -2347,7 +2777,7 @@ async function navStart(stop){
   }
   nav.me.setLatLng([from.lat, from.lon]); nav.map.setView([from.lat, from.lon], 16);
   $("navInstr").textContent = "Finding the route…";
-  try{ await navRoute(from); }catch(e){ $("navArrow").textContent = "!"; $("navInstr").textContent = "No road route found to this stop. Check your internet connection, or tap Back."; return; }
+  try{ await navRoute(from); }catch(e){ $("navArrow").innerHTML = turnIcon("warn"); $("navInstr").textContent = "No road route found to this stop. Check your internet connection, or tap Back."; return; }
   try{ if (navigator.wakeLock) nav.wake = await navigator.wakeLock.request("screen"); }catch(e){}
   const first = nav.steps[1] || nav.steps[0];
   speak("Starting route to " + stop.label.split(",")[0] + ". " + stepText(nav.steps[0]) + (first ? ", then " + lcFirst(stepText(first)) : ""));
@@ -2358,12 +2788,21 @@ function freshFix(){
   return new Promise(res => { if (!navigator.geolocation) return res();
     navigator.geolocation.getCurrentPosition(p => { myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; res(); }, () => res(), {enableHighAccuracy:true, maximumAge:10000, timeout:12000}); });
 }
+function renderNavStop(stop){
+  const k = route.stops.indexOf(stop), [t1, t2] = splitLabel(stop.label), done = route.stops.filter(x => x.status !== "pending").length;
+  $("navNum").textContent = k + 1; $("navStopTitle").textContent = t1; $("navStopAddr").textContent = t2;
+  $("navParcels").textContent = parcelLine(stop); $("navEst").textContent = "";
+  $("navPill").textContent = isPick(stop) ? "Pickup" : statusWord(stop); $("navPill").className = "pill " + (isPick(stop) ? "skipped" : stop.status);
+  $("navTitle").textContent = route.name || "Route"; $("navSub").textContent = (k + 1) + " of " + route.stops.length + " · " + route.stops.filter(x => x.status === "delivered").length + " delivered";
+  document.querySelector("#navDelivered .t").textContent = isPick(stop) ? "Mark as Picked up" : "Mark as Delivered";
+  $("navNote").textContent = stop.notes || "Add a note for this stop";
+}
 function navWatch(){
   if (nav.watch != null || !navigator.geolocation) return;
   nav.watch = navigator.geolocation.watchPosition(p => {
     myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()};
     navUpdate({lat:myLoc.lat, lon:myLoc.lon, acc:p.coords.accuracy, speed:p.coords.speed});
-  }, () => toast("Location is not available. Allow location for Dropline."), {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
+  }, () => toast("Location is not available. Allow location for DropLine."), {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
 }
 /* Test mode: drives along the route at about 40 km/h so the voice and turn prompts can be checked from a desk. */
 function navSimulate(){
@@ -2395,9 +2834,29 @@ function navDone(status, reason){
   ns.classList.add("out");
   setTimeout(() => { navStart(next); ns.classList.remove("out"); ns.classList.add("in"); void ns.offsetWidth; requestAnimationFrame(() => ns.classList.remove("in")); }, 240);
 }
-$("navExit").addEventListener("click", navStop);
+$("navExit").addEventListener("click", () => { $("navMenu").hidden = true; navStop(); });
 $("navBack").addEventListener("click", navStop);
-$("navVoice").addEventListener("click", () => { nav.voice = !nav.voice; $("navVoice").textContent = nav.voice ? "🔊 Voice on" : "🔇 Voice off"; if (!nav.voice) try{ speechSynthesis.cancel(); }catch(e){} });
+$("navVoice").addEventListener("click", () => { nav.voice = !nav.voice; $("navVoice").innerHTML = ico(nav.voice ? "vol" : "vol-off"); $("navVoice").classList.toggle("off", !nav.voice);
+  $("navVoice").setAttribute("aria-label", nav.voice ? "Voice on" : "Voice off"); toast(nav.voice ? "Voice on" : "Voice off"); if (!nav.voice) try{ speechSynthesis.cancel(); }catch(e){} });
+$("navMore").addEventListener("click", () => { $("navMenu").hidden = false; });
+$("navMenuClose").addEventListener("click", () => { $("navMenu").hidden = true; });
+$("navToStops").addEventListener("click", () => { navStop(); setView("stops"); });
+$("navToMap").addEventListener("click", () => { navStop(); setView("map"); });
+$("navCentre").addEventListener("click", () => { nav.follow = true; if (nav.lastPos) nav.map.setView([nav.lastPos.lat, nav.lastPos.lon], Math.max(nav.map.getZoom(), 16)); });
+function navStep(dir){
+  const st = route.stops, k = st.indexOf(nav.stop);
+  for (let i = k + dir; i >= 0 && i < st.length; i += dir) if (st[i].status === "pending" && has(st[i])) { navStart(st[i]); return; }
+  toast(dir > 0 ? "No more pending stops after this one." : "No pending stops before this one.");
+}
+$("navNext").addEventListener("click", () => navStep(1));
+$("navPrev").addEventListener("click", () => navStep(-1));
+$("navNoteRow").addEventListener("click", () => {
+  const s = nav.stop; if (!s) return; $("noteText").value = s.notes || "";
+  $("noteQuick").innerHTML = QUICK_NOTES.map(q => '<button data-q="' + esc(q) + '" class="' + (hasNote(s, q) ? "on" : "") + '">' + esc(q) + '</button>').join("");
+  $("noteSheet").hidden = false; });
+$("noteQuick").addEventListener("click", e => { const b = e.target.closest("[data-q]"); if (!b) return; const tmp = {notes: $("noteText").value}; toggleNote(tmp, b.dataset.q); $("noteText").value = tmp.notes; b.classList.toggle("on", hasNote(tmp, b.dataset.q)); });
+$("noteSave").addEventListener("click", () => { if (nav.stop){ nav.stop.notes = $("noteText").value.trim().slice(0, 300); persist(); renderNavStop(nav.stop); } $("noteSheet").hidden = true; });
+$("noteCancel").addEventListener("click", () => { $("noteSheet").hidden = true; });
 $("navSim").addEventListener("change", e => { nav.sim = e.target.checked; if (!nav.on) return;
   if (!nav.coords.length || nav.coordsFor !== nav.stop){ navStart(nav.stop); return; } if (nav.sim){ if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; } navSimulate(); } else { clearInterval(nav.simTimer); navWatch(); } });
 $("navDelivered").addEventListener("click", () => navDone("delivered"));
@@ -2412,7 +2871,7 @@ $("closeImport").addEventListener("click", () => $("importSheet").hidden = true)
 $("impGo").addEventListener("click", () => { const t = $("impText").value; if (!t.trim()){ impStatus("Paste at least one address first.", 0, true); return; } importText(t); });
 $("impFile").addEventListener("change", e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
   rd.onload = () => { const txt = String(rd.result);
-    if (/^\s*\{/.test(txt)){ try{ const r = JSON.parse(txt); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0; r.id = route.id; r.name = route.name || r.name; r.createdAt = route.createdAt; route = r; persist(); render(); fitAll(); impStatus("Imported a saved route with "+r.stops.length+" stops.", 1); }catch(err){ impStatus("That file is not a Dropline route.", 0, true); } return; }
+    if (/^\s*\{/.test(txt)){ try{ const r = JSON.parse(txt); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0; r.id = route.id; r.name = route.name || r.name; r.createdAt = route.createdAt; route = r; persist(); render(); fitAll(); impStatus("Imported a saved route with "+r.stops.length+" stops.", 1); }catch(err){ impStatus("That file is not a DropLine route.", 0, true); } return; }
     importText(txt); };
   rd.readAsText(f); e.target.value = ""; });
 
@@ -2423,15 +2882,24 @@ function saveLib(a){ return saveJSON(STORE_SAVED, a); }
 function routeStats(r){ const c = {pending:0,delivered:0,failed:0,skipped:0}; (r.stops||[]).forEach(x => c[x.status] = (c[x.status]||0)+1);
   const n = (r.stops||[]).length, done = n - c.pending; return {c, n, done, state: !n || !done ? "new" : c.pending ? "go" : "done"}; }
 function defaultName(){ const d = new Date(); return "Run " + d.toLocaleDateString("en-AU",{weekday:"short", day:"numeric", month:"short"}); }
+const STORE_SORT = "dropline.sort.v1";
+const SORTS = [["latest", "Latest first"], ["oldest", "Oldest first"], ["name", "Name A–Z"], ["progress", "Least done first"]];
 function renderHome(){
-  const items = Object.values(lib()).sort((a,b) => (b.updatedAt||0)-(a.updatedAt||0));
+  const mode = (loadJSON(STORE_SORT) || {m: "latest"}).m;
+  const pct = r => { const t = routeStats(r); return t.n ? t.done / t.n : 0; };
+  const items = Object.values(lib()).sort(mode === "oldest" ? (a, b) => (a.createdAt || 0) - (b.createdAt || 0)
+    : mode === "name" ? (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "en-AU", {numeric: true})
+    : mode === "progress" ? (a, b) => pct(a) - pct(b) || (b.updatedAt || 0) - (a.updatedAt || 0)
+    : (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  $("routeSortTxt").textContent = (SORTS.find(x => x[0] === mode) || SORTS[0])[1];
   $("homeEmpty").hidden = items.length > 0;
   $("routeList").innerHTML = items.map(r => { const t = routeStats(r), w = x => t.n ? (100*x/t.n).toFixed(1)+"%" : "0";
-    const lbl = {new:"Not started", go:"In progress", done:"Finished"}[t.state];
-    return '<div class="rcard" data-rid="'+esc(r.id)+'"><button class="ro" data-open="'+esc(r.id)+'"><div class="rn">'+esc(r.name||"Untitled route")+'</div>'
-      + '<div class="rm"><span class="rstate '+t.state+'">'+lbl+'</span>'+t.n+' stop'+(t.n===1?"":"s")+(t.done ? ' · '+t.c.delivered+' delivered' : '')+' · '+new Date(r.createdAt||r.updatedAt||Date.now()).toLocaleDateString("en-AU",{day:"numeric",month:"short"})+'</div>'
-      + '<div class="rbar"><i style="width:'+w(t.c.delivered)+';background:var(--ok)"></i><i style="width:'+w(t.c.failed)+';background:var(--fail)"></i><i style="width:'+w(t.c.skipped)+';background:var(--skip)"></i></div></button>'
-      + '<button class="more" data-menu="'+esc(r.id)+'" aria-label="Options for '+esc(r.name||"route")+'">⋯</button></div>'; }).join("");
+    const lbl = {new:"Not started", go:"In progress", done:"Finished"}[t.state], p = t.n ? Math.round(100 * t.done / t.n) : 0;
+    return '<div class="rcard" data-rid="'+esc(r.id)+'"><button class="ro" data-open="'+esc(r.id)+'"><span class="tile blue">'+ico("cal")+'</span><span class="rb">'
+      + '<span class="rtop"><b class="rn">'+esc(r.name||"Untitled route")+'</b><span class="rstate '+t.state+'">'+lbl+'</span></span>'
+      + '<span class="rm" style="display:block">'+new Date(r.createdAt||r.updatedAt||Date.now()).toLocaleDateString("en-AU",{day:"numeric",month:"short",year:"numeric"})+' · '+t.n+' stop'+(t.n===1?"":"s")+(t.done ? ' · '+t.c.delivered+' delivered' : '')+'</span>'
+      + '<span class="rprog"><span class="rbar"><i style="width:'+w(t.c.delivered)+';background:var(--ok)"></i><i style="width:'+w(t.c.failed)+';background:var(--fail)"></i><i style="width:'+w(t.c.skipped)+';background:var(--skip)"></i></span><b class="rpc">'+p+'%</b></span></span>'+ico("chev-r")+'</button>'
+      + '<button class="more" data-menu="'+esc(r.id)+'" aria-label="Options for '+esc(r.name||"route")+'">'+ico("dots-v")+'</button></div>'; }).join("");
 }
 function showHome(){ if (nav.on) try{ navStop(); }catch(e){}
   document.querySelectorAll(".sheet-bg").forEach(b => b.hidden = true);
@@ -2442,6 +2910,7 @@ function openRoute(id){
   route = r; if (!Array.isArray(route.stops)) route.stops = [];
   route.stops.forEach(x => { if (x.geo === "searching") x.geo = "pending"; });
   selId = expandedId = failPickId = placingId = null; $("optMsg").hidden = true; $("manualBox").hidden = true; $("btnManual").classList.remove("on");
+  $("stopSearch").value = ""; $("stopFilter").value = "all"; setView("map");
   try{ localStorage.setItem(STORE_OPEN, id); }catch(e){}
   saveJSON(STORE_CUR, route);
   $("home").hidden = true; render(); setTimeout(() => { map.invalidateSize(); route.stops.length ? fitAll() : (has(myLoc) && map.setView([myLoc.lat, myLoc.lon], 13)); }, 50);
@@ -2464,9 +2933,19 @@ $("homeCreate").addEventListener("click", () => { $("createName").value = defaul
 $("createGo").addEventListener("click", () => { $("createSheet").hidden = true; createRoute($("createName").value.trim()); });
 $("createName").addEventListener("keydown", e => { if (e.key === "Enter") $("createGo").click(); });
 $("createCancel").addEventListener("click", () => $("createSheet").hidden = true);
+$("routeSort").addEventListener("click", () => { const mode = (loadJSON(STORE_SORT) || {m: "latest"}).m, k = SORTS.findIndex(x => x[0] === mode);
+  saveJSON(STORE_SORT, {m: SORTS[(k + 1) % SORTS.length][0]}); renderHome(); });
 $("routeList").addEventListener("click", e => { const o = e.target.closest("[data-open]"), m = e.target.closest("[data-menu]");
   if (m) openMenu(m.dataset.menu); else if (o) openRoute(o.dataset.open); });
-$("btnRoutes").addEventListener("click", showHome);
+$("btnRoutes").addEventListener("click", () => { if (view !== "map") setView("map"); else showHome(); });
+$("routeTabs").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) setView(b.dataset.view); });
+$("stopSearch").addEventListener("input", () => render());
+$("stopFilter").addEventListener("change", () => render());
+$("btnCentre").addEventListener("click", () => { if (has(myLoc)) map.setView([myLoc.lat, myLoc.lon], Math.max(map.getZoom(), 15)); else askLocation(true); });
+$("dRename").addEventListener("click", () => { persist(); openMenu(route.id); setTimeout(() => { $("menuName").focus(); $("menuName").select(); }, 80); });
+$("dCopy").addEventListener("click", () => { persist(); menuId = route.id; $("menuCopy").click(); });
+$("dExport").addEventListener("click", () => { persist(); menuId = route.id; $("menuExport").click(); });
+$("dDelete").addEventListener("click", () => { persist(); openMenu(route.id); $("menuDelConfirm").hidden = false; });
 $("btnRouteMenu").addEventListener("click", () => { persist(); openMenu(route.id); });
 $("menuRename").addEventListener("click", () => { const a = lib(), r = a[menuId]; if (!r) return; r.name = $("menuName").value.trim() || r.name;
   if (route.id === menuId) route.name = r.name; saveLib(a); $("menuTitle").textContent = r.name; renderHome(); render(); toast("Renamed to “"+r.name+"”"); $("menuSheet").hidden = true; });
@@ -2484,7 +2963,7 @@ $("menuClose").addEventListener("click", () => $("menuSheet").hidden = true);
 $("menuSettings").addEventListener("click", () => { $("menuSheet").hidden = true; openSettings(); });
 $("importIn").addEventListener("change", e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
   rd.onload = () => { try{ const r = JSON.parse(rd.result); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0;
-      r.id = uid(); r.createdAt = r.createdAt || Date.now(); const a = lib(); a[r.id] = r; saveLib(a); openRoute(r.id); toast("Opened “"+(r.name||"route")+"” with "+r.stops.length+" stops"); }catch(err){ toast("That file is not a Dropline route."); } };
+      r.id = uid(); r.createdAt = r.createdAt || Date.now(); const a = lib(); a[r.id] = r; saveLib(a); openRoute(r.id); toast("Opened “"+(r.name||"route")+"” with "+r.stops.length+" stops"); }catch(err){ toast("That file is not a DropLine route."); } };
   rd.readAsText(f); e.target.value = ""; });
 $("btnManual").addEventListener("click", () => { const box = $("manualBox"); box.hidden = !box.hidden; $("btnManual").classList.toggle("on", !box.hidden); if (!box.hidden) $("addrIn").focus(); });
 
@@ -2502,8 +2981,8 @@ async function permState(){
   if (has(myLoc)) loc = "granted";
   return {location: loc, notifications: "unsupported", platform: isNativeApp() ? "old-app" : "web"};
 }
-const SETTINGS_HELP = () => /iPhone|iPad/.test(navigator.userAgent) ? "Open the Settings app → Dropline, turn on Location (While Using the App) and Notifications, then come back."
-  : "Open Settings → Apps → Dropline → Permissions, allow Location and Notifications, then come back.";
+const SETTINGS_HELP = () => /iPhone|iPad/.test(navigator.userAgent) ? "Open the Settings app → DropLine, turn on Location (While Using the App) and Notifications, then come back."
+  : "Open Settings → Apps → DropLine → Permissions, allow Location and Notifications, then come back.";
 async function openAppSettings(target){
   const D = devicePlugin();
   try{ sessionStorage.setItem("dropline.fromSettings", String(Date.now())); }catch(e){}
@@ -2524,10 +3003,10 @@ async function renderPermPanel(st){
   const panel = $("permPanel"); if (!panel) return st;
   const native = st.platform === "android" || st.platform === "ios";
   panel.hidden = st.location === "granted" && (!native || st.notifications === "granted");
-  $("permLocTxt").textContent = st.location === "granted" ? "📍 Location: on ✓" : st.location === "denied" ? "📍 Location: off — needed to start from where you are" : "📍 Location: not allowed yet";
+  $("permLocTxt").textContent = st.location === "granted" ? "Location: on ✓" : st.location === "denied" ? "Location: off — needed to start from where you are" : "Location: not allowed yet";
   $("permLocBtn").hidden = st.location === "granted"; $("permLocBtn").textContent = st.location === "denied" ? "Open Settings" : "Allow";
   $("permNotRow").hidden = !native;
-  $("permNotTxt").textContent = st.notifications === "granted" ? "🔔 Notifications: on ✓" : st.notifications === "denied" ? "🔔 Notifications: off" : "🔔 Notifications: not allowed yet";
+  $("permNotTxt").textContent = st.notifications === "granted" ? "Notifications: on ✓" : st.notifications === "denied" ? "Notifications: off" : "Notifications: not allowed yet";
   $("permNotBtn").hidden = st.notifications === "granted"; $("permNotBtn").textContent = st.notifications === "denied" ? "Open Settings" : "Allow";
   return st;
 }
@@ -2565,7 +3044,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "5.8";
+const APP_VERSION = "6.0";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -2573,7 +3052,7 @@ async function techDetails(){
   const st = await permState().catch(() => ({}));
   const sts = await activeStates().catch(() => []);
   const pend = route.stops.filter(x => x.status === "pending").length;
-  return ["Dropline version " + APP_VERSION + " (" + platformName(st) + ")",
+  return ["DropLine version " + APP_VERSION + " (" + platformName(st) + ")",
     "Phone: " + navigator.userAgent.replace(/\s+/g, " ").slice(0, 160),
     "Screen: " + screen.width + "×" + screen.height + " · " + (navigator.onLine ? "online" : "offline"),
     "Permissions: location " + (st.location || "?") + ", notifications " + (st.notifications || "?"),
@@ -2590,7 +3069,7 @@ async function openSettings(){
   $("setLocTxt").textContent = st.location === "granted" ? "On ✓ — routes start from where you are" : st.location === "denied" ? "Off — needed to start routes from where you are" : "Not allowed yet";
   $("setLocBtn").hidden = st.location === "granted"; $("setLocBtn").textContent = st.location === "denied" ? "Open Settings" : "Allow";
   $("setVersion").textContent = "Version " + APP_VERSION + " · " + platformName(st);
-  $("setContact").href = mailto("Dropline – question");
+  $("setContact").href = mailto("DropLine – question");
   $("settingsSheet").hidden = false;
 }
 document.querySelectorAll(".appver").forEach(x => x.textContent = "v" + APP_VERSION);
@@ -2609,9 +3088,9 @@ $("setAbout").addEventListener("click", () => { $("settingsSheet").hidden = true
 $("setBug").addEventListener("click", async () => { $("bugInfoTxt").textContent = await techDetails(); $("bugInfoTxt").hidden = !$("bugInfo").checked; $("bugSheet").hidden = false; setTimeout(() => $("bugText").focus(), 100); });
 $("bugInfo").addEventListener("change", e => { $("bugInfoTxt").hidden = !e.target.checked; });
 function bugBody(){ return ($("bugText").value.trim() || "(describe the problem here)") + ($("bugInfo").checked ? "\n\n---\n" + $("bugInfoTxt").textContent : ""); }
-$("bugSend").addEventListener("click", () => { location.href = mailto("Dropline bug report (v" + APP_VERSION + ")", bugBody()); setTimeout(() => { $("bugSheet").hidden = true; toast("Thanks! If your email app did not open, tap Report a bug again and use Copy."); }, 800); });
+$("bugSend").addEventListener("click", () => { location.href = mailto("DropLine bug report (v" + APP_VERSION + ")", bugBody()); setTimeout(() => { $("bugSheet").hidden = true; toast("Thanks! If your email app did not open, tap Report a bug again and use Copy."); }, 800); });
 $("bugCopy").addEventListener("click", async () => {
-  const txt = "To: " + DEV_EMAIL + " (cc " + DEV_CC + ")\nSubject: Dropline bug report (v" + APP_VERSION + ")\n\n" + bugBody();
+  const txt = "To: " + DEV_EMAIL + " (cc " + DEV_CC + ")\nSubject: DropLine bug report (v" + APP_VERSION + ")\n\n" + bugBody();
   try{ await navigator.clipboard.writeText(txt); toast("Copied. Paste it into an email to " + DEV_EMAIL + "."); }catch(e){ toast("Copy is not available. Please email " + DEV_EMAIL + "."); } });
 $("bugClose").addEventListener("click", () => $("bugSheet").hidden = true);
 
@@ -2624,9 +3103,9 @@ function guideShow(i){
   $("gDots").innerHTML = ss.map((_, k) => '<i class="' + (k === gIdx ? "on" : "") + '"></i>').join("");
   $("gBack").style.visibility = gIdx ? "visible" : "hidden"; $("gNext").textContent = gIdx === ss.length - 1 ? "Start" : "Next";
   if (gIdx === ss.length - 1) permState().then(st => {
-    $("gLoc").textContent = st.location === "granted" ? "Location: on ✓" : st.location === "denied" ? "Location is off — Open Settings" : "Allow location"; $("gLoc").disabled = st.location === "granted";
+    $("gLoc").querySelector("span").textContent = st.location === "granted" ? "Location: on ✓" : st.location === "denied" ? "Location is off — Open Settings" : "Allow location"; $("gLoc").disabled = st.location === "granted";
     const native = st.platform === "android" || st.platform === "ios"; $("gNot").hidden = !native;
-    $("gNot").textContent = st.notifications === "granted" ? "Notifications: on ✓" : st.notifications === "denied" ? "Notifications are off — Open Settings" : "Allow notifications"; $("gNot").disabled = st.notifications === "granted";
+    $("gNot").querySelector("span").textContent = st.notifications === "granted" ? "Notifications: on ✓" : st.notifications === "denied" ? "Notifications are off — Open Settings" : "Allow notifications"; $("gNot").disabled = st.notifications === "granted";
   });
 }
 function openGuide(){ $("guide").hidden = false; guideShow(0); }
@@ -2690,7 +3169,10 @@ $("stateSave").addEventListener("click", () => {
   $("stateSheet").hidden = true; streetsKey = ""; updateDataPanel(); loadStreets().catch(() => {}); });
 $("stateList").addEventListener("change", () => { $("stateAuto").checked = false; });
 $("stateCancel").addEventListener("click", () => $("stateSheet").hidden = true);
+function hideSplash(){ const sp = $("splash"); if (!sp || sp.hidden) return; sp.classList.add("go"); setTimeout(() => sp.hidden = true, 380); }
 function startUp(){
+  if (!window.__noGuide){ let seen = false; try{ seen = !!sessionStorage.getItem("dropline.splash"); sessionStorage.setItem("dropline.splash", "1"); }catch(e){}
+    if (!seen){ $("splash").hidden = false; setTimeout(hideSplash, 1100); } }
   clearBadge(); setTimeout(() => renderPermPanel(), 1200);
   if (!loadJSON(STORE_GUIDE) && !window.__noGuide) setTimeout(openGuide, 300);      // (__noGuide: automated tests only)
   const a = lib();
@@ -2716,7 +3198,7 @@ function askLocation(fromTap){
     if (!route.stops.length && !has(route.start)) map.setView([myLoc.lat, myLoc.lon], 14);
   }, err => {
     updateStartMeTxt();
-    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Tap Open Settings, turn on Location (While Using the App), then come back — the app picks it up straight away." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
+    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for DropLine. Tap Open Settings, turn on Location (While Using the App), then come back — the app picks it up straight away." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
     else showLocBanner("Could not get your location yet. Try again outdoors or check that Location Services is on.", false);
   }, {enableHighAccuracy:true, maximumAge:120000, timeout:20000});
 }
@@ -2734,7 +3216,7 @@ function setStartMode(on, quiet){
 function updateStartMeTxt(){
   const t = $("startMeTxt");
   if (!startMeOn){ t.textContent = "Type the address where the run starts (for example the depot)."; return; }
-  if (route.start && route.start.me) t.textContent = "📍 Starting from where you are" + (myLoc && myLoc.at ? " (updated " + new Date(myLoc.at).toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}) + ")" : "") + ".";
+  if (route.start && route.start.me) t.textContent = "Starting from where you are" + (myLoc && myLoc.at ? " (updated " + new Date(myLoc.at).toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}) + ")" : "") + ".";
   else if (has(myLoc) && farFromStops(myLoc)) t.textContent = "You are more than 150 km from these stops. Switch this off and type a start address near the deliveries.";
   else t.textContent = "Waiting for your location… If location is off, switch this off and type a start address.";
 }

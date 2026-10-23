@@ -1,6 +1,6 @@
 /* Dropline offline support: keeps a copy of the app on the phone so it opens with no signal.
    With signal, the latest version is loaded from the website as usual (and the copy is refreshed). */
-const SHELL = "dropline-shell-v2";
+const SHELL = "dropline-shell-v3";
 const TILES = "dropline-tiles-v1";
 const LIBS = [
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
@@ -12,6 +12,9 @@ self.addEventListener("install", e => {
     c.add(new Request("./", {cache: "reload"})).catch(() => {}),
     c.add(new Request("privacy.html", {cache: "reload"})).catch(() => {}),
     c.add(new Request("offline.html", {cache: "reload"})).catch(() => {}),
+    ...["assets/logo-mark.png", "assets/wordmark-text-white.png", "assets/wordmark.png", "assets/splash.jpg", "assets/icon-32.png",
+        "assets/fonts/inter-latin-400-normal.woff2", "assets/fonts/inter-latin-500-normal.woff2", "assets/fonts/inter-latin-600-normal.woff2", "assets/fonts/inter-latin-700-normal.woff2",
+        "assets/fonts/barlow-condensed-latin-600-normal.woff2", "assets/fonts/barlow-condensed-latin-700-normal.woff2"].map(u => c.add(u).catch(() => {})),
     ...LIBS.map(u => c.add(new Request(u, {mode: "cors"})).catch(() => {}))
   ])).then(() => self.skipWaiting()));
 });
@@ -49,7 +52,12 @@ self.addEventListener("fetch", e => {
     })());
     return;
   }
-  // map libraries and fonts: saved copy first
+  // the app's images and fonts: saved copy first
+  if (url.origin === location.origin && url.pathname.includes("/assets/")){
+    e.respondWith(caches.open(SHELL).then(async c => (await c.match(req)) || fetch(req).then(r => { if (r.ok) c.put(req, r.clone()).catch(() => {}); return r; })));
+    return;
+  }
+  // map libraries: saved copy first
   if (/cdnjs\.cloudflare\.com|fonts\.(googleapis|gstatic)\.com/.test(url.host)){
     e.respondWith(caches.open(SHELL).then(async c => {
       const hit = await c.match(req); if (hit) return hit;

@@ -196,6 +196,22 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 @media (prefers-color-scheme:dark){.snote{background:#3a3110;color:#f3dd8c}}
 .notebox{width:100%;margin:2px 0 4px}
 .notebox textarea{display:block;width:100%;min-height:62px;margin-top:4px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);font:16px/1.35 var(--f-body);color:var(--ink);resize:vertical}
+.guide{position:fixed;inset:0;z-index:1200;background:rgba(10,30,29,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.gcard{position:relative;background:var(--surface);border-radius:18px;width:100%;max-width:420px;padding:22px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.gskip{position:absolute;top:10px;right:10px;border:0;background:none;color:var(--muted);font-weight:600;padding:8px}
+.gslides section{display:none;text-align:center;min-height:250px}
+.gslides section.on{display:block;animation:gin .28s ease-out}
+@keyframes gin{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+.gic{width:64px;height:64px;margin:6px auto 10px;border-radius:18px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:30px}
+.gslides h3{font:700 24px/1.15 var(--f-display);letter-spacing:.02em;text-transform:uppercase;margin:0 0 8px}
+.gslides p{color:var(--muted);margin:0 4px 10px;font-size:15.5px}
+.gslides p b{color:var(--ink)}
+.gperm{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.gdots{display:flex;justify-content:center;gap:6px;margin:10px 0 12px}
+.gdots i{width:8px;height:8px;border-radius:50%;background:var(--line)} .gdots i.on{background:var(--accent);width:20px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){.gslides section.on{animation:none}}
+.permrow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:8px;font-size:14.5px}
+.permrow .btn{min-height:38px;padding:6px 12px}
 .qnotes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .qnotes button{border:1.5px solid var(--line);background:var(--surface);border-radius:16px;padding:6px 11px;font-size:13.5px;font-weight:600}
 .qnotes button.on{background:#fff6d6;border-color:#d8b64a;color:#5a4300}
@@ -365,13 +381,18 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <div class="home" id="home" hidden>
   <header class="top">
-    <div class="brand">Dropline<small>Your routes · prototype v5.6</small></div>
+    <div class="brand">Dropline<small>Your routes · prototype v5.7</small></div>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
   <div class="hlist">
     <button class="create" id="homeCreate"><b>+</b> Create route</button>
     <div id="routeList"></div>
     <p class="hint" id="homeEmpty" style="text-align:center;margin-top:18px">No routes yet. Create one for today's run, then add stops by typing, scanning the paper run sheet, or importing the manifest.</p>
+    <section class="panel" id="permPanel" aria-label="Phone permissions" hidden>
+      <div class="label">Phone permissions</div>
+      <div class="permrow"><span id="permLocTxt">📍 Location…</span><button class="btn" id="permLocBtn" hidden>Allow</button></div>
+      <div class="permrow" id="permNotRow"><span id="permNotTxt">🔔 Notifications…</span><button class="btn" id="permNotBtn" hidden>Allow</button></div>
+    </section>
     <section class="panel" id="dataPanel" aria-label="Addresses on this phone">
       <div class="label">Addresses on this phone</div>
       <p class="hint" id="dataTxt" style="margin:6px 0 0">Finding your state…</p>
@@ -382,6 +403,23 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
       </div>
     </section>
     <label class="btn ghost" style="text-align:center;margin-top:6px">Open a route file from another phone<input type="file" id="importIn" accept=".json,application/json" hidden></label>
+  </div>
+</div>
+
+<div class="guide" id="guide" hidden role="dialog" aria-label="How Dropline works">
+  <div class="gcard">
+    <button class="gskip" id="gSkip">Skip</button>
+    <div class="gslides" id="gSlides">
+      <section><div class="gic">📦</div><h3>Welcome to Dropline</h3><p>Plan your delivery run, put the stops in the best order, and drive it with voice directions. This takes 30 seconds.</p></section>
+      <section><div class="gic">＋</div><h3>1. Create a route</h3><p>Make one route for each run or day. Tap <b>⋯</b> on a route to rename, copy (for the same run tomorrow) or delete it.</p></section>
+      <section><div class="gic">▣</div><h3>2. Add your stops</h3><p><b>Scan run sheet</b>: photograph the paper manifest page by page and check any yellow rows. Or <b>Import manifest</b> (CSV), or <b>Add stop</b> and type a few letters of the address.</p></section>
+      <section><div class="gic">⇄</div><h3>3. Optimise and prepare</h3><p>Tap <b>Optimise</b> to get the fastest order from where you are. Before leaving the depot, tap <b>Prepare for no signal</b> so directions and the map work in areas without coverage.</p></section>
+      <section><div class="gic">▶</div><h3>4. Deliver</h3><p>Tap <b>Navigate</b> for spoken turn-by-turn directions. At each stop tap <b>Delivered</b>, <b>Failed</b> or <b>Skip</b> and the next stop slides in. Tap a stop to add <b>notes</b>, mark a <b>pickup</b> or change parcels.</p></section>
+      <section><div class="gic">✓</div><h3>Allow access</h3><p>Dropline needs your location to start routes from where you are, and can notify you when a download or your run is finished.</p>
+        <div class="gperm"><button class="btn primary" id="gLoc">Allow location</button><button class="btn" id="gNot">Allow notifications</button></div></section>
+    </div>
+    <div class="gdots" id="gDots"></div>
+    <div class="row" style="flex-wrap:nowrap"><button class="btn ghost" id="gBack">Back</button><button class="btn primary grow" id="gNext">Next</button></div>
   </div>
 </div>
 
@@ -474,6 +512,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <div class="sheet-bg" id="aboutSheet" hidden>
   <div class="sheet" role="dialog" aria-label="What works in this prototype">
+    <button class="btn primary" id="btnGuide" style="width:100%;margin-bottom:10px">Show the how-to guide</button>
     <h3>What works in v5</h3>
     <h4 style="color:var(--ok)">Fully working (needs internet)</h4>
     <ul>
@@ -1269,7 +1308,13 @@ function move(id, dir){ const i = route.stops.findIndex(s=>s.id===id), j = i+dir
   [route.stops[i], route.stops[j]] = [route.stops[j], route.stops[i]]; markStale(); persist(); render(); }
 function removeStop(id){ route.stops = route.stops.filter(s=>s.id!==id); if(selId===id) selId=null; markStale(); persist(); render(); }
 function setStatus(id, st, reason){ const s = route.stops.find(x=>x.id===id); if(!s) return;
+  const wasLeft = route.stops.some(x => x.status === "pending");
   s.status = st; s.reason = st==="failed" ? (reason||"") : ""; s.doneAt = st==="pending" ? null : Date.now();
+  if (wasLeft && !route.stops.some(x => x.status === "pending")){
+    const c = {delivered:0, failed:0, skipped:0}; route.stops.forEach(x => c[x.status]++);
+    const msg = c.delivered + " done, " + c.failed + " failed, " + c.skipped + " skipped.";
+    setTimeout(() => toast("Run finished: " + msg), 400); phoneNotify(5, "Run finished", (route.name || "Route") + ": " + msg);
+  }
   failPickId = null; persist(); render(); }
 
 /* ---------- import ---------- */
@@ -1590,6 +1635,7 @@ async function prepareOffline(){
     route.offlineLegs.tiles = tiles.skipped ? null : {n: tiles.n, kb: tiles.kb}; persist();
     const sts = await activeStates().catch(() => []); if (sts.length) downloadStates().catch(() => {});   // and this state's addresses
     toast(tiles.failed ? "Directions saved. Some map pieces could not be saved." : "Ready for no signal.");
+    phoneNotify(2, "Ready for no signal", (route.name || "Your route") + ": directions and map saved for " + (route.offlineLegs ? route.offlineLegs.n : "all") + " stops.");
   }catch(e){ toast("Could not save everything. Check your internet connection and try again."); }
   b.disabled = false; bar.hidden = true; updateOffTxt();
 }
@@ -1680,7 +1726,7 @@ function startLocation(then){
     drawMe();
   }, err => {
     $("btnMyLoc").disabled = false; $("btnMyLoc").textContent = "Use my location as start"; $("nsLocOpt").textContent = "Start from my location and optimise"; afterLocate = null;
-    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Open the iPhone Settings app → Dropline → Location → \"While Using the App\", then come back." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
+    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Tap Open Settings, turn on Location (While Using the App), then come back — the app picks it up straight away." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
     toast(err.code === 1 ? "Location is off. Type a start address instead, or turn location on." : "Could not get your location. Try again outdoors.");
   }, {enableHighAccuracy:true, maximumAge:10000, timeout:20000});
 }
@@ -2193,7 +2239,8 @@ function navUpdate(pos){
   // spoken prompts: early warning, then at the turn
   const key = nav.stepIdx + ":";
   if (st.maneuver.type === "arrive"){
-    if (remaining < 30 && !nav.arrived){ nav.arrived = true; speak("You have arrived. " + nav.stop.label.split(",")[0] + "." + (nav.stop.notes ? " Note: " + nav.stop.notes + "." : "")); $("navArriveBox").hidden = false; }
+    if (remaining < 30 && !nav.arrived){ nav.arrived = true;
+      phoneNotify(4, "Arrived: #" + (route.stops.indexOf(nav.stop) + 1), nav.stop.label + (nav.stop.notes ? " — " + nav.stop.notes : "")); speak("You have arrived. " + nav.stop.label.split(",")[0] + "." + (nav.stop.notes ? " Note: " + nav.stop.notes + "." : "")); $("navArriveBox").hidden = false; }
     else if (remaining < 250 && !nav.said[key+"far"]){ nav.said[key+"far"] = 1; speak(sayDist(remaining) + ", you will arrive at " + nav.stop.label.split(",")[0]); }
     return;
   }
@@ -2381,7 +2428,105 @@ $("importIn").addEventListener("change", e => { const f = e.target.files[0]; if(
 $("btnManual").addEventListener("click", () => { const box = $("manualBox"); box.hidden = !box.hidden; $("btnManual").classList.toggle("on", !box.hidden); if (!box.hidden) $("addrIn").focus(); });
 $("btnAbout").addEventListener("click", () => $("aboutSheet").hidden = false);
 $("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
+$("btnGuide").addEventListener("click", () => { $("aboutSheet").hidden = true; openGuide(); });
 document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
+
+/* ---------- phone permissions, Settings shortcut, badge, notifications ---------- */
+function devicePlugin(){ const C = window.Capacitor; if (!C || !isNativeApp()) return null;
+  try{ return (C.Plugins && C.Plugins.DroplineDevice) || (C.registerPlugin ? C.registerPlugin("DroplineDevice") : null); }catch(e){ return null; } }
+async function permState(){
+  const D = devicePlugin();
+  if (D) try{ return await D.permissions(); }catch(e){}           // older app builds do not have this helper
+  let loc = "prompt"; try{ if (navigator.permissions) loc = (await navigator.permissions.query({name: "geolocation"})).state; }catch(e){}
+  if (has(myLoc)) loc = "granted";
+  return {location: loc, notifications: "unsupported", platform: isNativeApp() ? "old-app" : "web"};
+}
+const SETTINGS_HELP = () => /iPhone|iPad/.test(navigator.userAgent) ? "Open the Settings app → Dropline, turn on Location (While Using the App) and Notifications, then come back."
+  : "Open Settings → Apps → Dropline → Permissions, allow Location and Notifications, then come back.";
+async function openAppSettings(target){
+  const D = devicePlugin();
+  try{ sessionStorage.setItem("dropline.fromSettings", String(Date.now())); }catch(e){}
+  if (D) try{ await D.openSettings({target: target || ""}); return true; }catch(e){}
+  toast(SETTINGS_HELP()); return false;
+}
+function clearBadge(){ const D = devicePlugin(); if (D) try{ D.clearBadge().catch(() => {}); }catch(e){} }
+const STORE_NOTIF = "dropline.notif.v1";
+const notifWanted = () => (loadJSON(STORE_NOTIF) || {on: true}).on !== false;
+/* Phone notification, only when the app is not on screen (on screen, the app shows its own message). */
+async function phoneNotify(id, title, body){
+  if (!notifWanted() || document.visibilityState === "visible") return false;
+  const D = devicePlugin(); if (!D) return false;
+  try{ await D.notify({id, title, body}); return true; }catch(e){ return false; }
+}
+async function renderPermPanel(st){
+  st = st || await permState();
+  const panel = $("permPanel"); if (!panel) return st;
+  const native = st.platform === "android" || st.platform === "ios";
+  panel.hidden = st.location === "granted" && (!native || st.notifications === "granted");
+  $("permLocTxt").textContent = st.location === "granted" ? "📍 Location: on ✓" : st.location === "denied" ? "📍 Location: off — needed to start from where you are" : "📍 Location: not allowed yet";
+  $("permLocBtn").hidden = st.location === "granted"; $("permLocBtn").textContent = st.location === "denied" ? "Open Settings" : "Allow";
+  $("permNotRow").hidden = !native;
+  $("permNotTxt").textContent = st.notifications === "granted" ? "🔔 Notifications: on ✓" : st.notifications === "denied" ? "🔔 Notifications: off" : "🔔 Notifications: not allowed yet";
+  $("permNotBtn").hidden = st.notifications === "granted"; $("permNotBtn").textContent = st.notifications === "denied" ? "Open Settings" : "Allow";
+  return st;
+}
+async function askNotifications(){
+  const D = devicePlugin(); if (!D){ toast(SETTINGS_HELP()); return; }
+  const st = await permState();
+  if (st.notifications === "denied"){ openAppSettings("notifications"); return; }
+  try{ const r = await D.requestNotifications(); if (r.notifications !== "granted") toast("Notifications are off. Tap Open Settings to turn them on."); }catch(e){}
+  renderPermPanel();
+}
+$("permLocBtn").addEventListener("click", async () => { const st = await permState(); if (st.location === "denied") openAppSettings(); else askLocation(true); });
+$("permNotBtn").addEventListener("click", askNotifications);
+/* Back from Settings (or back in the app): pick up the new permissions straight away, no restart needed. */
+let resumeT = 0, resumeLater = null;
+async function onResume(){
+  if (Date.now() - resumeT < 300){ clearTimeout(resumeLater); resumeLater = setTimeout(onResume, 350); return; }   // several signals at once: check again just after
+  resumeT = Date.now();
+  clearBadge();
+  const st = await renderPermPanel();
+  let fromSettings = 0; try{ fromSettings = +(sessionStorage.getItem("dropline.fromSettings") || 0); sessionStorage.removeItem("dropline.fromSettings"); }catch(e){}
+  if (st.location === "granted" && (!has(myLoc) || Date.now() - myLoc.at > 60000) && navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(p => {
+      myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; drawMe();
+      $("locBanner").hidden = true; useMyLocAsStart(); renderPermPanel(); updateDataPanel();
+      if (fromSettings) toast("Location is on. Thanks!");
+    }, err => {
+      // the web view sometimes keeps the old "blocked" answer until it is reloaded: reload once, automatically
+      let done = false; try{ done = !!sessionStorage.getItem("dropline.reloaded"); }catch(e){}
+      if (err.code === 1 && fromSettings && !done){ try{ sessionStorage.setItem("dropline.reloaded", "1"); }catch(e){} location.reload(); }
+    }, {enableHighAccuracy: true, maximumAge: 60000, timeout: 15000});
+  }
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") onResume(); });
+window.addEventListener("focus", onResume);
+try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
+
+/* ---------- first-use guide ---------- */
+const STORE_GUIDE = "dropline.guide.v1";
+let gIdx = 0;
+function guideShow(i){
+  const ss = [...document.querySelectorAll("#gSlides section")]; gIdx = Math.max(0, Math.min(ss.length - 1, i));
+  ss.forEach((x, k) => x.classList.toggle("on", k === gIdx));
+  $("gDots").innerHTML = ss.map((_, k) => '<i class="' + (k === gIdx ? "on" : "") + '"></i>').join("");
+  $("gBack").style.visibility = gIdx ? "visible" : "hidden"; $("gNext").textContent = gIdx === ss.length - 1 ? "Start" : "Next";
+  if (gIdx === ss.length - 1) permState().then(st => {
+    $("gLoc").textContent = st.location === "granted" ? "Location: on ✓" : st.location === "denied" ? "Location is off — Open Settings" : "Allow location"; $("gLoc").disabled = st.location === "granted";
+    const native = st.platform === "android" || st.platform === "ios"; $("gNot").hidden = !native;
+    $("gNot").textContent = st.notifications === "granted" ? "Notifications: on ✓" : st.notifications === "denied" ? "Notifications are off — Open Settings" : "Allow notifications"; $("gNot").disabled = st.notifications === "granted";
+  });
+}
+function openGuide(){ $("guide").hidden = false; guideShow(0); }
+function closeGuide(){ $("guide").hidden = true; saveJSON(STORE_GUIDE, {seen: Date.now()}); renderPermPanel(); }
+$("gNext").addEventListener("click", () => { if (gIdx === document.querySelectorAll("#gSlides section").length - 1) closeGuide(); else guideShow(gIdx + 1); });
+$("gBack").addEventListener("click", () => guideShow(gIdx - 1));
+$("gSkip").addEventListener("click", closeGuide);
+$("gLoc").addEventListener("click", async () => { const st = await permState(); if (st.location === "denied") openAppSettings(); else { askLocation(true); setTimeout(() => guideShow(gIdx), 2500); } });
+$("gNot").addEventListener("click", async () => { await askNotifications(); guideShow(gIdx); });
+let gx = null;
+$("guide").addEventListener("touchstart", e => { gx = e.touches[0].clientX; }, {passive: true});
+$("guide").addEventListener("touchend", e => { if (gx == null) return; const dx = e.changedTouches[0].clientX - gx; gx = null; if (Math.abs(dx) > 50) guideShow(gIdx + (dx < 0 ? 1 : -1)); });
 
 /* ---------- addresses on this phone: state choice and offline download ---------- */
 const fmtMB = kb => kb >= 1024 ? (kb / 1024).toFixed(kb >= 10240 ? 0 : 1) + " MB" : Math.max(1, Math.round(kb)) + " KB";
@@ -2416,6 +2561,7 @@ async function downloadStates(){
       done++; $("dataBarI").style.width = (100 * done / info.pcs.length).toFixed(1) + "%"; txt.textContent = "Downloading addresses: " + done + " of " + info.pcs.length + " postcodes…"; } };
     await Promise.all([1,2,3,4,5,6].map(worker));
     toast(failed ? failed + " postcodes could not be downloaded. Tap Download again when you have signal." : "Addresses saved on this phone for use with no signal.");
+    if (!failed) phoneNotify(3, "Addresses downloaded", sts.map(st => STATE_NAMES[st] || st).join(" + ") + " addresses are saved on this phone for use with no signal.");
   }catch(e){ toast("Download failed. Check your internet connection."); }
   dlBusy = false; btn.disabled = false; bar.hidden = true; updateDataPanel();
 }
@@ -2433,6 +2579,8 @@ $("stateSave").addEventListener("click", () => {
 $("stateList").addEventListener("change", () => { $("stateAuto").checked = false; });
 $("stateCancel").addEventListener("click", () => $("stateSheet").hidden = true);
 function startUp(){
+  clearBadge(); setTimeout(() => renderPermPanel(), 1200);
+  if (!loadJSON(STORE_GUIDE) && !window.__noGuide) setTimeout(openGuide, 300);      // (__noGuide: automated tests only)
   const a = lib();
   // older versions kept one current route (and "saved copies"); give every route a name and creation date
   Object.values(a).forEach(r => { r.createdAt = r.createdAt || r.updatedAt || Date.now(); });
@@ -2456,7 +2604,7 @@ function askLocation(fromTap){
     if (!route.stops.length && !has(route.start)) map.setView([myLoc.lat, myLoc.lon], 14);
   }, err => {
     updateStartMeTxt();
-    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Open the iPhone Settings app → Dropline → Location → \"While Using the App\", then come back." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
+    if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for Dropline. Tap Open Settings, turn on Location (While Using the App), then come back — the app picks it up straight away." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
     else showLocBanner("Could not get your location yet. Try again outdoors or check that Location Services is on.", false);
   }, {enableHighAccuracy:true, maximumAge:120000, timeout:20000});
 }
@@ -2491,8 +2639,8 @@ function useMyLocAsStart(){
   if (moved && prev) startChanged(); else { persist(); render(); }
   if (!$("nextStep").hidden && !route.opt) showNextStep(lastStepPages);
 }
-function showLocBanner(text, blocked){ $("locBanner").hidden = false; $("locText").textContent = text; $("locBtn").textContent = blocked ? "Try again" : "Allow location"; }
-$("locBtn").addEventListener("click", () => askLocation(true));
+function showLocBanner(text, blocked){ $("locBanner").hidden = false; $("locText").textContent = text; $("locBtn").textContent = blocked ? (isNativeApp() ? "Open Settings" : "Try again") : "Allow location"; $("locBanner").dataset.blocked = blocked ? "1" : ""; renderPermPanel(); }
+$("locBtn").addEventListener("click", () => { if ($("locBanner").dataset.blocked && isNativeApp()) openAppSettings(); else askLocation(true); });
 $("startMe").addEventListener("change", e => setStartMode(e.target.checked));
 $("locClose").addEventListener("click", () => { $("locBanner").hidden = true; });
 $("startMe").checked = startMeOn; $("startAddrBox").hidden = startMeOn; updateStartMeTxt();
@@ -2504,7 +2652,7 @@ setTimeout(() => {
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 /* keep a copy of the app on the phone so it opens with no signal (website only; not in local tests) */
 try{ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {}); }catch(e){}
-window.RP = {solve, tourCost, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {solve, tourCost, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

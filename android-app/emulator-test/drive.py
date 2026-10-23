@@ -21,7 +21,7 @@ def screencap(name):
 results = {"pages": [], "raw": []}
 try:
     say("installing", APK); say(adb("install", "-r", APK).strip())
-    for perm in ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA"]: adb("shell", "pm", "grant", "au.dropline.routeplanner", "android.permission." + perm, check=False)
+    for perm in ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA", "POST_NOTIFICATIONS"]: adb("shell", "pm", "grant", "au.dropline.routeplanner", "android.permission." + perm, check=False)
     adb("emu", "geo", "fix", "138.6406", "-34.9395", check=False)      # put the emulator in Burnside, Adelaide (near the test stops)
     adb("shell", "am", "start", "-n", "au.dropline.routeplanner/.MainActivity")
     sock = ""
@@ -71,6 +71,7 @@ try:
             except Exception: pass
             time.sleep(10)
     wait_for("document.getElementById('homeCreate') && window.RP", 120)
+    ev("document.getElementById('guide') && !document.getElementById('guide').hidden && document.getElementById('gSkip').click(); true")
     say("page:", ev("location.href"))
     screencap("01b-routes-home.png")
     ev("document.getElementById('homeCreate').click(); document.getElementById('createName').value = 'Emulator test run'; document.getElementById('createGo').click(); true")
@@ -152,6 +153,13 @@ try:
         return 'spoke OK in ' + Math.round(performance.now() - t0) + ' ms'; } catch (e) { return 'error: ' + e.message; } })()"""))
     try: say("TTS languages:", str(ev("(async () => { try { const r = await window.Capacitor.Plugins.TextToSpeech.getSupportedLanguages(); return (r.languages || []).filter(l => /en/i.test(l)).slice(0, 8); } catch (e) { return 'error ' + e.message; } })()")))
     except Exception as e: say("TTS languages: error", e)
+    # phone helper: permissions, notification, badge
+    say("device helper:", ev("""(async () => { try { const D = window.Capacitor.Plugins.DroplineDevice; const p = await D.permissions();
+        const n = await D.requestNotifications().catch(e => ({err: e.message})); let sent = 'not sent';
+        try { await D.notify({id: 9, title: 'Dropline test', body: 'Ready for no signal'}); sent = 'sent'; } catch (e) { sent = 'error ' + e.message; }
+        await D.clearBadge(); return JSON.stringify({permissions: p, request: n, notify: sent, badge: 'cleared'}); } catch (e) { return 'error: ' + e.message; } })()"""))
+    try: say("notification shade:", [l.strip() for l in adb("shell", "dumpsys", "notification", "--noredact", check=False).splitlines() if "Dropline test" in l or "android.title=" in l][:4])
+    except Exception as e: say("notification shade: error", e)
     # real navigation from the emulator's GPS position
     ev("window.__spoken = []; document.getElementById('nextGo').click(); true")
     try: wait_for("(window.__spoken || []).length > 0 || /km from|Turn on location/i.test(document.getElementById('navInstr').textContent)", 60)

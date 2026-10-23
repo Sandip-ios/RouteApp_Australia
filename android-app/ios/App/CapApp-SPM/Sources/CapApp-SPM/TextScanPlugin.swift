@@ -50,5 +50,6 @@ public class TextScanPlugin: CAPPlugin, CAPBridgedPlugin {
 public class DroplineViewController: CAPBridgeViewController {
     public override func capacitorDidLoad() {
         bridge?.registerPluginInstance(TextScanPlugin())
+        bridge?.registerPluginInstance(DevicePlugin())
     }
 }

@@ -3254,7 +3254,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "6.5";
+const APP_VERSION = "6.6";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -3499,7 +3499,7 @@ function isNativeApp(){ const C = window.Capacitor; return !!(C && (C.isNativePl
 function askLocation(fromTap){ return new Promise(done => {
   if (!navigator.geolocation){ showLocBanner("Location is not available on this device."); done(); return; }
   $("locBtn").textContent = "Finding you…";
-  navigator.geolocation.getCurrentPosition(p => {
+  androidLocationPrompt().then(() => navigator.geolocation.getCurrentPosition(p => {
     myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; drawMe();
     $("locBanner").hidden = true; useMyLocAsStart();
     if (!route.stops.length && !has(route.start)) map.setView([myLoc.lat, myLoc.lon], 14);
@@ -3508,8 +3508,32 @@ function askLocation(fromTap){ return new Promise(done => {
     updateStartMeTxt();
     if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for DropLine. Tap Open Settings, turn on Location (While Using the App), then come back — the app picks it up straight away." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
     else showLocBanner("Could not get your location yet. Try again outdoors or check that Location Services is on.", false);
-  }, {enableHighAccuracy:true, maximumAge:120000, timeout:20000});
+  }, {enableHighAccuracy:true, maximumAge:120000, timeout:20000}));
 }); }
+/* Android app: ask with the phone's own location prompt first (the app then knows "not asked yet" from "blocked").
+   iPhone already uses the phone's location directly; websites and older app builds skip this. */
+function isAndroidApp(){ const C = window.Capacitor; return isNativeApp() && !!(C && C.getPlatform && C.getPlatform() === "android"); }
+async function androidLocationPrompt(){
+  if (!isAndroidApp()) return; const D = devicePlugin(); if (!D) return;
+  try{ await D.requestLocation(); }catch(e){}                       // older Android builds: the web view asks instead
+}
+/* Android phone Back button: close what is open, step back a screen, and only leave the app from the routes list. */
+function handleBack(){
+  if (!$("subPage").hidden){ $("subBack").click(); return true; }
+  if (!$("guide").hidden){ if (gIdx > 0) guideShow(gIdx - 1); else closeGuide(); return true; }
+  const sheets = [...document.querySelectorAll(".sheet-bg")].filter(x => !x.hidden);
+  if (sheets.length){ const sh = sheets[sheets.length - 1];
+    const b = sh.querySelector('[id$="Close"],[id$="Cancel"],[id^="close"]');
+    if (b) b.click(); else sh.hidden = true; return true; }
+  if (placingId){ placingId = null; document.body.classList.remove("placing"); toast("Move pin cancelled."); return true; }
+  if (!$("navScreen").hidden){ navStop(); return true; }
+  if ($("home").hidden){ $("btnRoutes").click(); return true; }
+  return false;
+}
+(function wireBackButton(){
+  if (!isAndroidApp()) return; const D = devicePlugin(); if (!D || !D.addListener) return;
+  try{ D.addListener("back", () => { if (!handleBack()) D.exitApp().catch(() => {}); }); }catch(e){}
+})();
 /* Start: "my location" (default) or a typed address. */
 let startMeOn = (() => { try{ return localStorage.getItem("dropline.startMe") !== "0"; }catch(e){ return true; } })();
 function setStartMode(on, quiet){
@@ -3594,7 +3618,7 @@ setTimeout(() => {
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 /* keep a copy of the app on the phone so it opens with no signal (website only; not in local tests) */
 try{ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {}); }catch(e){}
-window.RP = {syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {handleBack, syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

@@ -27,12 +27,24 @@ import com.getcapacitor.annotation.PermissionCallback;
 
 /** Small phone helpers for Dropline: permission status, open the app's Settings page, local notifications, clear the icon badge. */
 @CapacitorPlugin(name = "DroplineDevice",
-        permissions = { @Permission(strings = { Manifest.permission.POST_NOTIFICATIONS }, alias = "notifications") })
+        permissions = {
+            @Permission(strings = { Manifest.permission.POST_NOTIFICATIONS }, alias = "notifications"),
+            @Permission(strings = { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION }, alias = "location")
+        })
 public class DevicePlugin extends Plugin {
     private static final String CHANNEL = "dropline";
+    private static java.lang.ref.WeakReference<DevicePlugin> current = new java.lang.ref.WeakReference<>(null);
+
+    /** Phone Back button: the app closes its own screens first (sheets, Settings pages, navigation). Returns false when the app has nothing to close. */
+    static boolean sendBack() {
+        DevicePlugin p = current.get();
+        if (p != null && p.hasListeners("back")) { p.notifyListeners("back", new JSObject()); return true; }
+        return false;
+    }
 
     @Override
     public void load() {
+        current = new java.lang.ref.WeakReference<>(this);
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel ch = new NotificationChannel(CHANNEL, "Dropline", NotificationManager.IMPORTANCE_DEFAULT);
             ch.setDescription("Route ready, downloads finished, run finished");
@@ -41,14 +53,46 @@ public class DevicePlugin extends Plugin {
         }
     }
 
+    /** "granted", "denied" (blocked: only the phone's Settings can change it) or "prompt" (not asked yet: the app can ask). */
+    private static String word(PermissionState s) {
+        if (s == PermissionState.GRANTED) return "granted";
+        if (s == PermissionState.DENIED) return "denied";
+        return "prompt";
+    }
     private String locationState() {
         Context c = getContext();
         boolean fine = ContextCompat.checkSelfPermission(c, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         boolean coarse = ContextCompat.checkSelfPermission(c, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-        return (fine || coarse) ? "granted" : "denied";
+        if (fine || coarse) return "granted";
+        try { return word(getPermissionState("location")); } catch (Exception e) { return "prompt"; }
     }
     private String notificationState() {
-        return NotificationManagerCompat.from(getContext()).areNotificationsEnabled() ? "granted" : "denied";
+        if (NotificationManagerCompat.from(getContext()).areNotificationsEnabled()) return "granted";
+        if (Build.VERSION.SDK_INT >= 33) {
+            try {
+                PermissionState s = getPermissionState("notifications");
+                if (s != PermissionState.GRANTED) return word(s);      // not asked yet → the app can ask
+            } catch (Exception e) { return "prompt"; }
+        }
+        return "denied";                                              // turned off in the phone's Settings
+    }
+
+    /** Ask for location with the phone's own prompt (one prompt; the website never asks separately). */
+    @PluginMethod
+    public void requestLocation(PluginCall call) {
+        if ("granted".equals(locationState())) { JSObject r = new JSObject(); r.put("location", "granted"); call.resolve(r); return; }
+        requestPermissionForAlias("location", call, "locCallback");
+    }
+    @PermissionCallback
+    private void locCallback(PluginCall call) {
+        JSObject r = new JSObject(); r.put("location", locationState()); call.resolve(r);
+    }
+
+    /** Back on the first screen: leave the app (it stays ready in the background, like other apps). */
+    @PluginMethod
+    public void exitApp(PluginCall call) {
+        call.resolve();
+        getActivity().runOnUiThread(() -> getActivity().moveTaskToBack(true));
     }
 
     @PluginMethod

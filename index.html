@@ -805,17 +805,6 @@ textarea:focus{border-color:var(--teal);outline:none}
       <div class="permrow"><span id="permLocTxt">Location…</span><button class="btn outline" id="permLocBtn" hidden>Allow</button></div>
       <div class="permrow" id="permNotRow"><span id="permNotTxt">Notifications…</span><button class="btn outline" id="permNotBtn" hidden>Allow</button></div></div>
     </section>
-    <section class="panel icard" id="dataPanel" aria-label="Offline address search">
-      <span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg></span>
-      <div class="lt"><div class="label">Offline address search</div>
-      <p class="datawhy">Optional. Saves the official address list for your state on this phone, so you can find and check addresses where there is no mobile signal. Best done once on Wi-Fi.</p>
-      <p class="hint" id="dataTxt" style="margin:6px 0 0;font-size:14px">Finding your state…</p>
-      <div class="bar" id="dataBar" hidden><i id="dataBarI"></i></div>
-      <div class="row" style="margin-top:12px">
-        <button class="btn cta" id="dataDl" hidden><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Download for offline</button>
-        <button class="btn outline" id="dataChange">Change state<svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-      </div></div>
-    </section>
     <label class="panel list" style="cursor:pointer"><span class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Open a route file</b><small>A route saved on another phone with “Save as file”</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
     <p class="madeby">DropLine <span class="appver"></span> · Made with <span class="heart" aria-label="love">♥</span> by <b>Enterprise Analytic</b></p>
     <svg class="homeill" viewBox="0 0 400 120" aria-hidden="true">
@@ -855,6 +844,19 @@ textarea:focus{border-color:var(--teal);outline:none}
   </div>
 </div>
 
+<div class="sheet-bg" id="offSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Offline addresses">
+    <h3>Offline addresses</h3>
+    <p class="hint" style="margin-top:0">DropLine quietly saves the official addresses for the area around you and for every stop on your routes, so address search keeps working with no mobile signal. Nothing to do: it happens by itself and old areas are cleared after 3 months.</p>
+    <dl class="repdl" id="offStats"></dl>
+    <div class="label" style="margin:6px 0 4px">Delivering across a whole state?</div>
+    <p class="hint" id="dataTxt" style="margin:0 0 8px;font-size:14px">Finding your state…</p>
+    <div class="bar" id="dataBar" hidden><i id="dataBarI"></i></div>
+    <button class="btn outline" id="dataDl" hidden style="width:100%"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Save the whole state</button>
+    <button class="btn outline" id="dataChange" style="width:100%;margin-top:8px">Change state<svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+    <button class="btn" id="offClose" style="width:100%;margin-top:12px">Close</button>
+  </div>
+</div>
 <div class="sheet-bg" id="stateSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Choose states">
     <h3>Which states do you deliver in?</h3>
@@ -957,6 +959,7 @@ textarea:focus{border-color:var(--teal);outline:none}
       <button class="setlink" id="setPrivacy"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Privacy policy</b><small>What DropLine keeps and what it sends</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     </div>
     <div class="setgroup">
+      <button class="setlink" id="setOffline"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span><b>Offline addresses</b><small id="setOffTxt">Saved automatically for your area</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setGuide"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg></span><span><b>How-to guide</b><small>The 30-second walkthrough</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setAbout"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg></span><span><b>What works</b><small>Features in this version</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     </div>
@@ -1002,7 +1005,7 @@ textarea:focus{border-color:var(--teal);outline:none}
       <li>Route optimisation of every pending stop using road travel times; start from your location (shown as the nearest street address) or a typed address</li>
       <li>Voice turn-by-turn navigation inside the app, with Previous / Next stop</li>
       <li>Delivered, failed (with reason) and skipped; the next stop slides in</li>
-      <li>Works with no signal: the app opens, saved addresses, and "Prepare for no signal" directions and map</li>
+      <li>Works with no signal: the app opens, addresses for your area and your route stops are saved automatically, and "Prepare for no signal" saves directions and map</li>
       <li>Notifications when a run or download finishes, or when you arrive (app in the background)</li>
     </ul>
   </div>
@@ -1473,7 +1476,8 @@ function saveJSON(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return 
 function persist(){ route.updatedAt = Date.now();
   let ok = saveJSON(STORE_CUR, route);
   if (ok && route.name !== undefined && document.getElementById("home")){ const a = lib(); if (a[route.id] || route.createdAt){ a[route.id] = route; ok = saveLib(a); } }
-  if (!ok) toast("This phone blocked saving. Your route will not survive a reload."); }
+  if (!ok) toast("This phone blocked saving. Your route will not survive a reload.");
+  try{ scheduleAddrSync(6000, true); }catch(e){} }
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -1606,6 +1610,7 @@ function streetNorm(s){ const w = gnorm(s).split(" "); if (w.length > 1 && ST_FU
 function locNorm(s){ return gnorm(s).replace(/^SAINT /,"ST ").replace(/^MOUNT /,"MOUNT "); }
 function gnafFile(pc){
   if (!/^\d{4}$/.test(String(pc))) return Promise.resolve(null);
+  if (!(pc in geoFiles)) setTimeout(() => touchPostcode(pc), 0);
   if (!(pc in geoFiles)) geoFiles[pc] = geoFetch("au/" + pc + ".json", 15000).then(f => {
     const idx = {};
     for (const k of Object.keys(f.s)){ const [st, loc] = k.split("|"), d = decStreet(f.s[k]);
@@ -3109,7 +3114,7 @@ function renderHome(){
 function showHome(){ if (nav.on) try{ navStop(); }catch(e){}
   document.querySelectorAll(".sheet-bg").forEach(b => b.hidden = true);
   try{ localStorage.setItem(STORE_OPEN, ""); }catch(e){}
-  renderHome(); $("home").hidden = false; updateDataPanel(); }
+  renderHome(); $("home").hidden = false; }
 function openRoute(id){ try{ $("addedLine").hidden = true; }catch(e){}
   const r = lib()[id]; if (!r) { toast("That route is no longer on this phone."); return; }
   route = r; if (!Array.isArray(route.stops)) route.stops = [];
@@ -3235,7 +3240,7 @@ async function onResume(){
   if (st.location === "granted" && (!has(myLoc) || Date.now() - myLoc.at > 60000) && navigator.geolocation){
     navigator.geolocation.getCurrentPosition(p => {
       myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; drawMe();
-      $("locBanner").hidden = true; useMyLocAsStart(); renderPermPanel(); updateDataPanel();
+      $("locBanner").hidden = true; useMyLocAsStart(); renderPermPanel();
       if (fromSettings) toast("Location is on. Thanks!");
     }, err => {
       // the web view sometimes keeps the old "blocked" answer until it is reloaded: reload once, automatically
@@ -3249,7 +3254,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "6.4";
+const APP_VERSION = "6.5";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -3359,6 +3364,75 @@ async function stateFiles(sts){
   const idx = await pcIndex(); const pcs = Object.entries(idx).filter(([, p]) => sts.includes(p[2]));
   return {pcs: pcs.map(x => x[0]), kb: pcs.reduce((a, [, p]) => a + (p[3] || 0), 0)};
 }
+/* ---------- addresses saved quietly in the background ----------
+   The official address files for the area around the driver (nearest postcodes, up to about 30 km / 8 MB) and for the
+   postcodes of every stop on their routes. Files not used for 90 days are removed; files older than 100 days are refreshed
+   (the official list is updated every 3 months). No buttons, no messages. */
+const STORE_USE = "dropline.geoUse.v1", STORE_FULL = "dropline.fullStates.v1";
+const AREA_KM = 30, AREA_KB = 8192, KEEP_DAYS = 90, REFRESH_DAYS = 100, DAY = 86400000;
+let syncBusy = false, syncAt = 0, syncCentre = null, lastSync = null;
+function routePostcodes(){
+  const out = new Set(), add = s => { const m = String(s && s.label || "").match(/\b(\d{4})\s*$/); if (m) out.add(m[1]); };
+  const a = lib(); Object.values(a).concat([route]).forEach(r => { (r.stops || []).forEach(add); add(r.start); });
+  return out;
+}
+async function syncLocalAddresses(force){
+  if (syncBusy || navigator.onLine === false) return;
+  const C = geoStore ? await geoStore.catch(() => null) : null; if (!C) return;
+  const c = has(myLoc) ? myLoc : knownCentre();
+  const movedFar = c && (!syncCentre || hav(c, syncCentre) > 5000);
+  if (!force && !movedFar && Date.now() - syncAt < 10 * 60000) return;
+  syncBusy = true; syncAt = Date.now();
+  try{
+    const idx = await pcIndex();
+    const area = [];
+    if (c){ syncCentre = {lat: c.lat, lon: c.lon};
+      const near = Object.entries(idx).map(([pc, p]) => [pc, hav(c, {lat: p[0], lon: p[1]}), p[3] || 0]).filter(x => x[1] < AREA_KM * 1000).sort((a, b) => a[1] - b[1]);
+      let kb = 0; for (const [pc, d, k] of near){ if (area.length && kb + k > AREA_KB) break; area.push(pc); kb += k; }
+      if (!area.length){ const nearest = Object.entries(idx).map(([pc, p]) => [pc, hav(c, {lat: p[0], lon: p[1]})]).sort((a, b) => a[1] - b[1])[0]; if (nearest && nearest[1] < 150000) area.push(nearest[0]); }
+    }
+    const stops = [...routePostcodes()].filter(pc => idx[pc]);
+    const want = [...new Set(area.concat(stops))];
+    const use = loadJSON(STORE_USE) || {}, now = Date.now();
+    const keys = new Set((await C.keys().catch(() => [])).map(r => r.url));
+    const urlOf = pc => new URL(GEO_BASE + "au/" + pc + ".json", location.href).href;
+    // files saved before this version (e.g. a whole-state download) start their 90 days now
+    for (const u of keys){ const m = u.match(/\/au\/(\d{4})\.json$/); if (m && !use[m[1]]) use[m[1]] = [now, now]; }
+    want.forEach(pc => { use[pc] = [now, (use[pc] && keys.has(urlOf(pc))) ? use[pc][1] : 0]; });
+    const queue = want.filter(pc => !keys.has(urlOf(pc)) || now - (use[pc][1] || 0) > REFRESH_DAYS * DAY);
+    const worker = async () => { while (queue.length){ const pc = queue.shift();
+      if (navigator.onLine === false) return;
+      try{ await geoFetch("au/" + pc + ".json", 30000, keys.has(urlOf(pc))); use[pc][1] = Date.now(); delete geoFiles[pc]; }catch(e){} } };
+    await Promise.all([1, 2, 3].map(worker));
+    // clear what has not been used for 90 days (whole states the driver chose to save are kept)
+    const full = new Set(loadJSON(STORE_FULL) || []), keep = new Set(want);
+    for (const pc of Object.keys(use)){
+      if (keep.has(pc) || (idx[pc] && full.has(idx[pc][2]))) continue;
+      if (now - use[pc][0] > KEEP_DAYS * DAY){ await C.delete(urlOf(pc)).catch(() => {}); delete use[pc]; delete geoFiles[pc]; }
+    }
+    saveJSON(STORE_USE, use);
+    lastSync = {area: area.length, stops: stops.filter(pc => !area.includes(pc)).length, kb: Object.keys(use).reduce((a, pc) => a + ((idx[pc] && idx[pc][3]) || 0), 0)};
+  }catch(e){}
+  syncBusy = false;
+}
+function touchPostcode(pc){ try{ const use = loadJSON(STORE_USE) || {}; if (use[pc]){ use[pc][0] = Date.now(); saveJSON(STORE_USE, use); } }catch(e){} }
+let syncTimer = null, syncPcKey = "";
+function scheduleAddrSync(ms, onlyIfStopsChanged){
+  if (onlyIfStopsChanged){ const k = [...routePostcodes()].sort().join(); if (k === syncPcKey) return; syncPcKey = k; }
+  clearTimeout(syncTimer); syncTimer = setTimeout(() => syncLocalAddresses(true), ms == null ? 6000 : ms); }
+async function openOfflineSheet(){
+  $("settingsSheet").hidden = true; $("offSheet").hidden = false;
+  const st = $("offStats"); st.innerHTML = '<dt>Checking…</dt><dd></dd>';
+  updateDataPanel();
+  let idx = {}; try{ idx = await pcIndex(); }catch(e){}
+  const use = loadJSON(STORE_USE) || {}, pcs = Object.keys(use), area = lastSync ? lastSync.area : null;
+  const kb = pcs.reduce((a, pc) => a + ((idx[pc] && idx[pc][3]) || 0), 0);
+  st.innerHTML = '<dt>Your area</dt><dd>' + (area != null ? area + " postcodes around you" : has(myLoc) ? "Saving…" : "Needs your location") + '</dd>' +
+    '<dt>Route stops</dt><dd>' + routePostcodes().size + ' postcodes</dd>' +
+    '<dt>Space used</dt><dd>' + (pcs.length ? fmtMB(kb) : "–") + '</dd>';
+}
+$("setOffline").addEventListener("click", openOfflineSheet);
+$("offClose").addEventListener("click", () => { $("offSheet").hidden = true; openSettings(); });
 async function updateDataPanel(){
   const txt = $("dataTxt"); if (!txt || dlBusy) return;
   let sts = [];
@@ -3370,8 +3444,8 @@ async function updateDataPanel(){
   const C = geoStore ? await geoStore.catch(() => null) : null;
   let have = 0; if (C){ const keys = new Set((await C.keys().catch(() => [])).map(r => r.url)); have = info.pcs.filter(pc => keys.has(new URL(GEO_BASE + "au/" + pc + ".json", location.href).href)).length; }
   const full = info.pcs.length && have === info.pcs.length;
-  txt.textContent = names + (sv.manual ? " (chosen)" : " (from your location)") + " · " + (full ? "✓ saved for offline (" + fmtMB(info.kb) + ")" : have ? have + " of " + info.pcs.length + " postcodes saved" : "search works online; download to use with no signal");
-  $("dataDl").hidden = full || !C; $("dataDl").textContent = "Download for offline (" + fmtMB(info.kb) + ")";
+  txt.textContent = names + (sv.manual ? " (chosen)" : " (from your location)") + " · " + (full ? "✓ the whole state is saved on this phone (" + fmtMB(info.kb) + ")" : "only needed for long country runs. Your area and route stops are already saved.");
+  $("dataDl").hidden = full || !C; $("dataDl").textContent = "Save the whole state (" + fmtMB(info.kb) + ")";
 }
 async function downloadStates(){
   if (dlBusy) return; dlBusy = true; const btn = $("dataDl"), bar = $("dataBar"), txt = $("dataTxt");
@@ -3382,9 +3456,10 @@ async function downloadStates(){
     let done = 0, failed = 0; const queue = info.pcs.slice();
     const worker = async () => { while (queue.length){ const pc = queue.shift();
       if (!(await geoHave("au/" + pc + ".json"))) await geoFetch("au/" + pc + ".json", 30000).catch(() => failed++);
-      done++; $("dataBarI").style.width = (100 * done / info.pcs.length).toFixed(1) + "%"; txt.textContent = "Downloading addresses: " + done + " of " + info.pcs.length + " postcodes…"; } };
+      done++; $("dataBarI").style.width = (100 * done / info.pcs.length).toFixed(1) + "%"; txt.textContent = "Saving addresses: " + done + " of " + info.pcs.length + " postcodes…"; } };
     await Promise.all([1,2,3,4,5,6].map(worker));
-    toast(failed ? failed + " postcodes could not be downloaded. Tap Download again when you have signal." : "Addresses saved on this phone for use with no signal.");
+    saveJSON(STORE_FULL, [...new Set((loadJSON(STORE_FULL) || []).concat(sts))]);
+    toast(failed ? failed + " postcodes could not be downloaded. Tap Save the whole state again when you have signal." : "Addresses saved on this phone for use with no signal.");
     if (!failed) phoneNotify(3, "Addresses downloaded", sts.map(st => STATE_NAMES[st] || st).join(" + ") + " addresses are saved on this phone for use with no signal.");
   }catch(e){ toast("Download failed. Check your internet connection."); }
   dlBusy = false; btn.disabled = false; bar.hidden = true; updateDataPanel();
@@ -3428,7 +3503,7 @@ function askLocation(fromTap){ return new Promise(done => {
     myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; drawMe();
     $("locBanner").hidden = true; useMyLocAsStart();
     if (!route.stops.length && !has(route.start)) map.setView([myLoc.lat, myLoc.lon], 14);
-    renderPermPanel(); updateDataPanel(); done();
+    renderPermPanel(); done();
   }, err => { setTimeout(() => { renderPermPanel(); done(); }, 0);
     updateStartMeTxt();
     if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for DropLine. Tap Open Settings, turn on Location (While Using the App), then come back — the app picks it up straight away." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
@@ -3494,7 +3569,7 @@ function updateStartMeTxt(){
 }
 let statesPrimed = false;
 function primeStates(){ if (statesPrimed || !has(myLoc)) return; statesPrimed = true;
-  setTimeout(() => { loadStreets().catch(() => {}); if (!$("home").hidden) updateDataPanel(); }, 1500); }   // get this state's street list onto the phone in the background
+  setTimeout(() => { loadStreets().catch(() => {}); }, 1500); scheduleAddrSync(4000); }   // get this state's street list onto the phone in the background
 function useMyLocAsStart(){
   primeStates();
   if (!startMeOn || !has(myLoc)) { updateStartMeTxt(); return; }
@@ -3519,7 +3594,7 @@ setTimeout(() => {
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 /* keep a copy of the app on the phone so it opens with no signal (website only; not in local tests) */
 try{ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {}); }catch(e){}
-window.RP = {solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

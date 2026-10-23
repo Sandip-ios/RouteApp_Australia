@@ -1,9 +1,10 @@
 {
   "appId": "au.dropline.routeplanner",
-  "appName": "Dropline",
+  "appName": "DropLine",
   "webDir": "www",
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": false,
+    "backgroundColor": "#EAF5FB"
   },
   "server": {
     "url": "https://sandip-ios.github.io/RouteApp_Australia/",
@@ -12,7 +13,8 @@
   },
   "ios": {
     "contentInset": "never",
-    "backgroundColor": "#123b3a",
+    "backgroundColor": "#EAF5FB",
     "limitsNavigationsToAppBoundDomains": true
-  }
+  },
+  "backgroundColor": "#EAF5FB"
 }

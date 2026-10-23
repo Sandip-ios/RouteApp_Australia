@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.ActivityNotFoundException;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -103,6 +104,29 @@ public class DevicePlugin extends Plugin {
             NotificationManagerCompat.from(c).notify(call.getInt("id", 1), b.build());
             call.resolve();
         } catch (SecurityException e) { call.reject("Notifications are off"); }
+    }
+
+    /** Chat with the developer: WhatsApp when it is installed, otherwise the phone's messaging app. */
+    @PluginMethod
+    public void openChat(PluginCall call) {
+        String phone = call.getString("phone", ""), text = call.getString("text", "");
+        Context c = getContext(); PackageManager pm = c.getPackageManager(); String pkg = null;
+        for (String p : new String[] { "com.whatsapp", "com.whatsapp.w4b" }) {
+            try { pm.getPackageInfo(p, 0); pkg = p; break; } catch (Exception e) { /* not installed */ }
+        }
+        Intent i;
+        if (pkg != null) {
+            i = new Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=" + phone + "&text=" + Uri.encode(text)));
+            i.setPackage(pkg);
+        } else {
+            i = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:+" + phone));
+            i.putExtra("sms_body", text);
+        }
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            c.startActivity(i);
+            JSObject r = new JSObject(); r.put("app", pkg != null ? "whatsapp" : "sms"); call.resolve(r);
+        } catch (ActivityNotFoundException e) { call.reject("No chat app found"); }
     }
 
     @PluginMethod

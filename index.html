@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>DropLine Route Planner</title>
 <meta name="theme-color" content="#0E2B4B">
+<link rel="preload" as="image" href="assets/splash.jpg">
 <link rel="icon" href="assets/icon-32.png">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -504,6 +505,19 @@ textarea:focus{border-color:var(--teal);outline:none}
 @media (prefers-color-scheme:dark){.ud,.iconbtn,.upnext li b,.qty button,.mapbtn,.round,.leaflet-bar a{color:var(--ink)!important}
   .mapbtn,.round{background:#1C2E44}.leaflet-bar a{background:#1C2E44!important}.destcall{background:#1C2E44!important;color:var(--ink)!important}
   .nstopcard,.stop,.panel,.card{border-color:var(--line)}}
+.subpage{position:fixed;inset:0;z-index:1100;background:var(--bg);display:flex;flex-direction:column}
+.subbody{flex:1;overflow:auto;padding:16px max(16px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.subbody > *{max-width:640px;margin-left:auto;margin-right:auto}
+.wlist{margin:8px 0 0;padding-left:20px;line-height:1.5}
+.wlist li{margin:6px 0}
+.subbody h2{font:700 19px/1.25 var(--f-body);margin:22px 0 6px}
+.subbody p,.subbody li{font-size:15px;line-height:1.55}
+.subbody ul{padding-left:20px}
+.subbody .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:14px;box-shadow:var(--shadow)}
+.subbody .muted{color:var(--muted);font-size:13.5px}
+.subbody a{color:#0E8F83}
+.heart{color:#E0464B}
+.avatar .ico{width:28px;height:28px}
 </style>
 </head>
 <body>
@@ -545,6 +559,9 @@ textarea:focus{border-color:var(--teal);outline:none}
 <symbol id="i-navup" viewBox="0 0 24 24"><path d="M12 3l7 17-7-4-7 4z"/></symbol>
 <symbol id="i-note" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2.5" fill="currentColor" stroke="none"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4.5" stroke="#fff"/></symbol>
 <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5h16v10.5H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></symbol>
+<symbol id="i-wa" viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 00-7.6 13.2L3.3 20.7l4.4-1.1A8.8 8.8 0 1012 3.2z"/><path d="M9 8.2c.3-.5.6-.5.9-.5l.6.1 1 2.2-.6 1c.4.9 1.2 1.7 2.1 2.1l1-.6 2.2 1v.6c0 .3-.1.6-.6.9-.6.4-1.6.5-3-.2a8.6 8.6 0 01-3.8-3.8c-.6-1.3-.4-2.4.2-2.8z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5s-8-4.9-8-10.6A4.4 4.4 0 0112 7.3a4.4 4.4 0 018 2.6c0 5.7-8 10.6-8 10.6z" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 000-3l2-1.6-2-3.4-2.4.9a7.5 7.5 0 00-2.6-1.5L14 2.5h-4l-.4 2.4A7.5 7.5 0 007 6.4l-2.4-.9-2 3.4 2 1.6a7.6 7.6 0 000 3l-2 1.6 2 3.4 2.4-.9a7.5 7.5 0 002.6 1.5l.4 2.4h4l.4-2.4a7.5 7.5 0 002.6-1.5l2.4.9 2-3.4z"/></symbol>
 <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3.8 7l8.2 6 8.2-6"/></symbol>
 <symbol id="i-bug" viewBox="0 0 24 24"><rect x="7" y="7.5" width="10" height="12" rx="5"/><path d="M12 7.5v12M7 12H3.5M20.5 12H17M7.5 16.5L4.5 18.5M16.5 16.5l3 2M8 9L5 7M16 9l3-2M9.5 7.5a2.5 2.5 0 015 0"/></symbol>
@@ -572,7 +589,8 @@ textarea:focus{border-color:var(--teal);outline:none}
 <symbol id="t-warn" viewBox="0 0 48 48"><path d="M24 6l19 34H5z"/><path d="M24 19v10"/><circle cx="24" cy="34.5" r="1.8" fill="currentColor" stroke="none"/></symbol>
 </svg>
 
-<div class="splash" id="splash" hidden></div>
+<div class="splash" id="splash"></div>
+<script>try{ if (window.__noGuide || sessionStorage.getItem("dropline.splash")) document.getElementById("splash").hidden = true; else sessionStorage.setItem("dropline.splash", "1"); }catch(e){}</script>
 <div class="app v-map" id="appView">
   <header class="top">
     <button class="hback" id="btnRoutes" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span id="backLbl">Routes</span></button>
@@ -723,7 +741,7 @@ textarea:focus{border-color:var(--teal);outline:none}
 <div class="home" id="home" hidden>
   <header class="hero">
     <div class="logo"><img class="mk" src="assets/logo-mark.png" alt=""><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine — Multi-Stop Route Planner"></div>
-    <button class="avatar" id="btnSettings" aria-label="Settings"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg><i></i></button>
+    <button class="avatar" id="btnSettings" aria-label="Settings"><svg class="ico" aria-hidden="true"><use href="#i-gear"/></svg></button>
   </header>
   <div class="hlist">
     <button class="create" id="homeCreate"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
@@ -747,7 +765,7 @@ textarea:focus{border-color:var(--teal);outline:none}
       </div></div>
     </section>
     <label class="panel list" style="cursor:pointer"><span class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Open a route file from another phone</b><small>Import your saved route file (JSON)</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
-    <p class="madeby">DropLine <span class="appver"></span> · Made by <b>Enterprise Analytic</b></p>
+    <p class="madeby">DropLine <span class="appver"></span> · Made with <span class="heart" aria-label="love">♥</span> by <b>Enterprise Analytic</b></p>
     <svg class="homeill" viewBox="0 0 400 120" aria-hidden="true">
       <defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#D9ECF8"/><stop offset="1" stop-color="#E4F6F3"/></linearGradient></defs>
       <path d="M0 70 C80 40 160 95 240 70 S360 40 400 55 V120 H0z" fill="url(#hg)"/>
@@ -879,12 +897,12 @@ textarea:focus{border-color:var(--teal);outline:none}
     <div class="setgroup">
       <label class="switchrow" for="setNotif"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span style="flex:1"><b>Notifications</b><small id="setNotifTxt">Run finished, downloads done, arrival when the app is in the background</small></span>
         <span class="switch"><input type="checkbox" id="setNotif" role="switch"><span class="knob"></span></span></label>
-      <div class="setrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></span><span style="flex:1"><b>Location</b><small id="setLocTxt">…</small></span><button class="btn" id="setLocBtn" hidden>Open Settings</button></div>
+      <div class="setrow" id="setNotifPerm" hidden><span style="flex:1"><small>Notifications are blocked in the phone's Settings, so they cannot appear until you allow them there.</small></span><button class="btn outline" id="setNotifPermBtn" style="min-height:40px;padding:6px 12px">Phone settings</button></div>
     </div>
     <div class="setgroup">
-      <a class="setlink" id="setContact" href="#"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg></span><span><b>Contact the developer</b><small>Questions, ideas or help</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></a>
+      <button class="setlink" id="setContact"><span class="tile" style="background:#E3F8EA;color:#1C9C4A"><svg class="ico" aria-hidden="true"><use href="#i-chat"/></svg></span><span><b>Contact the developer</b><small>Opens WhatsApp (or Messages if WhatsApp is not installed)</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setBug"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-bug"/></svg></span><span><b>Report a bug</b><small>Tell us what went wrong; phone details are added for you</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-      <a class="setlink" href="privacy.html" id="setPrivacy"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Privacy policy</b><small>What DropLine keeps and what it sends</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></a>
+      <button class="setlink" id="setPrivacy"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Privacy policy</b><small>What DropLine keeps and what it sends</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     </div>
     <div class="setgroup">
       <button class="setlink" id="setGuide"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg></span><span><b>How-to guide</b><small>The 30-second walkthrough</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
@@ -893,64 +911,66 @@ textarea:focus{border-color:var(--teal);outline:none}
     <div class="setfoot">
       <img src="assets/wordmark.png" alt="DropLine" style="height:46px">
       <div id="setVersion">Version</div>
-      <div>Made by <b>Enterprise Analytic</b></div>
-      <div class="setsmall">Addresses: G-NAF © Geoscape Australia (CC BY 4.0) · Maps © OpenStreetMap contributors</div>
+      <div>Made with <span class="heart" aria-label="love">♥</span> by <b>Enterprise Analytic</b></div>
     </div>
     <button class="btn" id="setClose" style="width:100%;margin-top:12px">Close</button>
   </div>
 </div>
 
+<div class="subpage" id="subPage" hidden role="dialog">
+  <header class="top">
+    <button class="hback" id="subBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Settings</span></button>
+    <div class="htitle"><b id="subTitle"></b></div>
+  </header>
+  <div class="subbody" id="subBody"></div>
+</div>
+
 <div class="sheet-bg" id="bugSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Report a bug">
     <h3>Report a bug</h3>
-    <p class="hint" style="margin-top:0">What happened, and what did you expect? Your email app opens with this message ready to send.</p>
+    <p class="hint" style="margin-top:0">What happened, and what did you expect? WhatsApp (or email) opens with this message ready to send.</p>
     <textarea id="bugText" class="bugtext" maxlength="1500" placeholder="e.g. After scanning page 2, stop #24 showed the wrong suburb"></textarea>
     <label class="toggle" style="margin:8px 0"><input type="checkbox" id="bugInfo" checked> Add phone and app details (no addresses or customer data)</label>
     <pre class="buginfo" id="bugInfoTxt"></pre>
-    <button class="btn primary" id="bugSend" style="width:100%">Open email to send</button>
+    <button class="btn cta" id="bugWa" style="width:100%"><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg>Send by WhatsApp or text</button>
+    <button class="btn outline" id="bugSend" style="width:100%;margin-top:8px"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg>Send by email</button>
     <button class="btn ghost" id="bugCopy" style="width:100%;margin-top:8px">Copy report (if email does not open)</button>
     <button class="btn" id="bugClose" style="width:100%;margin-top:8px">Cancel</button>
   </div>
 </div>
 
-<div class="sheet-bg" id="aboutSheet" hidden>
-  <div class="sheet" role="dialog" aria-label="What works in this prototype">
-    <button class="btn primary" id="btnGuide" style="width:100%;margin-bottom:10px">Show the how-to guide</button>
-    <h3>What works in v5</h3>
-    <h4 style="color:var(--ok)">Fully working (needs internet)</h4>
-    <ul>
+<div id="aboutContent" hidden>
+  <div class="panel">
+    <div class="label" style="color:var(--ok)">Working now</div>
+    <ul class="wlist">
       <li>Several routes on this phone: create, open, rename, copy, delete</li>
-      <li>Official addresses for every state; your state's list is kept on the phone (Download for offline)</li>
-      <li>Opens with no signal after the first online use; Prepare for no signal saves directions and the map for the whole run</li>
-      <li>Each stop is a Delivery or a Pickup, with a parcel count you can change</li>
-      <li>After Delivered / Failed / Skip the next stop slides in, with the following two shown</li>
-      <li>Up to 200 stops; import a run sheet (.csv) or pasted address list</li>
-      <li>Several parcels at one address grouped into one stop, with run-sheet numbers</li>
-      <li>Australian address search; pins marked "Check pin" when only the street was found</li>
-      <li>Move any pin by tapping the map</li>
-      <li>Route optimisation of every pending stop together, using road travel times</li>
-      <li>Use my location as the start, with a live blue dot while the page is open</li>
-      <li>Drag-and-drop or ▲▼ reordering</li>
-      <li>Pending, delivered, failed (with reason) and skipped statuses</li>
-      <li>Auto-save and resume on this device, named copies, export/import file</li>
+      <li>Add stops by typing (type-ahead from the official address list for every state), scanning the paper run sheet, or importing a CSV / address list</li>
+      <li>Up to 200 stops; several parcels at one address grouped into one stop</li>
+      <li>Delivery or pickup per stop, parcel count, and notes with quick options</li>
+      <li>Route optimisation of every pending stop using road travel times; start from your location or a typed address</li>
+      <li>Voice turn-by-turn navigation inside the app, with Previous / Next stop</li>
+      <li>Delivered, failed (with reason) and skipped; the next stop slides in</li>
+      <li>Works with no signal: the app opens, saved addresses, and "Prepare for no signal" directions and map</li>
+      <li>Notifications when a run or download finishes, or when you arrive (app in the background)</li>
     </ul>
-    <h4 style="color:var(--skip)">Demonstration only</h4>
-    <ul>
-      <li>Free public map services: no guaranteed uptime, no live traffic</li>
-      <li>If road times are unavailable, the plan uses straight-line estimates (marked "Estimate")</li>
-      <li>In-app voice navigation works while the app is open and the screen is on; no live traffic. Google Maps is still available for each stop</li>
-      <li>Location tracking only while this page is open and the screen is on</li>
-    </ul>
-    <h4 style="color:var(--fail)">Not built yet</h4>
-    <ul>
-      <li>Navigation with the screen off or in the background, and live traffic</li>
-      <li>Reading a paper run sheet from a photo</li>
-      <li>Delivery time windows, multiple drivers, proof of delivery</li>
-      <li>Accounts, cloud sync and business dashboard</li>
-    </ul>
-    <p class="hint">Map data © OpenStreetMap contributors. Address points from G-NAF © Geoscape Australia, licensed under CC BY 4.0 (South Australia). Other address search by Photon (komoot) and Nominatim. Routing by the OSRM public demo server. Addresses you import are sent to these services to find their locations.</p>
-    <button class="btn" id="closeAbout" style="width:100%;margin-top:10px">Close</button>
   </div>
+  <div class="panel" style="margin-top:12px">
+    <div class="label" style="color:#B26E00">Limits today</div>
+    <ul class="wlist">
+      <li>Free public map and routing services: no live traffic and no guaranteed uptime</li>
+      <li>Avoid toll roads needs DropLine's own routing server (planned)</li>
+      <li>Navigation works while the app is open and the screen is on</li>
+      <li>Photo scanning is tuned to the current run-sheet layout</li>
+    </ul>
+  </div>
+  <div class="panel" style="margin-top:12px">
+    <div class="label">Coming later</div>
+    <ul class="wlist">
+      <li>Navigation with the screen off, live traffic</li>
+      <li>Accounts, route sharing and a business dashboard</li>
+    </ul>
+  </div>
+  <p class="hint" style="margin:16px 4px 4px;font-size:12px">Address data: G-NAF © Geoscape Australia, CC BY 4.0. Map data © OpenStreetMap contributors.</p>
 </div>
 <div class="nav" id="navScreen" hidden>
   <header class="top">
@@ -1340,6 +1360,43 @@ const SAMPLE = [
  ["Parramatta Leagues Club, Eels Pl, Parramatta NSW 2150",-33.8064,151.0040],
  ["Cumberland Hospital, Fleet St, North Parramatta NSW 2151",-33.8002,151.0007]
 ];
+
+/* iPhone app: location comes from iOS through the app's helper, so drivers see only the iOS permission prompt
+   (the web view's own "…github.io would like to use your current location" prompt is never triggered). */
+(function nativeGeolocation(){
+  const C = window.Capacitor;
+  const ios = C && (C.getPlatform ? C.getPlatform() === "ios" : /iPhone|iPad|iPod/.test(navigator.userAgent)) && (C.isNativePlatform ? C.isNativePlatform() : true);
+  if (!ios || !navigator.geolocation) return;
+  let P; try{ P = (C.Plugins && C.Plugins.DroplineDevice) || (C.registerPlugin && C.registerPlugin("DroplineDevice")); }catch(e){}
+  if (!P) return;
+  const web = navigator.geolocation, wGet = web.getCurrentPosition.bind(web), wWatch = web.watchPosition.bind(web), wClear = web.clearWatch.bind(web);
+  let native = null;                                               // null = not known yet; false = older app build without native location
+  const unimpl = e => /not implemented|unimplemented/i.test(String((e && e.code) || "") + " " + String((e && e.message) || ""));
+  const toPos = f => ({coords: {latitude: f.lat, longitude: f.lon, accuracy: f.acc, speed: f.speed == null ? null : f.speed, heading: f.heading == null ? null : f.heading, altitude: null, altitudeAccuracy: null}, timestamp: f.time || Date.now()});
+  const toErr = e => ({code: String(e && e.code) === "1" ? 1 : 3, message: (e && e.message) || "Location unavailable", PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3});
+  function get(ok, fail, opt){
+    if (native === false) return wGet(ok, fail, opt);
+    P.getPosition({timeout: (opt && opt.timeout) || 20000, maximumAge: opt && opt.maximumAge != null ? Math.min(opt.maximumAge, 60000) : 5000})
+      .then(f => { native = true; ok(toPos(f)); })
+      .catch(e => { if (unimpl(e)){ native = false; wGet(ok, fail, opt); } else if (fail) fail(toErr(e)); });
+  }
+  const watches = {}; let n = 0;
+  function watch(ok, fail, opt){
+    const id = ++n;
+    if (native === false){ watches[id] = {web: wWatch(ok, fail, opt)}; return id; }
+    const w = watches[id] = {timer: null};
+    P.startUpdates().catch(() => {});
+    const tick = () => get(p => { if (watches[id]) ok(p); }, e => { if (watches[id] && e.code === 1 && fail) fail(e); }, {timeout: 8000, maximumAge: 1500});
+    tick(); w.timer = setInterval(tick, 1000);
+    return id;
+  }
+  function clear(id){
+    const w = watches[id]; if (!w) return; delete watches[id];
+    if (w.web != null) wClear(w.web);
+    else { clearInterval(w.timer); if (!Object.values(watches).some(x => x.timer)) P.stopUpdates().catch(() => {}); }
+  }
+  try{ Object.defineProperty(navigator, "geolocation", {configurable: true, value: {getCurrentPosition: get, watchPosition: watch, clearWatch: clear}}); }catch(e){}
+})();
 
 /* ---------- state ---------- */
 const uid = () => Math.random().toString(36).slice(2,10);
@@ -2967,8 +3024,8 @@ $("importIn").addEventListener("change", e => { const f = e.target.files[0]; if(
   rd.readAsText(f); e.target.value = ""; });
 $("btnManual").addEventListener("click", () => { const box = $("manualBox"); box.hidden = !box.hidden; $("btnManual").classList.toggle("on", !box.hidden); if (!box.hidden) $("addrIn").focus(); });
 
-$("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
-$("btnGuide").addEventListener("click", () => { $("aboutSheet").hidden = true; openGuide(); });
+
+
 document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
 
 /* ---------- phone permissions, Settings shortcut, badge, notifications ---------- */
@@ -3015,7 +3072,7 @@ async function askNotifications(){
   const st = await permState();
   if (st.notifications === "denied"){ openAppSettings("notifications"); return; }
   try{ const r = await D.requestNotifications(); if (r.notifications !== "granted") toast("Notifications are off. Tap Open Settings to turn them on."); }catch(e){}
-  renderPermPanel();
+  renderPermPanel(); if (!$("settingsSheet").hidden) openSettings();
 }
 $("permLocBtn").addEventListener("click", async () => { const st = await permState(); if (st.location === "denied") openAppSettings(); else askLocation(true); });
 $("permNotBtn").addEventListener("click", askNotifications);
@@ -3044,7 +3101,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "6.0";
+const APP_VERSION = "6.2";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -3060,34 +3117,52 @@ async function techDetails(){
     "Open route: " + route.stops.length + " stops (" + pend + " pending)" + (route.opt ? ", optimised " + (route.opt.method || "") + (route.opt.stale ? " (needs re-optimise)" : "") : ", not optimised") + (route.offlineLegs ? ", ready for no signal" : ""),
     "Time: " + new Date().toString().slice(0, 33)].join("\n");
 }
+const DEV_PHONE = "919909949254";
 async function openSettings(){
   const st = await permState().catch(() => ({}));
   const native = st.platform === "android" || st.platform === "ios";
-  $("setNotif").checked = notifWanted() && (!native || st.notifications === "granted");
-  $("setNotifTxt").textContent = !native ? "Available in the Android and iPhone apps" : st.notifications === "denied" ? "Turned off in the phone's Settings — switch on to open Settings" : "Run finished, downloads done, arrival when the app is in the background";
+  // the switch is DropLine's own on/off; the phone's permission is separate
+  $("setNotif").checked = notifWanted();
   $("setNotif").disabled = !native;
-  $("setLocTxt").textContent = st.location === "granted" ? "On ✓ — routes start from where you are" : st.location === "denied" ? "Off — needed to start routes from where you are" : "Not allowed yet";
-  $("setLocBtn").hidden = st.location === "granted"; $("setLocBtn").textContent = st.location === "denied" ? "Open Settings" : "Allow";
+  $("setNotifTxt").textContent = !native ? "Available in the Android and iPhone apps" : notifWanted() ? "On: run finished, downloads done, arrival when the app is in the background" : "Off: DropLine will not send notifications";
+  $("setNotifPerm").hidden = !native || !notifWanted() || st.notifications === "granted";
   $("setVersion").textContent = "Version " + APP_VERSION + " · " + platformName(st);
-  $("setContact").href = mailto("DropLine – question");
   $("settingsSheet").hidden = false;
 }
 document.querySelectorAll(".appver").forEach(x => x.textContent = "v" + APP_VERSION);
 $("btnSettings").addEventListener("click", openSettings);
 $("setClose").addEventListener("click", () => $("settingsSheet").hidden = true);
-$("setNotif").addEventListener("change", async e => {
-  if (!e.target.checked){ saveJSON(STORE_NOTIF, {on: false}); toast("Notifications off"); return; }
-  saveJSON(STORE_NOTIF, {on: true});
-  const st = await permState();
-  if (st.notifications !== "granted"){ await askNotifications(); }
-  openSettings(); renderPermPanel();
+$("setNotif").addEventListener("change", e => {
+  saveJSON(STORE_NOTIF, {on: e.target.checked}); toast(e.target.checked ? "Notifications on" : "Notifications off");
+  openSettings();
 });
-$("setLocBtn").addEventListener("click", async () => { const st = await permState(); if (st.location === "denied") openAppSettings(); else askLocation(true); setTimeout(openSettings, 2500); });
-$("setGuide").addEventListener("click", () => { $("settingsSheet").hidden = true; openGuide(); });
-$("setAbout").addEventListener("click", () => { $("settingsSheet").hidden = true; $("aboutSheet").hidden = false; });
+$("setNotifPermBtn").addEventListener("click", async () => { const st = await permState(); if (st.notifications === "denied") openAppSettings("notifications"); else askNotifications(); });
+/* pages inside Settings (What works, Privacy policy): Back returns to Settings */
+let subFrom = null;
+function openSub(title, html){ $("subTitle").textContent = title; $("subBody").innerHTML = html; $("subBody").scrollTop = 0; $("subPage").hidden = false; }
+$("subBack").addEventListener("click", () => { $("subPage").hidden = true; });
+$("setAbout").addEventListener("click", () => openSub("What works", $("aboutContent").innerHTML));
+$("setPrivacy").addEventListener("click", async () => {
+  openSub("Privacy policy", '<p class="hint">Loading…</p>');
+  try{ const r = await fetch("privacy.html", {cache: "no-cache"}); const d = new DOMParser().parseFromString(await r.text(), "text/html");
+    const m = d.querySelector("main"); m.querySelectorAll("h1, footer").forEach(x => x.remove());
+    $("subBody").innerHTML = '<div>' + m.innerHTML + '</div>'; }
+  catch(e){ $("subBody").innerHTML = '<p class="hint">The privacy policy could not be loaded. Check your internet connection.</p>'; }
+});
+$("setGuide").addEventListener("click", () => { $("settingsSheet").hidden = true; guideFromSettings = true; openGuide(); });
+/* contact: WhatsApp or text message */
+/* WhatsApp when it is on the phone, otherwise the messaging app (the app checks; the driver is not asked) */
+async function contactDeveloper(text){
+  const D = devicePlugin();
+  if (D) try{ await D.openChat({phone: DEV_PHONE, text}); return; }catch(e){ if (!/not implemented|unimplemented/i.test(String(e && (e.code || "")) + " " + String(e && e.message))) { toast("Could not open WhatsApp or Messages."); return; } }
+  location.href = "https://wa.me/" + DEV_PHONE + "?text=" + encodeURIComponent(text);       // website / older app builds
+}
+$("setContact").addEventListener("click", () => contactDeveloper("Hi, I have a question about DropLine (v" + APP_VERSION + "): "));
+
 $("setBug").addEventListener("click", async () => { $("bugInfoTxt").textContent = await techDetails(); $("bugInfoTxt").hidden = !$("bugInfo").checked; $("bugSheet").hidden = false; setTimeout(() => $("bugText").focus(), 100); });
 $("bugInfo").addEventListener("change", e => { $("bugInfoTxt").hidden = !e.target.checked; });
 function bugBody(){ return ($("bugText").value.trim() || "(describe the problem here)") + ($("bugInfo").checked ? "\n\n---\n" + $("bugInfoTxt").textContent : ""); }
+$("bugWa").addEventListener("click", () => { contactDeveloper("DropLine bug report (v" + APP_VERSION + ")\n\n" + bugBody()); setTimeout(() => { $("bugSheet").hidden = true; toast("Thanks for the report!"); }, 800); });
 $("bugSend").addEventListener("click", () => { location.href = mailto("DropLine bug report (v" + APP_VERSION + ")", bugBody()); setTimeout(() => { $("bugSheet").hidden = true; toast("Thanks! If your email app did not open, tap Report a bug again and use Copy."); }, 800); });
 $("bugCopy").addEventListener("click", async () => {
   const txt = "To: " + DEV_EMAIL + " (cc " + DEV_CC + ")\nSubject: DropLine bug report (v" + APP_VERSION + ")\n\n" + bugBody();
@@ -3109,7 +3184,17 @@ function guideShow(i){
   });
 }
 function openGuide(){ $("guide").hidden = false; guideShow(0); }
-function closeGuide(){ $("guide").hidden = true; saveJSON(STORE_GUIDE, {seen: Date.now()}); renderPermPanel(); }
+let guideFromSettings = false;
+function closeGuide(){ $("guide").hidden = true; if (guideFromSettings){ guideFromSettings = false; openSettings(); } const first = !loadJSON(STORE_GUIDE); saveJSON(STORE_GUIDE, {seen: Date.now()}); renderPermPanel(); if (first) firstPermissions(); }
+/* After the intro (Start or Skip): location first, then notifications — each asked once, by the phone itself. */
+async function firstPermissions(){
+  let st = await permState().catch(() => ({}));
+  if (!has(myLoc)) await askLocation(true);          // asks only if not yet decided; if already allowed it just gets the position
+  const D = devicePlugin();
+  st = await permState().catch(() => ({}));
+  if (D && st.notifications !== "granted" && notifWanted()) { try{ await D.requestNotifications(); }catch(e){} }
+  renderPermPanel();
+}
 $("gNext").addEventListener("click", () => { if (gIdx === document.querySelectorAll("#gSlides section").length - 1) closeGuide(); else guideShow(gIdx + 1); });
 $("gBack").addEventListener("click", () => guideShow(gIdx - 1));
 $("gSkip").addEventListener("click", closeGuide);
@@ -3171,8 +3256,7 @@ $("stateList").addEventListener("change", () => { $("stateAuto").checked = false
 $("stateCancel").addEventListener("click", () => $("stateSheet").hidden = true);
 function hideSplash(){ const sp = $("splash"); if (!sp || sp.hidden) return; sp.classList.add("go"); setTimeout(() => sp.hidden = true, 380); }
 function startUp(){
-  if (!window.__noGuide){ let seen = false; try{ seen = !!sessionStorage.getItem("dropline.splash"); sessionStorage.setItem("dropline.splash", "1"); }catch(e){}
-    if (!seen){ $("splash").hidden = false; setTimeout(hideSplash, 1100); } }
+  if (!$("splash").hidden) setTimeout(hideSplash, Math.max(300, 1400 - performance.now()));   // splash is on screen from the first paint
   clearBadge(); setTimeout(() => renderPermPanel(), 1200);
   if (!loadJSON(STORE_GUIDE) && !window.__noGuide) setTimeout(openGuide, 300);      // (__noGuide: automated tests only)
   const a = lib();
@@ -3189,19 +3273,20 @@ let lastTouchEnd = 0;
 document.addEventListener("touchend", e => { const now = Date.now(); if (now - lastTouchEnd < 350 && !(e.target.closest && e.target.closest(".leaflet-container"))) e.preventDefault(); lastTouchEnd = now; }, {passive:false});
 /* Ask for the location when the app opens: nearby addresses first, start point, navigation. */
 function isNativeApp(){ const C = window.Capacitor; return !!(C && (C.isNativePlatform ? C.isNativePlatform() : C.isNative)) || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.bridge); }
-function askLocation(fromTap){
-  if (!navigator.geolocation){ showLocBanner("Location is not available on this device."); return; }
+function askLocation(fromTap){ return new Promise(done => {
+  if (!navigator.geolocation){ showLocBanner("Location is not available on this device."); done(); return; }
   $("locBtn").textContent = "Finding you…";
   navigator.geolocation.getCurrentPosition(p => {
     myLoc = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, at:Date.now()}; drawMe();
     $("locBanner").hidden = true; useMyLocAsStart();
     if (!route.stops.length && !has(route.start)) map.setView([myLoc.lat, myLoc.lon], 14);
-  }, err => {
+    renderPermPanel(); updateDataPanel(); done();
+  }, err => { setTimeout(() => { renderPermPanel(); done(); }, 0);
     updateStartMeTxt();
     if (err.code === 1) showLocBanner(isNativeApp() ? "Location is off for DropLine. Tap Open Settings, turn on Location (While Using the App), then come back — the app picks it up straight away." : "Location is blocked for this site. Allow it in your browser's site settings.", true);
     else showLocBanner("Could not get your location yet. Try again outdoors or check that Location Services is on.", false);
   }, {enableHighAccuracy:true, maximumAge:120000, timeout:20000});
-}
+}); }
 /* Start: "my location" (default) or a typed address. */
 let startMeOn = (() => { try{ return localStorage.getItem("dropline.startMe") !== "0"; }catch(e){ return true; } })();
 function setStartMode(on, quiet){
@@ -3239,6 +3324,7 @@ $("startMe").addEventListener("change", e => setStartMode(e.target.checked));
 $("locClose").addEventListener("click", () => { $("locBanner").hidden = true; });
 $("startMe").checked = startMeOn; $("startAddrBox").hidden = startMeOn; updateStartMeTxt();
 setTimeout(() => {
+  if (!loadJSON(STORE_GUIDE) && !window.__noGuide) return;      // first run: the intro guide asks for permissions at its end
   if (isNativeApp()) askLocation(false);
   else if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(r => {
     if (r.state === "granted") askLocation(false); else showLocBanner("Turn on location so the app can suggest nearby addresses and start routes from where you are.", false); }).catch(() => {});

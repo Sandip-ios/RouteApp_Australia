@@ -113,7 +113,42 @@ header.top{display:flex;align-items:center;gap:10px;padding:12px max(14px,env(sa
 .lrow small{display:block;color:var(--muted);font-size:13.5px;line-height:1.35;margin-top:1px}
 .lrow > .ico:last-child{color:var(--slate);width:22px;height:22px}
 .lrow.on{background:var(--pale)}
-.lsub{padding:0 14px 12px}
+.lsub{padding:12px 14px 12px}
+label.panel{display:block}
+.home .hlist>*{flex-shrink:0}
+.main,.home .hlist{overflow-x:hidden;overflow-y:auto;touch-action:pan-y;overscroll-behavior:contain}
+.drag{touch-action:none}
+.tabs .cnt{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;margin-left:6px;border-radius:11px;background:var(--navy,#102A43);color:#fff;font:700 12.5px/1 var(--f-body)}
+.tabs button.on .cnt{background:#fff;color:#0E8F83}
+.tabs .cnt.bump{animation:bump .6s ease}
+@keyframes bump{0%{transform:scale(1)}35%{transform:scale(1.45)}100%{transform:scale(1)}}
+.addedline{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--pale,#E1F5F1);color:var(--ink);font-size:14px}
+.addedline .ico{color:#12A99B;flex:none}
+.addedline span{flex:1;min-width:0}
+.addedline button{flex:none;border:0;border-radius:10px;padding:8px 12px;background:var(--navy,#102A43);color:#fff;font:600 14px var(--f-body)}
+.datawhy{margin:6px 0 0;font-size:14px;color:var(--muted)}
+.donecard{display:flex;align-items:center;gap:14px}
+.donecard .big{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#1ED6C3,#1B6FE6);color:#fff}
+.donecard .big .ico{width:28px;height:28px}
+.rephead{text-align:center;padding:6px 0 4px}
+.rephead .big{width:72px;height:72px;margin:4px auto 10px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#1ED6C3,#17B4D3,#1B6FE6);color:#fff;box-shadow:0 10px 26px rgba(27,111,230,.28)}
+.rephead .big .ico{width:38px;height:38px}
+.rephead h3{margin:0;font:700 26px/1.1 var(--f-display);letter-spacing:.01em}
+.rephead p{margin:4px 0 0;color:var(--muted)}
+.reptiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;margin:14px 0}
+.reptiles div{border-radius:12px;padding:10px 6px;text-align:center;background:var(--bg)}
+.reptiles b{display:block;font:700 24px/1.1 var(--f-display)}
+.reptiles small{font:600 11px/1.2 var(--f-display);text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.reptiles .ok b{color:var(--ok)} .reptiles .fail b{color:var(--fail)} .reptiles .skip b{color:#B26E00}
+.repdl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 12px;font-size:14.5px}
+.repdl dt{color:var(--muted)} .repdl dd{margin:0;font-weight:600;text-align:right}
+.repatt{list-style:none;margin:0 0 12px;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.sheet .repatt{padding:0;margin:0 0 12px} .sheet .repatt li{margin:0}
+.repatt li{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:14px}
+.repatt li + li{border-top:1px solid var(--line)}
+.repatt li span{flex:1;min-width:0}
+.repatt li small{display:block;color:var(--muted)}
+.repatt li button{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:7px 10px;font:600 13px var(--f-body)}
 
 /* buttons */
 .btn{border:0;border-radius:var(--r-ctl);padding:11px 16px;font-weight:600;background:var(--pend-soft);color:var(--ink);min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
@@ -583,6 +618,7 @@ textarea:focus{border-color:var(--teal);outline:none}
 <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></symbol>
 <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3.5H7a2 2 0 00-2 2v13a2 2 0 002 2h10a2 2 0 002-2V8.5z"/><path d="M14 3.5v5h5"/></symbol>
 <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></symbol>
 <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.3" r="1" fill="currentColor" stroke="none"/></symbol>
 <!-- turn arrows for navigation -->
 <symbol id="t-straight" viewBox="0 0 48 48"><path d="M24 42V8M13 19L24 8l11 11"/></symbol>
@@ -608,7 +644,7 @@ textarea:focus{border-color:var(--teal);outline:none}
   </header>
   <nav class="tabs" id="routeTabs" aria-label="Route views">
     <button data-view="map" class="on"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Map</button>
-    <button data-view="stops"><svg class="ico" aria-hidden="true"><use href="#i-list"/></svg>Stops</button>
+    <button data-view="stops"><svg class="ico" aria-hidden="true"><use href="#i-list"/></svg>Stops<span class="cnt" id="tabCnt" hidden></span></button>
     <button data-view="details"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>Details</button>
   </nav>
   <div class="mapwrap"><div id="map" aria-label="Map of delivery stops"></div><button class="mapbtn" id="btnCentre" aria-label="Show where I am"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></button></div>
@@ -634,6 +670,9 @@ textarea:focus{border-color:var(--teal);outline:none}
         <option value="all">All stops</option><option value="pending">Pending</option><option value="delivered">Delivered</option><option value="failed">Failed</option><option value="skipped">Skipped</option><option value="pickup">Pickups</option><option value="check">Check pin</option></select></label>
     </div>
 
+    <section class="panel donecard vs-map" id="doneCard" hidden aria-label="Run complete"><span class="big"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></span>
+      <span class="lt" style="flex:1;min-width:0"><b style="font-size:17px">Run complete</b><small id="doneTxt" style="display:block;color:var(--muted)"></small></span>
+      <button class="btn cta" id="doneView">View report</button></section>
     <section class="panel next vs-map" id="nextCard" hidden aria-label="Next stop">
       <div class="stamp" id="nextStamp" hidden></div>
       <div class="nc-body" id="nextBody">
@@ -697,7 +736,8 @@ textarea:focus{border-color:var(--teal);outline:none}
           <input id="addrIn" type="text" placeholder="e.g. 12 John St, Burnside" autocomplete="off" aria-label="Stop address">
           <div class="sugg" id="addrSugg" hidden></div>
         </div>
-        <p class="hint">Type a few letters of the address and pick a suggestion. Nearby addresses come first.</p>
+        <p class="hint">Type a few letters of the address and pick a suggestion. Nearby addresses come first. Each address you add goes into the <b>Stops</b> tab.</p>
+        <div class="addedline" id="addedLine" hidden><svg class="ico" aria-hidden="true"><use href="#i-check-c"/></svg><span id="addedTxt"></span><button id="addedView">View stops</button></div>
       </div>
       <button class="lrow" id="btnScan"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg></span><span class="lt"><b>Scan run sheet</b><small>Photo of the paper manifest, page by page</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="lrow" id="btnImport"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or a pasted address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
@@ -709,12 +749,12 @@ textarea:focus{border-color:var(--teal);outline:none}
         <dl class="dl" id="detailsList"></dl>
       </div>
       <div class="panel list" style="margin-top:12px">
-        <div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Saves directions and the map for the whole run. Do it at the depot before you leave.</small></span></div>
+        <div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Saves the turn-by-turn directions and map for every stop on this phone, so navigation keeps working in areas with no mobile signal. Do it once at the depot (on Wi-Fi) before you leave.</small></span></div>
         <div class="lsub">
           <div class="row" id="offRow" hidden style="flex-wrap:nowrap"><button class="btn cta grow big" id="btnOffline"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Prepare for no signal</button></div>
           <p class="hint" id="offTxt" hidden></p>
           <div class="bar" id="offBar" hidden><i id="offBarI"></i></div>
-          <p class="hint" id="offNeedOpt">Optimise the route first, then prepare.</p>
+          <p class="hint" id="offNeedOpt">First tap <b>Optimise route</b> on the Map tab, then come back here and tap Prepare for no signal.</p>
         </div>
       </div>
       <div class="panel list" style="margin-top:12px">
@@ -765,9 +805,10 @@ textarea:focus{border-color:var(--teal);outline:none}
       <div class="permrow"><span id="permLocTxt">Location…</span><button class="btn outline" id="permLocBtn" hidden>Allow</button></div>
       <div class="permrow" id="permNotRow"><span id="permNotTxt">Notifications…</span><button class="btn outline" id="permNotBtn" hidden>Allow</button></div></div>
     </section>
-    <section class="panel icard" id="dataPanel" aria-label="Addresses on this phone">
+    <section class="panel icard" id="dataPanel" aria-label="Offline address search">
       <span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg></span>
-      <div class="lt"><div class="label">Addresses on this phone</div>
+      <div class="lt"><div class="label">Offline address search</div>
+      <p class="datawhy">Optional. Saves the official address list for your state on this phone, so you can find and check addresses where there is no mobile signal. Best done once on Wi-Fi.</p>
       <p class="hint" id="dataTxt" style="margin:6px 0 0;font-size:14px">Finding your state…</p>
       <div class="bar" id="dataBar" hidden><i id="dataBarI"></i></div>
       <div class="row" style="margin-top:12px">
@@ -775,7 +816,7 @@ textarea:focus{border-color:var(--teal);outline:none}
         <button class="btn outline" id="dataChange">Change state<svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       </div></div>
     </section>
-    <label class="panel list" style="cursor:pointer"><span class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Open a route file from another phone</b><small>Import your saved route file (JSON)</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
+    <label class="panel list" style="cursor:pointer"><span class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Open a route file</b><small>A route saved on another phone with “Save as file”</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
     <p class="madeby">DropLine <span class="appver"></span> · Made with <span class="heart" aria-label="love">♥</span> by <b>Enterprise Analytic</b></p>
     <svg class="homeill" viewBox="0 0 400 120" aria-hidden="true">
       <defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#D9ECF8"/><stop offset="1" stop-color="#E4F6F3"/></linearGradient></defs>
@@ -1044,6 +1085,14 @@ textarea:focus{border-color:var(--teal);outline:none}
     <div class="qnotes" id="noteQuick"></div>
     <button class="btn cta" id="noteSave" style="width:100%;margin-top:12px">Save note</button>
     <button class="btn" id="noteCancel" style="width:100%;margin-top:8px">Cancel</button>
+  </div>
+</div>
+<div class="sheet-bg" id="repSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Run report">
+    <div id="repBody"></div>
+    <button class="btn cta" id="repShare" style="width:100%;margin-top:4px"><svg class="ico" aria-hidden="true"><use href="#i-share"/></svg>Share report</button>
+    <button class="btn" id="repRoutes" style="width:100%;margin-top:8px">Back to my routes</button>
+    <button class="btn" id="repClose" style="width:100%;margin-top:8px">Close</button>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -1807,7 +1856,9 @@ function addStop(r){
   if (route.stops.length >= MAX_STOPS){ toast("The prototype plans up to "+MAX_STOPS+" stops."); return; }
   if (route.stops.some(s => has(s) && Math.abs(s.lat-r.lat)<1e-5 && Math.abs(s.lon-r.lon)<1e-5)){ toast("That address is already on the list."); return; }
   route.stops.push({id:uid(), label:r.label, query:r.label, lat:r.lat, lon:r.lon, geo:r.geo === "street" ? "street" : "exact", status:"pending", reason:"", parcels:[]});
-  markStale(); persist(); render(); toast("Added stop "+route.stops.length);
+  markStale(); persist(); render();
+  $("addedTxt").textContent = "Stop " + route.stops.length + " added: " + r.label.split(",")[0] + ". See all stops in the Stops tab.";
+  $("addedLine").hidden = false; const tc = $("tabCnt"); tc.classList.remove("bump"); void tc.offsetWidth; tc.classList.add("bump");
 }
 function farFromStops(p){ const st = route.stops.filter(has); if (!st.length || !has(p)) return false; return Math.min(...st.map(x => hav(p, x))) > 150000; }
 function startChanged(){
@@ -1828,9 +1879,72 @@ function setStatus(id, st, reason){ const s = route.stops.find(x=>x.id===id); if
   if (wasLeft && !route.stops.some(x => x.status === "pending")){
     const c = {delivered:0, failed:0, skipped:0}; route.stops.forEach(x => c[x.status]++);
     const msg = c.delivered + " done, " + c.failed + " failed, " + c.skipped + " skipped.";
-    setTimeout(() => toast("Run finished: " + msg), 400); phoneNotify(5, "Run finished", (route.name || "Route") + ": " + msg);
+    route.finishedAt = Date.now(); phoneNotify(5, "Run finished", (route.name || "Route") + ": " + msg);
+    if (!nav.on) setTimeout(showReport, 450);
   }
+  if (st === "pending") route.finishedAt = null;
   failPickId = null; persist(); render(); }
+
+/* Show a stop on the in-app map (works on every phone, unlike "geo:" links which iPhone cannot open). */
+function showPin(id){
+  const s = route.stops.find(x => x.id === id); if (!s) return;
+  if (!has(s)){ toast("This stop has no map location yet. Use Move pin to place it."); return; }
+  selId = id; setView("map"); render();
+  setTimeout(() => { map.invalidateSize(); map.setView([s.lat, s.lon], 17, {animate:true});
+    layer.eachLayer(m => { if (m.options && m.options.title && m.options.title.startsWith((route.stops.indexOf(s)+1) + ". ")) m.bindTooltip(esc(s.label.split(",")[0]), {direction:"top", offset:[0,-34]}).openTooltip(); }); }, 80);
+}
+/* ---------- run complete: summary report ---------- */
+function runReport(){
+  const st = route.stops, c = {delivered:0, failed:0, skipped:0, pending:0};
+  st.forEach(x => c[x.status] = (c[x.status] || 0) + 1);
+  const picks = st.filter(x => x.status === "delivered" && isPick(x)).length, drops = c.delivered - picks;
+  const parcelsDone = st.filter(x => x.status === "delivered" && !isPick(x)).reduce((a, x) => a + pcount(x), 0);
+  const times = st.map(x => x.doneAt).filter(Boolean).sort((a,b) => a-b);
+  const t0 = times[0], t1 = route.finishedAt || times[times.length-1];
+  const hm = t => new Date(t).toLocaleTimeString("en-AU", {hour:"numeric", minute:"2-digit"});
+  const o = route.opt && !route.opt.stale ? route.opt : null;
+  return {c, picks, drops, parcelsDone, t0, t1, hm, o, att: st.filter(x => x.status === "failed" || x.status === "skipped")};
+}
+function reportText(){
+  const R = runReport(), d = new Date(route.createdAt || Date.now()).toLocaleDateString("en-AU", {weekday:"short", day:"numeric", month:"short", year:"numeric"});
+  const L = ["DropLine run report", (route.name || "Route") + " · " + d, "",
+    "Delivered: " + R.drops + (R.parcelsDone ? " stops (" + R.parcelsDone + " parcels)" : ""),
+    ...(R.picks ? ["Picked up: " + R.picks] : []),
+    "Failed: " + R.c.failed, "Skipped: " + R.c.skipped, "Total stops: " + route.stops.length];
+  if (R.t0) L.push("", "First stop done: " + R.hm(R.t0), "Last stop done: " + R.hm(R.t1), "Time on the run: " + fmtTime((R.t1 - R.t0) / 1000));
+  if (R.o) L.push("Planned distance: " + fmtDist(R.o.distance));
+  if (R.att.length){ L.push("", "Needs attention:");
+    R.att.forEach(x => L.push("#" + (route.stops.indexOf(x)+1) + " " + x.label + " – " + (x.status === "failed" ? "Failed" + (x.reason ? " (" + x.reason + ")" : "") : "Skipped"))); }
+  return L.join("\n");
+}
+function showReport(){
+  if (!route.stops.length) return;
+  const R = runReport(), left = R.c.pending || 0;
+  const tile = (n, l, cls) => '<div class="' + cls + '"><b>' + n + '</b><small>' + l + '</small></div>';
+  $("repBody").innerHTML =
+    '<div class="rephead"><div class="big">' + ico(left ? "clock" : "check") + '</div><h3>' + (left ? "Run summary" : "Run complete") + '</h3><p>' + esc(route.name || "Route") +
+      (left ? " · " + left + " stop" + (left > 1 ? "s" : "") + " still to do" : " · every stop has been dealt with") + '</p></div>' +
+    '<div class="reptiles">' + tile(R.drops, "Delivered", "ok") + (R.picks ? tile(R.picks, "Picked up", "ok") : "") + tile(R.c.failed, "Failed", "fail") + tile(R.c.skipped, "Skipped", "skip") + '</div>' +
+    '<dl class="repdl">' + (R.parcelsDone ? '<dt>Parcels delivered</dt><dd>' + R.parcelsDone + '</dd>' : '') +
+      (R.t0 ? '<dt>First stop done</dt><dd>' + R.hm(R.t0) + '</dd><dt>Last stop done</dt><dd>' + R.hm(R.t1) + '</dd><dt>Time on the run</dt><dd>' + fmtTime((R.t1 - R.t0) / 1000) + '</dd>' : '') +
+      (R.o ? '<dt>Planned distance</dt><dd>' + fmtDist(R.o.distance) + '</dd>' : '') + '</dl>' +
+    (R.att.length ? '<div class="label" style="margin:4px 0 6px">Needs attention (' + R.att.length + ')</div><ul class="repatt">' + R.att.map(x =>
+      '<li><span><b>#' + (route.stops.indexOf(x)+1) + ' ' + esc(x.label.split(",")[0]) + '</b><small>' + (x.status === "failed" ? "Failed" + (x.reason ? " · " + esc(x.reason) : "") : "Skipped") + '</small></span><button data-retry="' + x.id + '">Try again</button></li>').join("") + '</ul>' +
+      '<p class="hint" style="margin:-4px 0 12px">Tap <b>Try again</b> to put a stop back on the run, or share the report with your depot.</p>' : '');
+  $("repSheet").hidden = false;
+}
+$("repBody").addEventListener("click", e => { const b = e.target.closest("[data-retry]"); if (!b) return;
+  setStatus(b.dataset.retry, "pending"); $("repSheet").hidden = true; setView("map"); toast("Back on the run. It is now your next stop."); });
+$("repClose").addEventListener("click", () => { $("repSheet").hidden = true; });
+$("repRoutes").addEventListener("click", () => { $("repSheet").hidden = true; setView("map"); showHome(); });
+$("repShare").addEventListener("click", async () => {
+  const text = reportText();
+  try{ if (navigator.share){ await navigator.share({title: "DropLine run report", text}); return; } }catch(e){ if (e && e.name === "AbortError") return; }
+  try{ await navigator.clipboard.writeText(text); toast("Report copied. Paste it into a message or email."); }catch(e){ toast("Sharing is not available on this phone."); }
+});
+$("doneView").addEventListener("click", showReport);
+$("nextPin").addEventListener("click", e => { e.preventDefault(); const id = $("nextCard").dataset.id; if (id) showPin(id); });
+$("addedView").addEventListener("click", () => { $("addedLine").hidden = true; setView("stops"); });
 
 /* ---------- import ---------- */
 function parseCSV(text){
@@ -2317,6 +2431,10 @@ function render(){
   $("routeTitle").firstChild.nodeValue = route.name || "Route";
   $("routeSub").textContent = st.length ? st.length+" stop"+(st.length===1?"":"s")+" · "+cnt.delivered+" delivered" : "No stops yet";
   $("sumPanel").hidden = !st.length;
+  { const tc = $("tabCnt"); tc.hidden = !st.length; tc.textContent = st.length; }
+  { const left = st.filter(x => x.status === "pending").length, dn = st.length && !left;
+    $("doneCard").hidden = !dn;
+    if (dn) $("doneTxt").textContent = cnt.delivered + " done · " + cnt.failed + " failed · " + cnt.skipped + " skipped"; }
   $("btnClear").hidden = !st.length;
   $("avoidTolls").checked = tollOK && !!route.avoidTolls;
   try{ updateOffTxt(); }catch(e){}
@@ -2340,7 +2458,7 @@ function render(){
     $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + parcelLine(nx);
     $("nextChips").innerHTML = chipsFor(nx) + parcels(nx).filter(p => p.size).map(p => '<span class="chip pending" style="text-transform:none">'+esc((p.seq!=null?"#"+p.seq+" ":"")+p.size+" cm")+'</span>').join("");
     $("nextNote").hidden = !nx.notes; $("nextNote").textContent = nx.notes || "";
-    $("nextNav").href = gmaps(nx, prevPoint(nextIdx)); $("nextPin").href = geoLink(nx); $("nextCard").dataset.id = nx.id;
+    $("nextNav").href = gmaps(nx, prevPoint(nextIdx)); $("nextCard").dataset.id = nx.id;
     const rs = $("nextReasons"); rs.hidden = failPickId !== nx.id;
     rs.innerHTML = '<span class="label" style="width:100%">Why did it fail?</span>' + REASONS.map(r => '<button class="btn" data-nreason="'+esc(r)+'">'+esc(r)+'</button>').join("");
   }
@@ -2374,7 +2492,7 @@ function render(){
         (s.status!=="skipped" ? '<button class="btn act-k" data-st="skipped" data-sid="'+s.id+'">Skip</button>' : '') +
         (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') +
         '<a class="btn outline" href="'+gmaps(s, prevPoint(i))+'">Google Maps</a>' +
-        '<a class="btn outline" href="'+geoLink(s)+'">Show pin</a>' +
+        '<button class="btn outline" data-pin="'+s.id+'">Show pin</button>' +
         '<button class="btn outline" data-place="'+s.id+'">Move pin</button>' +
         '<button class="btn outline" data-rm="'+s.id+'">Remove</button>' +
         (parcels(s).some(p => p.size) ? '<div class="m" style="width:100%">'+parcels(s).map(p => esc((p.seq!=null?"#"+p.seq+": ":"")+(p.size ? p.size+" cm" : "size not listed"))).join(" · ")+'</div>' : '') +
@@ -2438,6 +2556,7 @@ $("stops").addEventListener("click", e => {
   if (t.dataset.up){ move(t.dataset.up, -1); return; }
   if (t.dataset.down){ move(t.dataset.down, 1); return; }
   if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
+  if (t.dataset.pin){ showPin(t.dataset.pin); return; }
   if (t.dataset.place){ setView("map"); placingId = t.dataset.place; document.body.classList.add("placing"); window.scrollTo({top:0, behavior:"smooth"}); toast("Tap the map where this stop is."); return; }
   if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
   if (t.dataset.qnote){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ toggleNote(s, t.dataset.qnote); persist(); render(); } return; }
@@ -2913,7 +3032,7 @@ function navDone(status, reason){
   try{ const sb = $("navStamp"); sb.className = "stamp " + status; sb.textContent = doneWord(status, pick); sb.hidden = false; setTimeout(() => sb.hidden = true, 900); navigator.vibrate && navigator.vibrate(25); }catch(e){}
   setStatus(was.id, status, reason);
   const next = route.stops.find(s => s.status === "pending" && has(s));
-  if (!next){ speak("All stops are done."); setTimeout(() => { navStop(); toast("All stops done"); }, 600); return; }
+  if (!next){ speak("All stops are done. Well done."); setTimeout(() => { navStop(); setView("map"); showReport(); }, 600); return; }
   speak((status === "delivered" ? (pick ? "Picked up. " : "Delivered. ") : "") + (isPick(next) ? "Next pickup: " : "Next stop: ") + next.label.split(",")[0]);
   const ns = $("navStop");
   if (reduceMotion()){ navStart(next); return; }
@@ -2991,7 +3110,7 @@ function showHome(){ if (nav.on) try{ navStop(); }catch(e){}
   document.querySelectorAll(".sheet-bg").forEach(b => b.hidden = true);
   try{ localStorage.setItem(STORE_OPEN, ""); }catch(e){}
   renderHome(); $("home").hidden = false; updateDataPanel(); }
-function openRoute(id){
+function openRoute(id){ try{ $("addedLine").hidden = true; }catch(e){}
   const r = lib()[id]; if (!r) { toast("That route is no longer on this phone."); return; }
   route = r; if (!Array.isArray(route.stops)) route.stops = [];
   route.stops.forEach(x => { if (x.geo === "searching") x.geo = "pending"; });
@@ -3130,7 +3249,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "6.3";
+const APP_VERSION = "6.4";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -3383,7 +3502,7 @@ function useMyLocAsStart(){
   const prev = route.start, moved = !prev || !prev.me || hav(prev, myLoc) > 300;
   route.start = prev && prev.me && hav(prev, myLoc) < 40 ? Object.assign(prev, {lat:myLoc.lat, lon:myLoc.lon}) : {label:"My location", lat:myLoc.lat, lon:myLoc.lon, me:true};
   updateStartMeTxt(); lookupStartAddr();
-  if (moved && prev) startChanged(); else { persist(); render(); }
+  if (moved && prev) startChanged(); else if (!prev || moved) { persist(); render(); } else { persist(); drawMap(); showStart(); }
   if (!$("nextStep").hidden && !route.opt) showNextStep(lastStepPages);
 }
 function showLocBanner(text, blocked){ $("locBanner").hidden = false; $("locText").textContent = text; $("locBtn").textContent = blocked ? (isNativeApp() ? "Open Settings" : "Try again") : "Allow location"; $("locBanner").dataset.blocked = blocked ? "1" : ""; renderPermPanel(); }
@@ -3400,7 +3519,7 @@ setTimeout(() => {
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 /* keep a copy of the app on the phone so it opens with no signal (website only; not in local tests) */
 try{ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {}); }catch(e){}
-window.RP = {solve, tourCost, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

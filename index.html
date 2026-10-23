@@ -357,14 +357,34 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <div class="home" id="home" hidden>
   <header class="top">
-    <div class="brand">Dropline<small>Your routes · prototype v5.4</small></div>
+    <div class="brand">Dropline<small>Your routes · prototype v5.5</small></div>
     <button class="hbtn" id="btnAbout">What works</button>
   </header>
   <div class="hlist">
     <button class="create" id="homeCreate"><b>+</b> Create route</button>
     <div id="routeList"></div>
     <p class="hint" id="homeEmpty" style="text-align:center;margin-top:18px">No routes yet. Create one for today's run, then add stops by typing, scanning the paper run sheet, or importing the manifest.</p>
+    <section class="panel" id="dataPanel" aria-label="Addresses on this phone">
+      <div class="label">Addresses on this phone</div>
+      <p class="hint" id="dataTxt" style="margin:6px 0 0">Finding your state…</p>
+      <div class="bar" id="dataBar" hidden style="margin-top:8px"><i id="dataBarI"></i></div>
+      <div class="row" style="margin-top:8px;flex-wrap:nowrap">
+        <button class="btn primary grow" id="dataDl" hidden>Download for offline</button>
+        <button class="btn ghost" id="dataChange">Change state</button>
+      </div>
+    </section>
     <label class="btn ghost" style="text-align:center;margin-top:6px">Open a route file from another phone<input type="file" id="importIn" accept=".json,application/json" hidden></label>
+  </div>
+</div>
+
+<div class="sheet-bg" id="stateSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Choose states">
+    <h3>Which states do you deliver in?</h3>
+    <p class="hint" style="margin-top:0">Address search and offline addresses use these states. Automatic picks the state you are in (and the next state near a border).</p>
+    <label class="toggle" style="margin:6px 0 10px"><input type="checkbox" id="stateAuto"> Automatic (from my location)</label>
+    <div id="stateList" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+    <button class="btn primary" id="stateSave" style="width:100%;margin-top:12px">Save</button>
+    <button class="btn" id="stateCancel" style="width:100%;margin-top:8px">Cancel</button>
   </div>
 </div>
 
@@ -933,8 +953,31 @@ function cachePut(q, r){ geoCache[gkey(q)] = {lat:r.lat, lon:r.lon, geo:r.geo, t
 /* ---------- official address lookup (G-NAF, © Geoscape Australia, CC BY 4.0) ----------
    One small file per postcode, published with the app. Exact points for every listed address, no rate limits. */
 const GEO_BASE = /github\.io$/.test(location.hostname) ? "geo/" : "https://sandip-ios.github.io/RouteApp_Australia/geo/";
-const STATE_DIR = {"5":"sa"};                       // states available so far, by first postcode digit
+const GEO_VER = "au-2";                              // bump when the address data format changes (clears the phone's saved copy)
 const geoFiles = {};
+/* Address files are kept on the phone (Cache Storage) once fetched, so lookups work with no signal. */
+const geoCacheName = "dropline-geo-" + GEO_VER;
+let geoStore = null;
+try{ if (window.caches && /^https?:/.test(location.protocol)) geoStore = caches.open(geoCacheName); }catch(e){}
+try{ if (window.caches) caches.keys().then(ks => ks.filter(k => k.startsWith("dropline-geo-") && k !== geoCacheName).forEach(k => caches.delete(k))).catch(() => {}); }catch(e){}
+async function geoFetch(path, ms, refresh){
+  const url = GEO_BASE + path;
+  const C = geoStore ? await geoStore.catch(() => null) : null;
+  if (C && !refresh){ const hit = await C.match(url).catch(() => null); if (hit) return hit.json(); }
+  const c = new AbortController(), t = setTimeout(() => c.abort(), ms || 15000);
+  try{
+    const r = await fetch(url, {signal: c.signal}); if (!r.ok){ const e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
+    if (C) await C.put(url, r.clone()).catch(() => {});
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+async function geoHave(path){ const C = geoStore ? await geoStore.catch(() => null) : null; return !!(C && await C.match(GEO_BASE + path).catch(() => null)); }
+function decStreet(e){
+  const bar = e.indexOf("|"), head = e.slice(0, bar).split(","), clat = +head[0], clon = +head[1], nums = {};
+  let dy = 0, dx = 0;
+  if (bar < e.length - 1) for (const t of e.slice(bar + 1).split(";")){ const f = t.split(","); if (f.length === 3){ dy = +f[1]; dx = +f[2]; } nums[f[0]] = [(clat + dy) / 1e5, (clon + dx) / 1e5]; }
+  return {c: [clat / 1e5, clon / 1e5], nums};
+}
 const ST_FULL = {ST:"STREET",RD:"ROAD",AVE:"AVENUE",AV:"AVENUE",TCE:"TERRACE",TER:"TERRACE",DR:"DRIVE",DVE:"DRIVE",CT:"COURT",CRT:"COURT",CRES:"CRESCENT",CR:"CRESCENT",
   GR:"GROVE",GRV:"GROVE",PL:"PLACE",SQ:"SQUARE",LN:"LANE",PDE:"PARADE",CL:"CLOSE",CCT:"CIRCUIT",BVD:"BOULEVARD",BLVD:"BOULEVARD",HWY:"HIGHWAY",WK:"WALK",WY:"WAY",
   ESP:"ESPLANADE",MWS:"MEWS",RISE:"RISE",HTS:"HEIGHTS",GDNS:"GARDENS",PKWY:"PARKWAY",RDGE:"RIDGE",VW:"VIEW",VSTA:"VISTA",TRL:"TRAIL",LOOP:"LOOP",END:"END"};
@@ -942,9 +985,12 @@ const gnorm = s => String(s||"").toUpperCase().replace(/[’']/g,"").replace(/[^
 function streetNorm(s){ const w = gnorm(s).split(" "); if (w.length > 1 && ST_FULL[w[w.length-1]]) w[w.length-1] = ST_FULL[w[w.length-1]]; return w.join(" "); }
 function locNorm(s){ return gnorm(s).replace(/^SAINT /,"ST ").replace(/^MOUNT /,"MOUNT "); }
 function gnafFile(pc){
-  const dir = STATE_DIR[String(pc)[0]]; if (!dir || !/^\d{4}$/.test(pc)) return Promise.resolve(null);
-  if (!(pc in geoFiles)) geoFiles[pc] = fetchJSON(GEO_BASE + dir + "/" + pc + ".json", 15000).then(f => {
-    const idx = {}; for (const k of Object.keys(f.s)){ const [st, loc] = k.split("|"); idx[k] = {st, loc, nums:f.s[k], c:f.c[k]}; } return idx; }).catch(() => null);
+  if (!/^\d{4}$/.test(String(pc))) return Promise.resolve(null);
+  if (!(pc in geoFiles)) geoFiles[pc] = geoFetch("au/" + pc + ".json", 15000).then(f => {
+    const idx = {};
+    for (const k of Object.keys(f.s)){ const [st, loc] = k.split("|"), d = decStreet(f.s[k]);
+      idx[k] = {st, loc, nums: d.nums, c: d.c, state: (f.ls && f.ls[loc]) || f.st}; }
+    return idx; }).catch(() => { delete geoFiles[pc]; return null; });
   return geoFiles[pc];
 }
 /* "502 Glynburn Road, Burnside SA 5066" → official point. Returns null when the postcode is not covered. */
@@ -973,16 +1019,16 @@ async function gnafLocate(q){
   for (const x of pool){
     const dl = {O:"0",I:"1",L:"1",S:"5",B:"8",G:"6",Z:"2"}[suf.toUpperCase()];          // "2O" is 20, not 2O
     const p = n ? ((dl && x.nums[n+dl]) || x.nums[num] || x.nums[n] || x.nums[n+"A"] || x.nums[n+"B"]) : null;
-    if (p) return {found:true, lat:p[0], lon:p[1], geo:"exact", official: ((dl && x.nums[n+dl]) ? n+dl : x.nums[num] ? num : n) + " " + titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, corrected: corrected || x.loc !== loc};
+    if (p) return {found:true, lat:p[0], lon:p[1], geo:"exact", official: ((dl && x.nums[n+dl]) ? n+dl : x.nums[num] ? num : n) + " " + titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " " + x.state + " " + pc, corrected: corrected || x.loc !== loc};
   }
   const x = pool[0];
-  return {found:false, streetOnly:true, lat:x.c[0], lon:x.c[1], geo:"street", official: titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " SA " + pc, corrected};
+  return {found:false, streetOnly:true, lat:x.c[0], lon:x.c[1], geo:"street", official: titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " " + x.state + " " + pc, corrected};
 }
 /* Suggest the official address for a misread one: letters read in place of digits ("AO" → 40, "l2" → 12),
    a level number glued on ("1213" → 213), or one digit off when that is the only real number on the street. */
 const DIGIT_LOOK = {O:"0",o:"0",D:"0",Q:"0",U:"0",I:"1",l:"1",i:"1","|":"1",L:"1",Z:"2",z:"2",S:"5",s:"5",B:"8",G:"6",b:"6",A:"4",T:"7",g:"9",q:"9"};
 async function gnafSuggest(q){
-  const m = String(q).match(/^\s*([0-9A-Za-z|]{1,6})\s+(.+?),\s*(.+?)\s+SA\s+(\d{4})\s*$/i);
+  const m = String(q).match(/^\s*([0-9A-Za-z|]{1,6})\s+(.+?),\s*(.+?)\s+(?:SA|NSW|VIC|QLD|WA|TAS|ACT|NT)\s+(\d{4})\s*$/i);
   if (!m) return null;
   const [, tok, stRaw, locRaw, pc] = m;
   const idx = await gnafFile(pc); if (!idx) return null;
@@ -993,7 +1039,7 @@ async function gnafSuggest(q){
   if (!streets.length) return null;
   streets.sort((a,b) => (b.loc === loc) - (a.loc === loc));
   const S = streets[0], has = n => S.nums[n] || S.nums[n.toUpperCase()];
-  const out = (n, sure) => ({official: n.toUpperCase() + " " + titleCaseWords(S.st) + ", " + titleCaseWords(S.loc) + " SA " + pc, sure});
+  const out = (n, sure) => ({official: n.toUpperCase() + " " + titleCaseWords(S.st) + ", " + titleCaseWords(S.loc) + " " + S.state + " " + pc, sure});
   // 1. letters that look like digits
   const asDigits = tok.replace(/^([^0-9]*)/, p => p.split("").map(c => DIGIT_LOOK[c] || c).join("")).replace(/(\d)([^0-9]+)(?=\d)/g, (a,d,mid) => d + mid.split("").map(c => DIGIT_LOOK[c] || c).join(""));
   const fullDigits = tok.split("").map((c,i) => (i < tok.length - 1 || /\d/.test(tok[i-1] || "") === false) ? (DIGIT_LOOK[c] || c) : c).join("");
@@ -1010,21 +1056,54 @@ async function gnafSuggest(q){
 }
 
 /* Address search, local first: official addresses in the postcodes nearest to you, then the open map search sorted by distance. */
-let pcIndex = null;
 function knownCentre(){ if (has(myLoc)) return myLoc; if (has(route.start)) return route.start; const s = route.stops.find(has); return s || null; }
-async function nearbyPostcodes(c, km, max){
-  if (!pcIndex) pcIndex = await fetchJSON(GEO_BASE + "sa/index.json", 10000).catch(() => ({}));
-  return Object.entries(pcIndex).map(([pc, p]) => [pc, hav(c, {lat:p[0], lon:p[1]})]).filter(([, d]) => d < km*1000).sort((a,b) => a[1]-b[1]).slice(0, max).map(x => x[0]);
+/* Which state's addresses to keep on this phone: chosen by the driver, else worked out from where they are (and the
+   stops on the open route). Border towns get both states (Albury–Wodonga, Tweed–Gold Coast, Canberra–Queanbeyan). */
+const STATES = ["NSW","VIC","QLD","SA","WA","TAS","NT","ACT"];
+const STATE_NAMES = {NSW:"New South Wales", VIC:"Victoria", QLD:"Queensland", SA:"South Australia", WA:"Western Australia", TAS:"Tasmania", NT:"Northern Territory", ACT:"Australian Capital Territory"};
+const STORE_STATES = "dropline.states.v1";
+let pcIndexP = null;
+function pcIndex(){ if (!pcIndexP) pcIndexP = geoFetch("au/index.json", 20000).catch(e => { pcIndexP = null; throw e; }); return pcIndexP; }
+function stateOfPostcode(pc, idx){ const p = idx && idx[pc]; return p ? p[2] : null; }
+async function statesNear(c, km){
+  const idx = await pcIndex(); const out = new Map();
+  for (const [pc, p] of Object.entries(idx)){ const d = hav(c, {lat:p[0], lon:p[1]}); if (d < km * 1000){ const cur = out.get(p[2]); if (cur == null || d < cur) out.set(p[2], d); } }
+  return [...out.entries()].sort((a, b) => a[1] - b[1]).map(x => x[0]);
+}
+function savedStates(){ const v = loadJSON(STORE_STATES); return v && Array.isArray(v.list) ? v : {list: [], manual: false}; }
+async function activeStates(){
+  const sv = savedStates(); if (sv.manual && sv.list.length) return sv.list;
+  const found = new Set();
+  try{
+    const c = knownCentre();
+    if (c){ const near = await statesNear(c, 40); near.slice(0, 2).forEach(s => found.add(s));
+      if (!near.length){ const far = await statesNear(c, 400); if (far[0]) found.add(far[0]); } }
+    const idx = await pcIndex();
+    route.stops.concat(route.start ? [route.start] : []).forEach(s => { const m = String(s.label || "").match(/\b(\d{4})\s*$/); const st = m && stateOfPostcode(m[1], idx); if (st) found.add(st); });
+  }catch(e){}
+  const list = found.size ? [...found] : sv.list;
+  if (found.size && list.join() !== sv.list.join()) saveJSON(STORE_STATES, {list, manual: false});
+  return list;
+}
+const streetsByState = {};
+function loadStateStreets(st){
+  if (!streetsByState[st]) streetsByState[st] = geoFetch("au/streets-" + st.toLowerCase() + ".json", 60000).then(j => {
+    const words = x => x.replace(/['’]/g, "").replace(/-/g, " ").split(" ").filter(Boolean);
+    const L = j.l.map(([loc, pc]) => ({loc, pc, state: st, w: words(loc)}));
+    return j.s.map(([s2, li, lat, lon, n]) => ({st: s2, sw: words(s2), l: L[li], lat, lon, n}));
+  }).catch(e => { delete streetsByState[st]; throw e; });
+  return streetsByState[st];
 }
 /* ---------- type-ahead from the official street list (G-NAF): partial words, any order, small typos, nearest first ---------- */
-let streetsP = null;
-function loadStreets(){
-  if (!streetsP) streetsP = fetchJSON(GEO_BASE + "sa/streets.json", 30000).then(j => {
-    const words = x => x.replace(/['’]/g, "").replace(/-/g, " ").split(" ").filter(Boolean);
-    const L = j.l.map(([loc, pc]) => ({loc, pc, w: words(loc)}));
-    return j.s.map(([st, li, lat, lon, n]) => ({st, sw: words(st), l: L[li], lat, lon, n}));
-  }).catch(e => { streetsP = null; throw e; });
-  return streetsP;
+let streetsKey = "", streetsAll = null;
+async function loadStreets(extraStates){
+  const sts = [...new Set((await activeStates()).concat(extraStates || []))];
+  const key = sts.join(",");
+  if (key !== streetsKey || !streetsAll){
+    const lists = await Promise.all(sts.map(st => loadStateStreets(st).catch(() => [])));
+    streetsAll = [].concat(...lists); streetsKey = key; streetSearch.last = null;
+  }
+  return streetsAll;
 }
 const TYPE_ABBR = Object.assign({}, ST_FULL, {STR:"STREET", RO:"ROAD", AVENUE:"AVENUE", TCE:"TERRACE"});
 function parseQuery(q){
@@ -1052,7 +1131,9 @@ function tokScore(tok, words, isLast, fuzzy){
 }
 async function streetSearch(q, c, max){
   const P = parseQuery(q); if (!P.toks.length) return [];
-  const all = await loadStreets();
+  let extra = [];
+  if (P.pc){ try{ const st = stateOfPostcode(P.pc, await pcIndex()); if (st) extra = [st]; }catch(e){} }   // a typed postcode brings in its state
+  const all = await loadStreets(extra);
   // typing on: search only within the streets that matched the shorter text before
   const key = P.toks.join(" "), prev = streetSearch.last;
   const pool0 = prev && key.startsWith(prev.key) && prev.pc === P.pc && prev.rows.length < all.length ? prev.rows : all;
@@ -1083,7 +1164,7 @@ function scanStreets(P, rows, c, fuzzy){
 async function finishSearch(P, hits, max){
   hits.sort((a, b) => b.score - a.score || a.d - b.d);
   const top = hits.slice(0, 60);
-  const label = (r, n) => (P.unit ? P.unit + "/" : "") + (n ? n + " " : "") + titleCaseWords(r.st) + ", " + titleCaseWords(r.l.loc) + " SA " + r.l.pc;
+  const label = (r, n) => (P.unit ? P.unit + "/" : "") + (n ? n + " " : "") + titleCaseWords(r.st) + ", " + titleCaseWords(r.l.loc) + " " + r.l.state + " " + r.l.pc;
   if (!P.num) return top.slice(0, max).map(h => ({label: label(h.r, ""), lat: h.r.lat, lon: h.r.lon, official: true, geo: "street", street: true}));
   // with a house number: keep streets where that number really exists, using the exact official point
   const out = [], pcs = [...new Set(top.map(h => h.r.l.pc))].slice(0, 10);
@@ -2133,7 +2214,7 @@ function renderHome(){
 function showHome(){ if (nav.on) try{ navStop(); }catch(e){}
   document.querySelectorAll(".sheet-bg").forEach(b => b.hidden = true);
   try{ localStorage.setItem(STORE_OPEN, ""); }catch(e){}
-  renderHome(); $("home").hidden = false; }
+  renderHome(); $("home").hidden = false; updateDataPanel(); }
 function openRoute(id){
   const r = lib()[id]; if (!r) { toast("That route is no longer on this phone."); return; }
   route = r; if (!Array.isArray(route.stops)) route.stops = [];
@@ -2187,6 +2268,55 @@ $("btnAbout").addEventListener("click", () => $("aboutSheet").hidden = false);
 $("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
 document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
 
+/* ---------- addresses on this phone: state choice and offline download ---------- */
+const fmtMB = kb => kb >= 1024 ? (kb / 1024).toFixed(kb >= 10240 ? 0 : 1) + " MB" : Math.max(1, Math.round(kb)) + " KB";
+let dlBusy = false;
+async function stateFiles(sts){
+  const idx = await pcIndex(); const pcs = Object.entries(idx).filter(([, p]) => sts.includes(p[2]));
+  return {pcs: pcs.map(x => x[0]), kb: pcs.reduce((a, [, p]) => a + (p[3] || 0), 0)};
+}
+async function updateDataPanel(){
+  const txt = $("dataTxt"); if (!txt || dlBusy) return;
+  let sts = [];
+  try{ sts = await activeStates(); }catch(e){}
+  const sv = savedStates();
+  if (!sts.length){ txt.textContent = has(myLoc) ? "No address data for where you are yet." : "Turn on location, or tap Change state to choose where you deliver."; $("dataDl").hidden = true; return; }
+  const names = sts.map(st => STATE_NAMES[st] || st).join(" + ");
+  let info; try{ info = await stateFiles(sts); }catch(e){ txt.textContent = names + " · address list not reachable (no internet?)"; $("dataDl").hidden = true; return; }
+  const C = geoStore ? await geoStore.catch(() => null) : null;
+  let have = 0; if (C){ const keys = new Set((await C.keys().catch(() => [])).map(r => r.url)); have = info.pcs.filter(pc => keys.has(new URL(GEO_BASE + "au/" + pc + ".json", location.href).href)).length; }
+  const full = info.pcs.length && have === info.pcs.length;
+  txt.textContent = names + (sv.manual ? " (chosen)" : " (from your location)") + " · " + (full ? "✓ saved for offline (" + fmtMB(info.kb) + ")" : have ? have + " of " + info.pcs.length + " postcodes saved" : "search works online; download to use with no signal");
+  $("dataDl").hidden = full || !C; $("dataDl").textContent = "Download for offline (" + fmtMB(info.kb) + ")";
+}
+async function downloadStates(){
+  if (dlBusy) return; dlBusy = true; const btn = $("dataDl"), bar = $("dataBar"), txt = $("dataTxt");
+  try{
+    const sts = await activeStates(); const info = await stateFiles(sts);
+    btn.disabled = true; bar.hidden = false;
+    await Promise.all(sts.map(st => geoFetch("au/streets-" + st.toLowerCase() + ".json", 60000).catch(() => null)));
+    let done = 0, failed = 0; const queue = info.pcs.slice();
+    const worker = async () => { while (queue.length){ const pc = queue.shift();
+      if (!(await geoHave("au/" + pc + ".json"))) await geoFetch("au/" + pc + ".json", 30000).catch(() => failed++);
+      done++; $("dataBarI").style.width = (100 * done / info.pcs.length).toFixed(1) + "%"; txt.textContent = "Downloading addresses: " + done + " of " + info.pcs.length + " postcodes…"; } };
+    await Promise.all([1,2,3,4,5,6].map(worker));
+    toast(failed ? failed + " postcodes could not be downloaded. Tap Download again when you have signal." : "Addresses saved on this phone for use with no signal.");
+  }catch(e){ toast("Download failed. Check your internet connection."); }
+  dlBusy = false; btn.disabled = false; bar.hidden = true; updateDataPanel();
+}
+$("dataDl").addEventListener("click", downloadStates);
+$("dataChange").addEventListener("click", async () => {
+  const sv = savedStates(), cur = await activeStates().catch(() => []);
+  $("stateAuto").checked = !sv.manual;
+  $("stateList").innerHTML = STATES.map(st => '<label class="toggle"><input type="checkbox" data-st="'+st+'"'+(cur.includes(st)?" checked":"")+'> '+esc(STATE_NAMES[st])+'</label>').join("");
+  $("stateSheet").hidden = false; });
+$("stateSave").addEventListener("click", () => {
+  const list = [...document.querySelectorAll("#stateList [data-st]:checked")].map(x => x.dataset.st);
+  if ($("stateAuto").checked) saveJSON(STORE_STATES, {list: [], manual: false});
+  else { if (!list.length){ toast("Choose at least one state."); return; } saveJSON(STORE_STATES, {list, manual: true}); }
+  $("stateSheet").hidden = true; streetsKey = ""; updateDataPanel(); loadStreets().catch(() => {}); });
+$("stateList").addEventListener("change", () => { $("stateAuto").checked = false; });
+$("stateCancel").addEventListener("click", () => $("stateSheet").hidden = true);
 function startUp(){
   const a = lib();
   // older versions kept one current route (and "saved copies"); give every route a name and creation date
@@ -2233,7 +2363,11 @@ function updateStartMeTxt(){
   else if (has(myLoc) && farFromStops(myLoc)) t.textContent = "You are more than 150 km from these stops. Switch this off and type a start address near the deliveries.";
   else t.textContent = "Waiting for your location… If location is off, switch this off and type a start address.";
 }
+let statesPrimed = false;
+function primeStates(){ if (statesPrimed || !has(myLoc)) return; statesPrimed = true;
+  setTimeout(() => { loadStreets().catch(() => {}); if (!$("home").hidden) updateDataPanel(); }, 1500); }   // get this state's street list onto the phone in the background
 function useMyLocAsStart(){
+  primeStates();
   if (!startMeOn || !has(myLoc)) { updateStartMeTxt(); return; }
   if (farFromStops(myLoc)){ if (route.start && route.start.me){ route.start = null; persist(); render(); } updateStartMeTxt(); return; }
   const prev = route.start, moved = !prev || !prev.me || hav(prev, myLoc) > 300;
@@ -2253,7 +2387,7 @@ setTimeout(() => {
     if (r.state === "granted") askLocation(false); else showLocBanner("Turn on location so the app can suggest nearby addresses and start routes from where you are.", false); }).catch(() => {});
 }, 600);
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
-window.RP = {solve, tourCost, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {solve, tourCost, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

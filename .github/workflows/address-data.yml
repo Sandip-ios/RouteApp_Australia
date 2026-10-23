@@ -1,5 +1,6 @@
 name: Build address data (G-NAF)
 
+# Builds compact address files for every state from G-NAF (CC BY 4.0) and publishes them with the app (geo/au).
 on:
   push:
     branches: [main]
@@ -9,36 +10,38 @@ on:
 permissions:
   contents: write
 
+concurrency: address-data
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - name: Find and download the latest G-NAF release
         run: |
-          set -x
           python3 tools/gnaf/find_url.py > url.txt 2> diag.txt || true
-          cat url.txt diag.txt
-          URL=$(head -1 url.txt)
-          echo "URL: $URL" >> diag.txt
-          curl -sSL --retry 3 -A "Mozilla/5.0 (Dropline route planner build)" -o gnaf.zip -w "http %{http_code} size %{size_download}\n" "$URL" >> diag.txt 2>&1 || true
-          ls -la gnaf.zip >> diag.txt 2>&1 || true
-          unzip -l gnaf.zip 2>&1 | grep -E "SA_(ADDRESS_DETAIL|ADDRESS_DEFAULT_GEOCODE|STREET_LOCALITY|LOCALITY)_psv" >> diag.txt || echo "zip listing failed" >> diag.txt
-          unzip -q gnaf.zip '*/SA_ADDRESS_DETAIL_psv.psv' '*/SA_ADDRESS_DEFAULT_GEOCODE_psv.psv' '*/SA_STREET_LOCALITY_psv.psv' '*/SA_LOCALITY_psv.psv' -d gnaf >> diag.txt 2>&1 || echo "unzip failed" >> diag.txt
-          find gnaf -name '*.psv' -exec ls -la {} \; >> diag.txt 2>&1 || true
-      - name: Build per-postcode lookup files
+          URL=$(head -1 url.txt); echo "URL: $URL" >> diag.txt
+          curl -sSL --retry 3 -A "Mozilla/5.0 (Dropline route planner build)" -o gnaf.zip -w "http %{http_code} size %{size_download}\n" "$URL" >> diag.txt 2>&1
+          ls -la gnaf.zip >> diag.txt; df -h . >> diag.txt
+      - name: Build every state, one at a time
         run: |
           pip install -q duckdb==1.1.3
-          python3 tools/gnaf/build_geo.py gnaf geo SA 2>&1 | tee -a diag.txt
-          python3 tools/gnaf/build_streets.py geo sa 2>&1 | tee -a diag.txt
-      - name: Save to the geo-data branch
+          rm -rf geo/au
+          for ST in NSW VIC QLD SA WA TAS NT ACT; do
+            rm -rf gnaf
+            unzip -q gnaf.zip "*/${ST}_ADDRESS_DETAIL_psv.psv" "*/${ST}_ADDRESS_DEFAULT_GEOCODE_psv.psv" "*/${ST}_STREET_LOCALITY_psv.psv" "*/${ST}_LOCALITY_psv.psv" -d gnaf
+            python3 tools/gnaf/build_geo.py gnaf geo $ST 2>&1 | tee -a diag.txt
+          done
+          rm -rf gnaf gnaf.zip
+          du -sh geo/au >> diag.txt; ls geo/au | wc -l >> diag.txt
+      - name: Publish with the app (main branch)
         run: |
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
           cp diag.txt /tmp/diag.txt
-          git checkout --orphan geo-data
-          git rm -rq --cached . && git clean -fdq -e geo
-          git add geo && git commit -qm "Address data from G-NAF (CC BY 4.0)" && git push -f origin geo-data
+          git add -A geo/au
+          git commit -qm "Address data for all states from G-NAF (CC BY 4.0)" || exit 0
+          for i in 1 2 3; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep 10; done
       - name: Publish diagnostics
         if: always()
         env:

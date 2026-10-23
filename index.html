@@ -210,6 +210,24 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 .gdots{display:flex;justify-content:center;gap:6px;margin:10px 0 12px}
 .gdots i{width:8px;height:8px;border-radius:50%;background:var(--line)} .gdots i.on{background:var(--accent);width:20px;border-radius:4px}
 @media (prefers-reduced-motion:reduce){.gslides section.on{animation:none}}
+.madeby{text-align:center;color:var(--muted);font-size:12.5px;margin:18px 0 4px}
+.madeby b{color:var(--ink);font-weight:600}
+.setgroup{border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden;background:var(--surface)}
+.setgroup .switchrow,.setrow{padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.setgroup .switchrow + .setrow{border-top:1px solid var(--line)}
+.setgroup b{display:block;font-size:15px}
+.setgroup small{display:block;color:var(--muted);font-size:12.5px;line-height:1.3;margin-top:2px}
+.setlink{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:0;border-top:1px solid var(--line);background:none;text-align:left;color:inherit;text-decoration:none;font:inherit}
+.setgroup .setlink:first-child{border-top:0}
+.setlink > span:first-child{font-size:20px;width:28px;text-align:center}
+.setlink > span:nth-child(2){flex:1}
+.setlink i{font-style:normal;color:var(--muted);font-size:22px}
+.setfoot{text-align:center;color:var(--muted);font-size:13px;line-height:1.6;margin-top:14px}
+.setfoot b{color:var(--ink)}
+.brandmark{font:700 22px/1 var(--f-display);letter-spacing:.06em;color:var(--accent);margin-bottom:4px}
+.setsmall{font-size:11.5px;margin-top:6px}
+.bugtext{display:block;width:100%;min-height:110px;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);font:16px/1.4 var(--f-body);color:var(--ink);resize:vertical}
+.buginfo{white-space:pre-wrap;font-size:11.5px;color:var(--muted);background:var(--bg);border-radius:8px;padding:8px;margin:0 0 10px;max-height:120px;overflow:auto}
 .permrow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:8px;font-size:14.5px}
 .permrow .btn{min-height:38px;padding:6px 12px}
 .qnotes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
@@ -381,8 +399,8 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
 
 <div class="home" id="home" hidden>
   <header class="top">
-    <div class="brand">Dropline<small>Your routes · prototype v5.7</small></div>
-    <button class="hbtn" id="btnAbout">What works</button>
+    <div class="brand">Dropline<small>Your routes</small></div>
+    <button class="hbtn" id="btnSettings" aria-label="Settings">⚙ Settings</button>
   </header>
   <div class="hlist">
     <button class="create" id="homeCreate"><b>+</b> Create route</button>
@@ -403,6 +421,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
       </div>
     </section>
     <label class="btn ghost" style="text-align:center;margin-top:6px">Open a route file from another phone<input type="file" id="importIn" accept=".json,application/json" hidden></label>
+    <p class="madeby">Dropline <span class="appver"></span> · Made by <b>Enterprise Analytic</b></p>
   </div>
 </div>
 
@@ -452,6 +471,7 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
     <button class="btn ghost" id="menuExport" style="width:100%;margin-top:8px">Save as file (to move to another phone)</button>
     <button class="btn ghost" id="menuDelete" style="width:100%;margin-top:8px;color:var(--fail)">Delete route</button>
     <div class="row" id="menuDelConfirm" hidden style="margin-top:8px"><span style="flex:1">Delete this route and its stops?</span><button class="btn" id="menuDelNo">Keep</button><button class="btn act-f" id="menuDelYes">Delete</button></div>
+    <button class="btn ghost" id="menuSettings" style="width:100%;margin-top:8px">⚙ App settings</button>
     <button class="btn" id="menuClose" style="width:100%;margin-top:14px">Close</button>
   </div>
 </div>
@@ -507,6 +527,46 @@ textarea{width:100%;min-height:140px;border:1.5px solid var(--line);border-radiu
     <button class="btn primary" id="impGo" style="width:100%;margin-top:10px">Import pasted addresses</button>
     <div id="impStatus" hidden style="margin-top:12px"><div id="impStatusTxt" class="msg"></div><div class="bar"><i id="impBar"></i></div></div>
     <button class="btn" id="closeImport" style="width:100%;margin-top:14px">Close</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="settingsSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Settings" style="max-height:92vh">
+    <h3>Settings</h3>
+    <div class="setgroup">
+      <label class="switchrow" for="setNotif"><span><b>Notifications</b><small id="setNotifTxt">Run finished, downloads done, arrival when the app is in the background</small></span>
+        <span class="switch"><input type="checkbox" id="setNotif" role="switch"><span class="knob"></span></span></label>
+      <div class="setrow"><span><b>Location</b><small id="setLocTxt">…</small></span><button class="btn" id="setLocBtn" hidden>Open Settings</button></div>
+    </div>
+    <div class="setgroup">
+      <a class="setlink" id="setContact" href="#"><span>✉️</span><span><b>Contact the developer</b><small>Questions, ideas or help</small></span><i>›</i></a>
+      <button class="setlink" id="setBug"><span>🐞</span><span><b>Report a bug</b><small>Tell us what went wrong; phone details are added for you</small></span><i>›</i></button>
+      <a class="setlink" href="privacy.html" id="setPrivacy"><span>🔒</span><span><b>Privacy policy</b><small>What Dropline keeps and what it sends</small></span><i>›</i></a>
+    </div>
+    <div class="setgroup">
+      <button class="setlink" id="setGuide"><span>📘</span><span><b>How-to guide</b><small>The 30-second walkthrough</small></span><i>›</i></button>
+      <button class="setlink" id="setAbout"><span>ℹ️</span><span><b>What works</b><small>Features in this version</small></span><i>›</i></button>
+    </div>
+    <div class="setfoot">
+      <div class="brandmark">DROPLINE</div>
+      <div id="setVersion">Version</div>
+      <div>Made by <b>Enterprise Analytic</b></div>
+      <div class="setsmall">Addresses: G-NAF © Geoscape Australia (CC BY 4.0) · Maps © OpenStreetMap contributors</div>
+    </div>
+    <button class="btn" id="setClose" style="width:100%;margin-top:12px">Close</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="bugSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Report a bug">
+    <h3>Report a bug</h3>
+    <p class="hint" style="margin-top:0">What happened, and what did you expect? Your email app opens with this message ready to send.</p>
+    <textarea id="bugText" class="bugtext" maxlength="1500" placeholder="e.g. After scanning page 2, stop #24 showed the wrong suburb"></textarea>
+    <label class="toggle" style="margin:8px 0"><input type="checkbox" id="bugInfo" checked> Add phone and app details (no addresses or customer data)</label>
+    <pre class="buginfo" id="bugInfoTxt"></pre>
+    <button class="btn primary" id="bugSend" style="width:100%">Open email to send</button>
+    <button class="btn ghost" id="bugCopy" style="width:100%;margin-top:8px">Copy report (if email does not open)</button>
+    <button class="btn" id="bugClose" style="width:100%;margin-top:8px">Cancel</button>
   </div>
 </div>
 
@@ -2421,12 +2481,13 @@ $("menuDelYes").addEventListener("click", () => { const a = lib(), r = a[menuId]
   if (route.id === menuId){ route = blankRoute(); saveJSON(STORE_CUR, route); showHome(); } else renderHome();
   toast("Deleted “"+((r && r.name) || "route")+"”"); });
 $("menuClose").addEventListener("click", () => $("menuSheet").hidden = true);
+$("menuSettings").addEventListener("click", () => { $("menuSheet").hidden = true; openSettings(); });
 $("importIn").addEventListener("change", e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
   rd.onload = () => { try{ const r = JSON.parse(rd.result); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0;
       r.id = uid(); r.createdAt = r.createdAt || Date.now(); const a = lib(); a[r.id] = r; saveLib(a); openRoute(r.id); toast("Opened “"+(r.name||"route")+"” with "+r.stops.length+" stops"); }catch(err){ toast("That file is not a Dropline route."); } };
   rd.readAsText(f); e.target.value = ""; });
 $("btnManual").addEventListener("click", () => { const box = $("manualBox"); box.hidden = !box.hidden; $("btnManual").classList.toggle("on", !box.hidden); if (!box.hidden) $("addrIn").focus(); });
-$("btnAbout").addEventListener("click", () => $("aboutSheet").hidden = false);
+
 $("closeAbout").addEventListener("click", () => $("aboutSheet").hidden = true);
 $("btnGuide").addEventListener("click", () => { $("aboutSheet").hidden = true; openGuide(); });
 document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.hidden = true; }));
@@ -2502,6 +2563,57 @@ async function onResume(){
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") onResume(); });
 window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
+
+/* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
+const APP_VERSION = "5.8";
+const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
+const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
+function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
+async function techDetails(){
+  const st = await permState().catch(() => ({}));
+  const sts = await activeStates().catch(() => []);
+  const pend = route.stops.filter(x => x.status === "pending").length;
+  return ["Dropline version " + APP_VERSION + " (" + platformName(st) + ")",
+    "Phone: " + navigator.userAgent.replace(/\s+/g, " ").slice(0, 160),
+    "Screen: " + screen.width + "×" + screen.height + " · " + (navigator.onLine ? "online" : "offline"),
+    "Permissions: location " + (st.location || "?") + ", notifications " + (st.notifications || "?"),
+    "Address states: " + (sts.join(", ") || "none"),
+    "Open route: " + route.stops.length + " stops (" + pend + " pending)" + (route.opt ? ", optimised " + (route.opt.method || "") + (route.opt.stale ? " (needs re-optimise)" : "") : ", not optimised") + (route.offlineLegs ? ", ready for no signal" : ""),
+    "Time: " + new Date().toString().slice(0, 33)].join("\n");
+}
+async function openSettings(){
+  const st = await permState().catch(() => ({}));
+  const native = st.platform === "android" || st.platform === "ios";
+  $("setNotif").checked = notifWanted() && (!native || st.notifications === "granted");
+  $("setNotifTxt").textContent = !native ? "Available in the Android and iPhone apps" : st.notifications === "denied" ? "Turned off in the phone's Settings — switch on to open Settings" : "Run finished, downloads done, arrival when the app is in the background";
+  $("setNotif").disabled = !native;
+  $("setLocTxt").textContent = st.location === "granted" ? "On ✓ — routes start from where you are" : st.location === "denied" ? "Off — needed to start routes from where you are" : "Not allowed yet";
+  $("setLocBtn").hidden = st.location === "granted"; $("setLocBtn").textContent = st.location === "denied" ? "Open Settings" : "Allow";
+  $("setVersion").textContent = "Version " + APP_VERSION + " · " + platformName(st);
+  $("setContact").href = mailto("Dropline – question");
+  $("settingsSheet").hidden = false;
+}
+document.querySelectorAll(".appver").forEach(x => x.textContent = "v" + APP_VERSION);
+$("btnSettings").addEventListener("click", openSettings);
+$("setClose").addEventListener("click", () => $("settingsSheet").hidden = true);
+$("setNotif").addEventListener("change", async e => {
+  if (!e.target.checked){ saveJSON(STORE_NOTIF, {on: false}); toast("Notifications off"); return; }
+  saveJSON(STORE_NOTIF, {on: true});
+  const st = await permState();
+  if (st.notifications !== "granted"){ await askNotifications(); }
+  openSettings(); renderPermPanel();
+});
+$("setLocBtn").addEventListener("click", async () => { const st = await permState(); if (st.location === "denied") openAppSettings(); else askLocation(true); setTimeout(openSettings, 2500); });
+$("setGuide").addEventListener("click", () => { $("settingsSheet").hidden = true; openGuide(); });
+$("setAbout").addEventListener("click", () => { $("settingsSheet").hidden = true; $("aboutSheet").hidden = false; });
+$("setBug").addEventListener("click", async () => { $("bugInfoTxt").textContent = await techDetails(); $("bugInfoTxt").hidden = !$("bugInfo").checked; $("bugSheet").hidden = false; setTimeout(() => $("bugText").focus(), 100); });
+$("bugInfo").addEventListener("change", e => { $("bugInfoTxt").hidden = !e.target.checked; });
+function bugBody(){ return ($("bugText").value.trim() || "(describe the problem here)") + ($("bugInfo").checked ? "\n\n---\n" + $("bugInfoTxt").textContent : ""); }
+$("bugSend").addEventListener("click", () => { location.href = mailto("Dropline bug report (v" + APP_VERSION + ")", bugBody()); setTimeout(() => { $("bugSheet").hidden = true; toast("Thanks! If your email app did not open, tap Report a bug again and use Copy."); }, 800); });
+$("bugCopy").addEventListener("click", async () => {
+  const txt = "To: " + DEV_EMAIL + " (cc " + DEV_CC + ")\nSubject: Dropline bug report (v" + APP_VERSION + ")\n\n" + bugBody();
+  try{ await navigator.clipboard.writeText(txt); toast("Copied. Paste it into an email to " + DEV_EMAIL + "."); }catch(e){ toast("Copy is not available. Please email " + DEV_EMAIL + "."); } });
+$("bugClose").addEventListener("click", () => $("bugSheet").hidden = true);
 
 /* ---------- first-use guide ---------- */
 const STORE_GUIDE = "dropline.guide.v1";

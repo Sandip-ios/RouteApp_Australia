@@ -1,6 +1,6 @@
 /* Dropline offline support: keeps a copy of the app on the phone so it opens with no signal.
    With signal, the latest version is loaded from the website as usual (and the copy is refreshed). */
-const SHELL = "dropline-shell-v1";
+const SHELL = "dropline-shell-v2";
 const TILES = "dropline-tiles-v1";
 const LIBS = [
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
@@ -10,6 +10,8 @@ const LIBS = [
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(SHELL).then(c => Promise.all([
     c.add(new Request("./", {cache: "reload"})).catch(() => {}),
+    c.add(new Request("privacy.html", {cache: "reload"})).catch(() => {}),
+    c.add(new Request("offline.html", {cache: "reload"})).catch(() => {}),
     ...LIBS.map(u => c.add(new Request(u, {mode: "cors"})).catch(() => {}))
   ])).then(() => self.skipWaiting()));
 });
@@ -22,7 +24,17 @@ self.addEventListener("fetch", e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== "GET") return;
   // the app page: newest from the website when there is signal (4 s limit), otherwise the saved copy
-  if (req.mode === "navigate" || (url.origin === location.origin && (url.pathname.endsWith("/") || url.pathname.endsWith("/index.html")))){
+  const isApp = url.origin === location.origin && (url.pathname.endsWith("/") || url.pathname.endsWith("/index.html"));
+  // other pages of the site (privacy policy, offline page): newest when online, saved copy otherwise
+  if (!isApp && url.origin === location.origin && (req.mode === "navigate" || url.pathname.endsWith(".html"))){
+    e.respondWith(caches.open(SHELL).then(async c => {
+      try{ const r = await Promise.race([fetch(req), timeout(4000)]); if (r && r.ok) c.put(req.url, r.clone()).catch(() => {}); return r; }
+      catch(err){ return (await c.match(req.url)) || (url.pathname.endsWith("offline.html") ? new Response("No internet connection.", {headers: {"content-type": "text/plain"}})
+        : Response.redirect(new URL("offline.html", self.registration.scope).href, 302)); }
+    }));
+    return;
+  }
+  if (isApp){
     e.respondWith((async () => {
       const c = await caches.open(SHELL);
       try{

@@ -391,6 +391,10 @@ textarea:focus{border-color:var(--teal);outline:none}
 .sheet-bg{position:fixed;inset:0;background:rgba(9,23,38,.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:22px 22px 0 0;padding:10px max(18px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));box-shadow:0 -10px 40px rgba(9,23,38,.25)}
 .sheet::before{content:"";display:block;width:44px;height:5px;border-radius:3px;background:var(--line2);margin:0 auto 12px}
+.sheethead{position:sticky;top:-10px;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-10px 0 4px;padding:14px 0 10px;background:var(--surface)}
+.sheethead h3{margin:0}
+.xbtn{flex:none;width:44px;height:44px;border-radius:50%;border:0;display:grid;place-items:center;background:var(--pend-soft);color:var(--ink)}
+.xbtn .ico{width:22px;height:22px}
 .sheet h3{font:700 26px/1.1 var(--f-display);margin:0 0 12px;letter-spacing:.01em;text-transform:none}
 .sheet h4{margin:16px 0 6px;font-size:14px}
 .sheet ul{margin:0;padding-left:18px}
@@ -1024,7 +1028,7 @@ textarea:focus{border-color:var(--teal);outline:none}
 
 <div class="sheet-bg" id="settingsSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Settings" style="max-height:92vh">
-    <h3>Settings</h3>
+    <div class="sheethead"><h3>Settings</h3><button class="xbtn" id="setClose" aria-label="Close Settings"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button></div>
     <div class="setgroup">
       <label class="switchrow" for="setNotif"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span style="flex:1"><b>Notifications</b><small id="setNotifTxt">Run finished, downloads done, arrival when the app is in the background</small></span>
         <span class="switch"><input type="checkbox" id="setNotif" role="switch"><span class="knob"></span></span></label>
@@ -1046,7 +1050,6 @@ textarea:focus{border-color:var(--teal);outline:none}
       <div id="setVersion">Version</div>
       <div>Made with <span class="heart" aria-label="love">♥</span> by <b>Enterprise Analytic</b></div>
     </div>
-    <button class="btn" id="setClose" style="width:100%;margin-top:12px">Close</button>
   </div>
 </div>
 
@@ -3392,7 +3395,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "6.8";
+const APP_VERSION = "6.9";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

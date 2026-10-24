@@ -15,6 +15,6 @@ jobs:
       - name: Publish screenshots
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          cd shots && zip -q ../store-shots.zip *.png && cd ..
+          cd shots && zip -qr ../store-shots.zip . && cd ..
           gh release delete store-shots --yes --cleanup-tag || true
           gh release create store-shots store-shots.zip --prerelease --title "App Store screenshots" --notes "iPhone 6.9-inch screenshots (1320 x 2868)"

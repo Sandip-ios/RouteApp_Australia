@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DropLine Support</title>
+<meta name="theme-color" content="#123b3a">
+<style>
+:root{--bg:#F4F7F9;--surface:#fff;--ink:#102A43;--muted:#526574;--line:#E3E9EE;--accent:#0E8F83}
+@media (prefers-color-scheme:dark){:root{--bg:#0B1724;--surface:#132235;--ink:#E8F0F6;--muted:#9DB0C2;--line:#22344A;--accent:#2BD3C1}}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:linear-gradient(160deg,#0E2B4B 0%,#0F3A63 55%,#0F5A7A 100%);color:#fff;padding:max(14px,env(safe-area-inset-top)) 16px 14px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:2}
+header a{color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:600;font-size:16px;padding:6px 4px}
+header img.mk{height:38px} header img.wm{height:30px}
+main{max-width:720px;margin:0 auto;padding:16px 16px 48px}
+h1{font-size:26px;line-height:1.2;margin:8px 0 4px}
+h2{font-size:18px;margin:28px 0 6px}
+p,li{color:var(--ink)} .muted{color:var(--muted);font-size:14px}
+ul{padding-left:20px} li{margin:4px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0}
+a{color:var(--accent)}
+footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
+</style>
+</head>
+<body>
+<header><a href="./" onclick="if (history.length > 1){ history.back(); return false; }"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Back</a><img class="mk" src="assets/logo-mark.png" alt=""><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine"></header>
+<main>
+<h1>DropLine Support</h1>
+<p class="muted">Multi-stop delivery route planner for Australian couriers · made by Enterprise Analytic</p>
+
+<div class="card"><b>Need help?</b> Message us on WhatsApp or by text at <a href="https://wa.me/919909949254">+91 99099 49254</a>, or email <a href="mailto:sandip@enterpriseanalytic.com">sandip@enterpriseanalytic.com</a>. In the app you can also use <b>Settings → Report a bug</b>, which adds your phone details for you.</div>
+
+<h2>Getting started</h2>
+<ul>
+  <li><b>Create route</b> on the home screen and give it a name.</li>
+  <li>Add stops: type an address, <b>Scan run sheet</b> (photo of the paper manifest) or <b>Import manifest</b> (CSV file or pasted list).</li>
+  <li>Tap <b>Optimise route</b> for the fastest order from where you are.</li>
+  <li>Tap <b>Navigate</b> for turn-by-turn directions, or open the stop in Google Maps, Waze or Apple Maps.</li>
+  <li>Mark each stop <b>Delivered</b>, <b>Failed</b> or <b>Skip</b>. When every stop is done you get a run report you can share.</li>
+</ul>
+
+<h2>Common questions</h2>
+<p><b>Does it work without mobile signal?</b> Yes. Addresses for your area and your route stops are saved on the phone automatically. Before leaving the depot, open the route's <b>Details</b> tab and tap <b>Prepare for no signal</b> to save directions and the map.</p>
+<p><b>Which areas are covered?</b> All of Australia, using the official national address list (G-NAF).</p>
+<p><b>Do I need an account?</b> No. Your routes stay on your phone. Use <b>Save as file</b> to move a route to another phone.</p>
+<p><b>Can it avoid toll roads or use live traffic?</b> Not yet. Both are coming in a later version.</p>
+<p><b>How do I move a route to a new phone?</b> Open the route, tap ⋯ → Save as file, send the file to the new phone, then on the home screen tap <b>Open a route file</b>.</p>
+
+<h2>Privacy</h2>
+<p>Read how DropLine handles your information in the <a href="privacy.html">Privacy Policy</a>.</p>
+
+<footer>DropLine · Made with <span style="color:#E0464B">♥</span> by <b>Enterprise Analytic</b></footer>
+</main>
+</body>
+</html>

@@ -17,7 +17,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>DropLine lets you choose a saved photo of your run sheet.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>DropLine uses your location as the start of the route and to show where you are on the map.</string>
+	<string>DropLine uses your location while the app is open to start your route from where you are, show you on the map and give turn-by-turn directions to each stop.</string>
 	<key>CFBundleDisplayName</key>
         <string>DropLine</string>
 	<key>CFBundleExecutable</key>
@@ -42,13 +42,13 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

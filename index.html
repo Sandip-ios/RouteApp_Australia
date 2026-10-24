@@ -635,8 +635,47 @@ textarea:focus{border-color:var(--teal);outline:none}
 .heart{color:#E0464B}
 .avatar .ico{width:28px;height:28px}
 </style>
+<script>
+/* DropLine runs only inside the Android and iPhone apps. In a web browser (desktop or phone) a "get the app" page is shown.
+   The apps are recognised by their native bridge (and, in newer builds, by "DropLineApp" in the user agent).
+   ?dev=dropline-dev turns on browser access on that browser (for the developer); ?dev=off turns it off again. */
+(function(){
+  function native(){ var C = window.Capacitor, w = window.webkit;
+    return !!(C && (C.isNativePlatform ? C.isNativePlatform() : C.isNative)) || !!(w && w.messageHandlers && w.messageHandlers.bridge) || !!window.androidBridge || /DropLineApp/.test(navigator.userAgent); }
+  var dev = false, seen = false;
+  try{ var q = new URLSearchParams(location.search).get("dev");
+    if (q === "dropline-dev") localStorage.setItem("dropline.dev", "1"); if (q === "off") localStorage.removeItem("dropline.dev");
+    dev = localStorage.getItem("dropline.dev") === "1"; seen = sessionStorage.getItem("dropline.native") === "1"; }catch(e){}
+  if (native() || seen || dev || window.__allowWeb) return;
+  window.__webBlocked = true; document.documentElement.classList.add("webblock");
+  // safety net: if the app's native bridge arrives a moment late, remember it and start the app
+  var tries = 0, t = setInterval(function(){ if (native()){ clearInterval(t); try{ sessionStorage.setItem("dropline.native", "1"); }catch(e){} location.reload(); } else if (++tries > 20) clearInterval(t); }, 150);
+})();
+</script>
+<style>
+#webBlock{display:none}
+html.webblock body > *:not(#webBlock){display:none !important}
+html.webblock body{overflow:auto;background:linear-gradient(160deg,#0E2B4B 0%,#0F3A63 55%,#0F5A7A 100%)}
+html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:32px 20px;box-sizing:border-box;color:#fff;font-family:Inter,system-ui,sans-serif;text-align:center}
+#webBlock .wb{max-width:440px}
+#webBlock .mk{height:96px} #webBlock .wm{height:52px;display:block;margin:10px auto 26px}
+#webBlock h1{font:700 34px/1.1 "Barlow Condensed",system-ui,sans-serif;text-transform:uppercase;margin:0 0 12px;letter-spacing:.01em}
+#webBlock p{color:#CFE3F2;font-size:16px;line-height:1.55;margin:0 0 14px}
+#webBlock .stores{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px 0 18px}
+#webBlock .stores span{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);border-radius:12px;padding:11px 16px;font-weight:600;font-size:15px}
+#webBlock a{color:#2BD3C1}
+#webBlock .small{font-size:13px;color:#9DB8CC;margin-top:26px}
+</style>
 </head>
 <body>
+<div id="webBlock" role="main"><div class="wb">
+  <img class="mk" src="assets/logo-mark.png" alt=""><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine">
+  <h1>DropLine is a phone app</h1>
+  <p>DropLine plans and navigates multi-stop delivery runs for Australian couriers. It works in the DropLine app for iPhone and Android.</p>
+  <div class="stores"><span>iPhone · App Store</span><span>Android · Google Play</span></div>
+  <p>Coming soon to the stores. To join the test, message us on <a href="https://wa.me/919909949254">WhatsApp</a> or email <a href="mailto:sandip@enterpriseanalytic.com">sandip@enterpriseanalytic.com</a>.</p>
+  <p class="small"><a href="support.html">Support</a> · <a href="privacy.html">Privacy Policy</a> · Made by Enterprise Analytic</p>
+</div></div>
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
 <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
 <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
@@ -1460,6 +1499,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = api; else 
 <script>
 (function(){
 "use strict";
+if (window.__webBlocked) return;          // web browser: the "get the app" page is shown instead
 const MAX_STOPS = 200;
 const OSRM = "https://router.project-osrm.org";
 /* "Avoid toll roads": sent to the routing server as exclude=toll. The public server does not support it yet;
@@ -3395,7 +3435,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "6.9";
+const APP_VERSION = "7.0";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

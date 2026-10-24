@@ -16,5 +16,6 @@
     "backgroundColor": "#EAF5FB",
     "limitsNavigationsToAppBoundDomains": true
   },
-  "backgroundColor": "#EAF5FB"
+  "backgroundColor": "#EAF5FB",
+  "appendUserAgent": "DropLineApp"
 }

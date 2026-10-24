@@ -226,6 +226,11 @@ label.panel{display:block}
 
 /* switches */
 .switchrow{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
+.appopt{display:flex;align-items:center;gap:14px;width:100%;padding:12px 14px;border:0;border-top:1px solid var(--line);background:none;text-align:left;color:inherit;font:inherit}
+.appopt:first-child{border-top:0}
+.appopt .badge2{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font:700 16px/1 var(--f-display);flex:none}
+.appopt b{display:block} .appopt small{color:var(--muted)}
+.appopt .tickmark{margin-left:auto;color:#12A99B;visibility:hidden} .appopt.on .tickmark{visibility:visible}
 .startshow{display:flex;align-items:center;gap:12px;margin:2px 14px 12px;padding:10px 12px;border-radius:12px;background:var(--pale,#E1F5F1);color:var(--navy,#102A43)}
 .startshow .spin{flex:none;width:30px;height:30px;border-radius:50%;background:#1B6FE6;color:#fff;display:grid;place-items:center;font:700 15px/1 var(--f-display);box-shadow:0 0 0 3px #fff}
 .startshow small{display:block;font:600 11.5px/1.2 var(--f-display);text-transform:uppercase;letter-spacing:.07em;color:#0E8F83;margin-bottom:2px}
@@ -753,7 +758,7 @@ textarea:focus{border-color:var(--teal);outline:none}
       <div class="reasons" id="nextReasons" hidden style="margin-top:10px"></div>
       <button class="btn cta big" id="nextGo" style="width:100%;margin-top:12px"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg>Navigate (voice)</button>
       <ol class="upnext" id="upNext" hidden></ol>
-      <div class="row" style="margin-top:10px;flex-wrap:nowrap"><a class="btn outline grow" id="nextNav"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Google Maps</a><a class="btn outline grow" id="nextPin"><svg class="ico" aria-hidden="true"><use href="#i-pin-o"/></svg>Show pin</a></div>
+      <div class="row" style="margin-top:10px;flex-wrap:nowrap"><a class="btn outline grow" id="nextNav" data-ext=""><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg><span class="extname">Google Maps</span></a><a class="btn outline grow" id="nextPin"><svg class="ico" aria-hidden="true"><use href="#i-pin-o"/></svg>Show pin</a></div>
     </section>
 
     <section class="panel" aria-label="Route summary" id="sumPanel">
@@ -907,6 +912,15 @@ textarea:focus{border-color:var(--teal);outline:none}
   </div>
 </div>
 
+<div class="sheet-bg" id="navAppSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Choose navigation app">
+    <h3>Open directions in</h3>
+    <p class="hint" style="margin-top:0">Turn-by-turn directions open in the app you choose. DropLine's own Navigate button keeps working too.</p>
+    <div class="setgroup" id="navAppList"></div>
+    <label class="toggle" style="margin:4px 0 10px"><input type="checkbox" id="navAppRemember" checked> Remember my choice (change it any time in Settings)</label>
+    <button class="btn" id="navAppCancel" style="width:100%">Cancel</button>
+  </div>
+</div>
 <div class="sheet-bg" id="offSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Offline addresses">
     <h3>Offline addresses</h3>
@@ -1022,6 +1036,7 @@ textarea:focus{border-color:var(--teal);outline:none}
       <button class="setlink" id="setPrivacy"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Privacy policy</b><small>What DropLine keeps and what it sends</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     </div>
     <div class="setgroup">
+      <button class="setlink" id="setNavApp"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg></span><span><b>Navigation app</b><small id="setNavAppTxt">Google Maps</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setOffline"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span><b>Offline addresses</b><small id="setOffTxt">Saved automatically for your area</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setGuide"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg></span><span><b>How-to guide</b><small>The 30-second walkthrough</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setAbout"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg></span><span><b>What works</b><small>Features in this version</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
@@ -1139,6 +1154,7 @@ textarea:focus{border-color:var(--teal);outline:none}
     <div class="setgroup">
       <label class="switchrow" for="navSim" style="padding:12px 14px"><span><b>Simulate driving</b><small>For testing at a desk</small></span><span class="switch"><input type="checkbox" id="navSim" role="switch"><span class="knob"></span></span></label>
     </div>
+    <a class="btn outline" id="navExt" data-ext="" style="width:100%;margin-bottom:8px"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Open in&nbsp;<span class="extname">Google Maps</span></a>
     <button class="btn outline" id="navExit" style="width:100%"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>Exit navigation</button>
     <button class="btn" id="navMenuClose" style="width:100%;margin-top:8px">Close</button>
   </div>
@@ -1556,6 +1572,39 @@ function ll(p){ return p.lat.toFixed(6)+","+p.lon.toFixed(6); }
 function gmaps(s, from){
   if (!has(s)) return "https://www.google.com/maps/search/"+encodeURIComponent(s.query || s.label);
   return "https://www.google.com/maps/dir/"+(has(from) ? ll(from) : "")+"/"+ll(s)+"/data=!4m2!4m1!3e0"; }
+/* ---------- which app opens turn-by-turn directions: Google Maps, Waze or Apple Maps (iPhone) ---------- */
+const STORE_NAVAPP = "dropline.navapp.v1";
+const isIOSDevice = () => { const C = window.Capacitor; return (C && C.getPlatform && C.getPlatform() === "ios") || /iPhone|iPad|iPod/.test(navigator.userAgent); };
+const NAV_APPS = [
+  {id: "google", name: "Google Maps", color: "#1A73E8", letter: "G", note: "Opens the Google Maps app, or the website if it is not installed"},
+  {id: "waze", name: "Waze", color: "#33CCFF", letter: "W", note: "Live traffic and police alerts. Opens the App Store / Play Store if Waze is not installed"},
+  {id: "apple", name: "Apple Maps", color: "#34C759", letter: "A", note: "Built into every iPhone", ios: true}];
+function navAppList(){ return NAV_APPS.filter(a => !a.ios || isIOSDevice()); }
+function navApp(){ let v = null; try{ v = localStorage.getItem(STORE_NAVAPP); }catch(e){} return navAppList().some(a => a.id === v) ? v : null; }
+function extName(){ const a = NAV_APPS.find(x => x.id === navApp()); return a ? a.name : "Maps app"; }
+function extUrl(s, app){
+  const q = encodeURIComponent(s.query || s.label), d = has(s) ? s.lat.toFixed(6) + "," + s.lon.toFixed(6) : null;
+  if (app === "waze") return d ? "https://waze.com/ul?ll=" + d + "&navigate=yes" : "https://waze.com/ul?q=" + q + "&navigate=yes";
+  if (app === "apple") return "https://maps.apple.com/?daddr=" + (d || q) + "&dirflg=d";
+  // Google Maps: driving directions from where the driver is now
+  return "https://www.google.com/maps/dir/?api=1&destination=" + (d || q) + "&travelmode=driving&dir_action=navigate";
+}
+function extHref(s){ const a = navApp(); return a ? extUrl(s, a) : "#"; }
+let navAppFor = null;
+function openNavAppSheet(stopId){
+  navAppFor = stopId; const cur = navApp();
+  $("navAppList").innerHTML = navAppList().map(a => '<button class="appopt'+(a.id === cur ? " on" : "")+'" data-app="'+a.id+'"><span class="badge2" style="background:'+a.color+'">'+a.letter+'</span><span><b>'+a.name+'</b><small>'+a.note+'</small></span>'+ico("check", "tickmark")+'</button>').join("");
+  $("navAppRemember").parentElement.hidden = !stopId; $("navAppSheet").hidden = false;
+}
+function showNavAppName(){ document.querySelectorAll(".extname").forEach(x => x.textContent = extName()); const t = $("setNavAppTxt"); if (t) t.textContent = navApp() ? extName() : "Ask each time"; }
+/* any "open in maps app" link: with no app chosen yet, ask first (then open it) */
+document.addEventListener("click", e => {
+  const a = e.target.closest && e.target.closest("a[data-ext]"); if (!a) return;
+  if (a.id === "navExt") a.dataset.ext = nav.stop ? nav.stop.id : "";
+  const s = route.stops.find(x => x.id === a.dataset.ext); if (!s){ e.preventDefault(); return; }
+  if (!navApp()){ e.preventDefault(); openNavAppSheet(s.id); return; }
+  a.href = extUrl(s, navApp());
+}, true);
 function geoLink(s){ return has(s) ? "geo:"+ll(s)+"?q="+ll(s)+"("+encodeURIComponent(s.label.split(",")[0])+")" : "geo:0,0?q="+encodeURIComponent(s.query || s.label); }
 function prevPoint(i){ for (let k = i-1; k >= 0; k--) if (has(route.stops[k])) return route.stops[k]; return route.start; }
 async function fetchJSON(url, ms){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms||12000);
@@ -2552,7 +2601,7 @@ function render(){
     $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + parcelLine(nx);
     $("nextChips").innerHTML = chipsFor(nx) + parcels(nx).filter(p => p.size).map(p => '<span class="chip pending" style="text-transform:none">'+esc((p.seq!=null?"#"+p.seq+" ":"")+p.size+" cm")+'</span>').join("");
     $("nextNote").hidden = !nx.notes; $("nextNote").textContent = nx.notes || "";
-    $("nextNav").href = gmaps(nx, prevPoint(nextIdx)); $("nextCard").dataset.id = nx.id;
+    $("nextNav").href = extHref(nx); $("nextNav").dataset.ext = nx.id; $("nextCard").dataset.id = nx.id;
     const rs = $("nextReasons"); rs.hidden = failPickId !== nx.id;
     rs.innerHTML = '<span class="label" style="width:100%">Why did it fail?</span>' + REASONS.map(r => '<button class="btn" data-nreason="'+esc(r)+'">'+esc(r)+'</button>').join("");
   }
@@ -2585,7 +2634,7 @@ function render(){
         (s.status!=="failed" ? '<button class="btn act-f" data-st="failed" data-sid="'+s.id+'">Failed</button>' : '') +
         (s.status!=="skipped" ? '<button class="btn act-k" data-st="skipped" data-sid="'+s.id+'">Skip</button>' : '') +
         (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') +
-        '<a class="btn outline" href="'+gmaps(s, prevPoint(i))+'">Google Maps</a>' +
+        '<a class="btn outline" data-ext="'+s.id+'" href="'+extHref(s)+'">'+ico("map")+'<span class="extname">'+esc(extName())+'</span></a>' +
         '<button class="btn outline" data-pin="'+s.id+'">Show pin</button>' +
         '<button class="btn outline" data-place="'+s.id+'">Move pin</button>' +
         '<button class="btn outline" data-rm="'+s.id+'">Remove</button>' +
@@ -3343,7 +3392,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "6.7";
+const APP_VERSION = "6.8";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -3521,6 +3570,17 @@ async function openOfflineSheet(){
     '<dt>Space used</dt><dd>' + (pcs.length ? fmtMB(kb) : "–") + '</dd>';
 }
 $("setOffline").addEventListener("click", openOfflineSheet);
+$("setNavApp").addEventListener("click", () => { $("settingsSheet").hidden = true; openNavAppSheet(null); });
+$("navAppList").addEventListener("click", e => {
+  const b = e.target.closest("[data-app]"); if (!b) return;
+  const app = b.dataset.app, s = navAppFor && route.stops.find(x => x.id === navAppFor);
+  if (!s || $("navAppRemember").checked) try{ localStorage.setItem(STORE_NAVAPP, app); }catch(e){}
+  $("navAppSheet").hidden = true; showNavAppName(); render();
+  if (s) location.href = extUrl(s, app);
+  else { toast("Directions will open in " + (NAV_APPS.find(x => x.id === app) || {}).name + "."); openSettings(); }
+});
+$("navAppCancel").addEventListener("click", () => { $("navAppSheet").hidden = true; if (!navAppFor) openSettings(); });
+showNavAppName();
 $("offClose").addEventListener("click", () => { $("offSheet").hidden = true; openSettings(); });
 async function updateDataPanel(){
   const txt = $("dataTxt"); if (!txt || dlBusy) return;

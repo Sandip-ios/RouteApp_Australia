@@ -4,13 +4,14 @@ android {
     namespace "au.dropline.routeplanner"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "au.dropline.routeplanner"
+        // Google Play release: app.DropLine (build with -PplayId=app.DropLine -PplayCode=N -PplayName=X.Y). Test builds keep the old id.
+        applicationId(project.hasProperty("playId") ? project.property("playId") : "au.dropline.routeplanner")
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode((System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger())
-        versionName "0.3." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        versionCode(project.hasProperty("playCode") ? project.property("playCode").toString().toInteger() : (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger())
+        versionName(project.hasProperty("playName") ? project.property("playName").toString() : "0.3." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0"))
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        aaptOptions {
+        androidResources {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

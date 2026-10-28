@@ -50,7 +50,8 @@ button svg,a svg,label svg{pointer-events:none}
 .ico.fill{fill:currentColor;stroke:none}
 
 /* ---------- app shell & headers ---------- */
-.app{display:grid;grid-template-rows:auto auto auto 1fr;position:fixed;inset:0;background:var(--bg)}
+.app{display:grid;grid-template-rows:auto auto auto 1fr auto;position:fixed;inset:0;background:var(--bg)}
+#routeTabs{display:none!important}
 header.top{display:flex;align-items:center;gap:10px;padding:12px max(14px,env(safe-area-inset-right)) 12px max(10px,env(safe-area-inset-left));padding-top:max(12px,env(safe-area-inset-top));background:var(--hero);color:#fff}
 .hback{display:flex;align-items:center;gap:2px;background:none;border:0;color:#fff;font-weight:600;font-size:16px;padding:6px 4px;min-height:44px;flex:none}
 .hback .ico{width:24px;height:24px;stroke-width:2.4}
@@ -70,7 +71,7 @@ header.top{display:flex;align-items:center;gap:10px;padding:12px max(14px,env(sa
 
 /* map */
 .mapwrap{position:relative;z-index:0}
-#map{height:38vh;min-height:220px;background:#E6EDF2;z-index:0}
+#map{height:34vh;min-height:200px;background:#E6EDF2;z-index:0}
 .mapbtn{position:absolute;right:12px;bottom:12px;z-index:500;width:48px;height:48px;border-radius:14px;border:0;background:#fff;color:var(--navy);box-shadow:0 2px 8px rgba(16,42,67,.25);display:grid;place-items:center}
 .mapbtn .ico{width:24px;height:24px}
 .leaflet-container{font-family:var(--f-body);background:#E6EDF2}
@@ -82,10 +83,12 @@ header.top{display:flex;align-items:center;gap:10px;padding:12px max(14px,env(sa
 .main>*{flex-shrink:0}
 .v-map .main{padding-top:14px}
 @media (min-width:900px){
-  .app{grid-template-columns:460px 1fr;grid-template-rows:auto auto 1fr}
+  .app{grid-template-columns:460px 1fr;grid-template-rows:auto auto 1fr auto}
+  .planbar{grid-column:1;grid-row:4}
+  .fab{left:380px;right:auto}
   header.top{grid-column:1/-1}
   .tabs{grid-column:1;grid-row:2}
-  .mapwrap{grid-column:2;grid-row:2/4}
+  .mapwrap{grid-column:2;grid-row:2/5}
   #map{height:100%}
   .main{grid-column:1;grid-row:3;border-right:1px solid var(--line)}
 }
@@ -99,6 +102,8 @@ header.top{display:flex;align-items:center;gap:10px;padding:12px max(14px,env(sa
 .hint{font-size:13px;color:var(--muted);margin:6px 0 0}
 .msg{font-size:13px;padding:9px 11px;border-radius:10px;background:var(--pale);color:var(--ink)}
 .msg.err{background:var(--fail-soft);color:var(--fail)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .msg:not(.err),:root:not([data-theme="light"]) .addedline{background:rgba(43,211,193,.14);color:var(--ink)}}
+:root[data-theme="dark"] .msg:not(.err),:root[data-theme="dark"] .addedline{background:rgba(43,211,193,.14);color:var(--ink)}
 .tile{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--pale);color:#119C8F;flex:none}
 .tile .ico{width:22px;height:22px}
 .tile.blue{background:var(--blue-soft);color:var(--blue)}
@@ -121,6 +126,81 @@ label.panel{display:block}
 .tabs .cnt{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;margin-left:6px;border-radius:11px;background:var(--navy,#102A43);color:#fff;font:700 12.5px/1 var(--f-body)}
 .tabs button.on .cnt{background:#fff;color:#0E8F83}
 .tabs .cnt.bump{animation:bump .6s ease}
+/* ---------- route screen v8: one screen, map on top, plan bar, add-stops button ---------- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.stats > div{display:flex;align-items:center;gap:9px;background:var(--bg);border-radius:12px;padding:9px 10px;min-width:0}
+.stats .si{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center}
+.stats .si .ico{width:19px;height:19px}
+.si-s{background:#E8EEF3;color:var(--navy,#102A43)} .si-t{background:var(--pale,#E1F5F1);color:#0E8F83} .si-f{background:#E6EEFD;color:#1B6FE6}
+.stats b{display:block;font:700 19px/1.05 var(--f-display);white-space:nowrap}
+.stats small{display:block;font:600 10.5px/1.25 var(--f-display);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.optline{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.linkbtn{border:0;background:none;color:var(--accent,#12A99B);font:600 14px var(--f-body);display:inline-flex;align-items:center;gap:6px;padding:6px 2px}
+.linkbtn .ico{width:18px;height:18px}
+.planbar{display:flex;gap:8px;padding:10px max(14px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(16,42,67,.08);z-index:5}
+.planbar .btn{min-height:54px;font-size:16.5px;border-radius:14px}
+.planbar #btnOpt.second{flex:none;background:var(--surface);color:var(--ink);border:1.5px solid var(--line2);box-shadow:none;font-size:14.5px;padding:0 14px}
+.planbar #btnOpt.second .ico{color:#12A99B}
+.planbar[hidden]{display:none!important}
+.fab{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom));z-index:6;display:flex;align-items:center;gap:8px;border:0;border-radius:30px;padding:0 18px 0 14px;height:54px;color:#fff;font:700 15px var(--f-body);background:linear-gradient(135deg,#1ED6C3,#1B6FE6);box-shadow:0 10px 24px rgba(27,111,230,.38)}
+.fab .ico{width:24px;height:24px}
+.fab[hidden]{display:none!important}
+.addopt{display:flex;align-items:center;gap:14px;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:12px 12px;margin-bottom:9px;text-align:left;color:var(--ink);font:inherit}
+.addopt .oi{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center}
+.addopt .oi svg{width:26px;height:26px}
+.oi-a{background:var(--pale,#E1F5F1);color:#0E8F83} .oi-s{background:#E6EEFD;color:#1B6FE6} .oi-i{background:#FFF1DC;color:#B26E00}
+.addopt .lt{flex:1;min-width:0} .addopt b{display:block;font-size:16px} .addopt small{color:var(--muted);font-size:13px}
+.addopt > .ico{color:var(--muted);flex:none}
+.emptyadd{padding:14px 12px 5px;margin-top:10px}
+.emptyadd .eh{padding:0 4px 10px} .emptyadd .eh b{display:block;font:700 20px var(--f-display);text-transform:uppercase;letter-spacing:.02em} .emptyadd .eh small{color:var(--muted)}
+.emptyadd .addopt{box-shadow:none}
+#stopsSect{scroll-margin-top:8px}
+.stop .when{flex:none;text-align:right;font:700 14px/1.1 var(--f-body);color:#0E8F83;white-space:nowrap}
+.stop .when small{display:block;font:500 11.5px var(--f-body);color:var(--muted);margin-top:2px}
+.stop .when.done{color:var(--muted)}
+.arrive{display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:var(--pale,#E1F5F1);color:#0E8F83;font-weight:700;font-size:14px;padding:6px 10px;border-radius:9px}
+.arrive .ico{width:16px;height:16px}
+.mapfull{position:absolute;right:10px;top:10px;z-index:500;border:0;border-radius:10px;background:var(--surface);color:var(--ink);font:600 13px var(--f-body);padding:8px 10px;box-shadow:0 2px 8px rgba(9,23,38,.25);display:inline-flex;align-items:center;gap:6px}
+.mapfull .ico{width:16px;height:16px}
+.app.fullmap #app-main,.app.fullmap .planbar,.app.fullmap .fab{display:none!important}
+.app.fullmap #map{height:calc(100vh - 70px - env(safe-area-inset-top))}
+.hspace{width:84px}
+.planset{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.planset label{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted);font-weight:600}
+.planset input,.planset select{font-size:16px;border:1.5px solid var(--line2);border-radius:10px;padding:9px 10px;background:var(--surface);color:var(--ink);min-height:44px}
+.offpanel .lt small b{color:var(--ink)}
+/* optimise moment */
+.optov{position:fixed;inset:0;z-index:1700;display:flex;flex-direction:column;justify-content:flex-end;background:rgba(9,23,38,.62)}
+.optov[hidden]{display:none}
+.optcard{background:var(--surface);border-radius:24px 24px 0 0;padding:24px max(20px,env(safe-area-inset-right)) max(30px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));max-width:560px;width:100%;margin:0 auto}
+.orb{width:92px;height:92px;margin:0 auto 14px;border-radius:50%;background:conic-gradient(#1ED6C3,#17B4D3,#1B6FE6,#1ED6C3);display:grid;place-items:center;box-shadow:0 0 0 10px rgba(32,199,183,.14),0 0 0 22px rgba(32,199,183,.06)}
+.orb i{width:72px;height:72px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-style:normal;color:#17B4D3}
+.orb i .ico{width:34px;height:34px}
+.orb.ok{background:#2EB872;box-shadow:0 0 0 10px rgba(46,184,114,.15)} .orb.ok i{color:#2EB872}
+.optcard h3{text-align:center;font:700 26px/1.1 var(--f-display);text-transform:uppercase;letter-spacing:.02em;margin:0}
+.optcard .os{text-align:center;color:var(--muted);font-size:14px;margin:6px 0 14px}
+.osteps{list-style:none;margin:0;padding:0}
+.osteps li{display:flex;align-items:center;gap:12px;padding:8px 0;font-size:15px;color:var(--muted)}
+.osteps li .c{flex:none;width:24px;height:24px;border-radius:50%;border:2px solid var(--line2);display:grid;place-items:center;color:#fff}
+.osteps li .c .ico{width:15px;height:15px}
+.osteps li.now{color:var(--ink);font-weight:600} .osteps li.now .c{border:3px solid #20C7B7;border-top-color:transparent}
+.osteps li.done{color:var(--ink)} .osteps li.done .c{background:#2EB872;border-color:#2EB872}
+.osteps li .n{color:#0E8F83;font-weight:700}
+.opbar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin-top:12px}
+.opbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#1ED6C3,#1B6FE6);transition:width .4s ease}
+.optres .big2{display:flex;justify-content:center;gap:10px;margin:4px 0 16px;flex-wrap:wrap}
+.optres .big2 span{background:var(--bg);border-radius:12px;padding:10px 14px;text-align:center;font-size:12.5px;color:var(--muted);min-width:92px}
+.optres .big2 b{display:block;font:700 22px var(--f-display);color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){
+  .orb{animation:spin 2.4s linear infinite} .orb i{animation:spin 2.4s linear infinite reverse}
+  .orb.ok,.orb.ok i{animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+  .osteps li.now .c{animation:spin .9s linear infinite}
+  .osteps li.done{animation:upin .3s ease-out}
+  .optov:not([hidden]) .optcard{animation:sheetin .34s cubic-bezier(.2,.9,.25,1)}
+  .optov.run .leaflet-marker-icon{animation:none}
+  body.optrun .pinw{animation:pinsel 1.1s ease-in-out infinite}
+}
+
 /* ---------- motion (all of it is skipped when the phone asks for reduced motion) ---------- */
 @media (prefers-reduced-motion:no-preference){
   .btn,.lrow,.setlink,.rcard .ro,.tabs button,.acts3 .btn,.mapbtn,.hbtn,.hback{transition:transform .14s ease,box-shadow .2s,background-color .2s,opacity .2s}
@@ -642,6 +722,7 @@ textarea:focus{border-color:var(--teal);outline:none}
 @media (prefers-color-scheme:dark){.ud,.iconbtn,.upnext li b,.qty button,.mapbtn,.round,.leaflet-bar a{color:var(--ink)!important}
   .mapbtn,.round{background:#1C2E44}.leaflet-bar a{background:#1C2E44!important}.destcall{background:#1C2E44!important;color:var(--ink)!important}
   .nstopcard,.stop,.panel,.card{border-color:var(--line)}}
+#menuSheet{z-index:1250}
 .subpage{position:fixed;inset:0;z-index:1100;background:var(--bg);display:flex;flex-direction:column}
 .subbody{flex:1;overflow:auto;padding:16px max(16px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 .subbody > *{max-width:640px;margin-left:auto;margin-right:auto}
@@ -779,7 +860,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <button data-view="stops"><svg class="ico" aria-hidden="true"><use href="#i-list"/></svg>Stops<span class="cnt" id="tabCnt" hidden></span></button>
     <button data-view="details"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>Details</button>
   </nav>
-  <div class="mapwrap"><div id="map" aria-label="Map of delivery stops"></div><button class="mapbtn" id="btnCentre" aria-label="Show where I am"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></button></div>
+  <div class="mapwrap"><div id="map" aria-label="Map of delivery stops"></div><button class="mapfull" id="btnFullMap"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Full map</button><button class="mapbtn" id="btnCentre" aria-label="Show where I am"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></button></div>
   <main class="main" id="app-main">
     <section class="panel locbanner" id="locBanner" hidden>
       <p id="locText">Turn on location so the app can suggest nearby addresses and start routes from where you are.</p>
@@ -796,16 +877,10 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       </div>
     </section>
 
-    <div class="row vs-stops" style="flex-wrap:nowrap">
-      <label class="search"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="stopSearch" type="search" placeholder="Search stops or address" autocomplete="off" aria-label="Search stops"></label>
-      <label class="iconbtn" id="filterBtn" title="Filter"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><select id="stopFilter" aria-label="Filter stops">
-        <option value="all">All stops</option><option value="pending">Pending</option><option value="delivered">Delivered</option><option value="failed">Failed</option><option value="skipped">Skipped</option><option value="pickup">Pickups</option><option value="check">Check pin</option></select></label>
-    </div>
-
-    <section class="panel donecard vs-map" id="doneCard" hidden aria-label="Run complete"><span class="big"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></span>
+    <section class="panel donecard" id="doneCard" hidden aria-label="Run complete"><span class="big"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></span>
       <span class="lt" style="flex:1;min-width:0"><b style="font-size:17px">Run complete</b><small id="doneTxt" style="display:block;color:var(--muted)"></small></span>
       <button class="btn cta" id="doneView">View report</button></section>
-    <section class="panel next vs-map" id="nextCard" hidden aria-label="Next stop">
+    <section class="panel next" id="nextCard" hidden aria-label="Next stop">
       <div class="stamp" id="nextStamp" hidden></div>
       <div class="nc-body" id="nextBody">
         <div class="nc-head"><div class="label">Next stop <span id="nextNum"></span></div><span class="pill pending" id="nextPill">Pending</span></div>
@@ -832,22 +907,18 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
         <div class="s-f"><svg class="ico" aria-hidden="true"><use href="#i-x-c"/></svg><b id="cF">0</b><span>Failed</span></div>
         <div class="s-k"><svg class="ico" aria-hidden="true"><use href="#i-minus-c"/></svg><b id="cK">0</b><span>Skipped</span></div>
       </div>
-      <div class="metrics maponly">
-        <div><div class="label">Stops</div><div class="v"><span id="nStops">0</span> / 200</div><div id="nParcels" style="font-size:12.5px;color:var(--muted)"></div></div>
-        <div><div class="label">Drive time</div><div class="v" id="mTime">–</div></div>
-        <div><div class="label">Distance</div><div class="v" id="mDist">–</div></div>
-        <div style="align-self:center"><span class="badge" id="optBadge">Not optimised</span></div>
+      <div class="stats">
+        <div><span class="si si-s"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg></span><span><b id="nStops">0</b><small id="nParcels">Stops</small></span></div>
+        <div><span class="si si-t"><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg></span><span><b id="mTime">–</b><small id="mDist">Drive</small></span></div>
+        <div><span class="si si-f"><svg class="ico" aria-hidden="true"><use href="#i-flag"/></svg></span><span><b id="mFinish">–</b><small>Finish</small></span></div>
       </div>
-      <div class="alert maponly" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:38px;padding:6px 12px">Find locations</button><button class="btn" id="btnShowProb" style="min-height:38px;padding:6px 12px">Check pins</button></div>
-      <div class="optrow maponly">
-        <button class="btn cta grow big" id="btnOpt"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg><span class="optlabel">Optimise route</span></button>
-        <button class="btn outline big" id="btnFit" title="Show all stops on map"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Fit map</button>
-      </div>
-      <div class="bar maponly" id="optBar" hidden><i></i></div>
-      <p class="msg maponly" id="optMsg" hidden></p>
+      <div class="optline"><span class="badge" id="optBadge">Not optimised</span><button class="linkbtn" id="btnFit"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Fit map</button></div>
+      <div class="alert" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:38px;padding:6px 12px">Find locations</button><button class="btn" id="btnShowProb" style="min-height:38px;padding:6px 12px">Check pins</button></div>
+      <div class="bar" id="optBar" hidden><i></i></div>
+      <p class="msg" id="optMsg" hidden></p>
     </section>
 
-    <section class="panel list vs-map" aria-label="Start and roads">
+    <section class="panel list" aria-label="Start and roads">
       <label class="lrow switchrow" for="startMe"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></span><span class="lt"><b>Start from my location</b><small id="startMeTxt">Finding your location…</small></span>
         <span class="switch"><input type="checkbox" id="startMe" role="switch" checked><span class="knob"></span></span></label>
       <div class="lsub" id="startAddrBox" hidden><button class="pickrow" id="startSet"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><span>Search the starting address (e.g. your depot)</span></button></div>
@@ -858,58 +929,32 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
         <span class="switch" id="tollSw" hidden><input type="checkbox" id="avoidTolls" role="switch" disabled><span class="knob"></span></span></label>
     </section>
 
-    <div class="sect vs-map"><span class="label">Add stops</span></div>
-    <section class="panel list vs-map" aria-label="Add stops">
-      <button class="lrow" id="btnManual"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-      <div id="manualBox" hidden></div>
-      <button class="lrow" id="btnScan"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg></span><span class="lt"><b>Scan run sheet</b><small>Photo of the paper manifest, page by page</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-      <button class="lrow" id="btnImport"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or a pasted address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-    </section>
-
-    <section class="vs-details" aria-label="Route details">
-      <div class="panel">
-        <div class="label">Route details</div>
-        <dl class="dl" id="detailsList"></dl>
+    <section aria-label="Stops" id="stopsSect">
+      <div class="dorder" id="stopsHead">
+        <span class="label" style="font-size:15px">Stops in order</span>
+        <span class="m">Drag <svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg> or ▲▼ to reorder</span>
       </div>
-      <div class="panel list" style="margin-top:12px">
-        <div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Saves the turn-by-turn directions and map for every stop on this phone, so navigation keeps working in areas with no mobile signal. Do it once at the depot (on Wi-Fi) before you leave.</small></span></div>
-        <div class="lsub">
-          <div class="row" id="offRow" hidden style="flex-wrap:nowrap"><button class="btn cta grow big" id="btnOffline"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Prepare for no signal</button></div>
-          <p class="hint" id="offTxt" hidden></p>
-          <div class="bar" id="offBar" hidden><i id="offBarI"></i></div>
-          <p class="hint" id="offNeedOpt">First tap <b>Optimise route</b> on the Map tab, then come back here and tap Prepare for no signal.</p>
-        </div>
-      </div>
-      <div class="panel list" style="margin-top:12px">
-        <button class="lrow" id="dRename"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></span><span class="lt"><b>Rename route</b></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-        <button class="lrow" id="dCopy"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg></span><span class="lt"><b>Copy route</b><small>Same stops, all set back to pending</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-        <button class="lrow" id="dExport"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lt"><b>Share route file</b><small>Save to Files, or send by WhatsApp or email</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-        <button class="lrow" id="dDelete"><span class="tile" style="background:var(--fail-soft);color:var(--fail)"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></span><span class="lt"><b>Delete route</b></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-      </div>
-    </section>
-
-    <section class="vs-stops" aria-label="Stops">
-      <div class="dorder">
-        <span class="label" style="font-size:15px">Delivery order</span>
-        <span class="m">Drag <svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg> or use ▲▼ to reorder</span>
-      </div>
+    <div class="row" id="stopTools" style="flex-wrap:nowrap">
+      <label class="search"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="stopSearch" type="search" placeholder="Search stops or address" autocomplete="off" aria-label="Search stops"></label>
+      <label class="iconbtn" id="filterBtn" title="Filter"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><select id="stopFilter" aria-label="Filter stops">
+        <option value="all">All stops</option><option value="pending">Pending</option><option value="delivered">Delivered</option><option value="failed">Failed</option><option value="skipped">Skipped</option><option value="pickup">Pickups</option><option value="check">Check pin</option></select></label>
+    </div>
       <ol class="stops" id="stops" style="margin-top:10px"></ol>
-      <p class="hint" id="emptyHint">No stops yet. Use Add stop, Scan run sheet or Import manifest on the Map tab.</p>
+      <div class="panel list emptyadd" id="emptyHint">
+        <div class="eh"><b>Add your stops</b><small>Choose how to add the delivery addresses for this run.</small></div>
+        <button class="addopt" id="emptyManual"><span class="oi oi-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z"/><path d="M12 7v5M9.5 9.5h5"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="addopt" id="emptyScan"><span class="oi oi-s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2"/><path d="M8 9h8M8 12h8M8 15h5"/></svg></span><span class="lt"><b>Scan manifest</b><small>Photo of the paper run sheet, page by page</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="addopt" id="emptyImport"><span class="oi oi-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M12 11v6M9.5 14.5L12 17l2.5-2.5"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or a pasted address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      </div>
       <p class="hint" id="noMatch" hidden>No stops match your search.</p>
     </section>
-
-    <div class="stopsbar vs-stops">
-      <div class="row" id="clearConfirm" hidden>
-        <span style="flex:1;font-weight:600">Remove all stops?</span>
-        <button class="btn" id="clearNo">Keep</button>
-        <button class="btn act-f" id="clearYes" style="background:var(--fail);color:#fff">Remove all</button>
-      </div>
-      <div class="row">
-        <button class="btn outline grow" id="btnClear"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>Clear all stops</button>
-        <button class="btn cta grow" id="btnOpt2"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg><span class="optlabel">Optimise route</span></button>
-      </div>
-    </div>
   </main>
+  <button class="fab" id="fabAdd" aria-label="Add stops"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Add stops</span></button>
+  <div class="planbar" id="planBar">
+    <button class="btn cta big grow" id="btnStartRun" hidden><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg>Start delivering</button>
+    <button class="btn cta big grow" id="btnOpt"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg><span class="optlabel">Optimise route</span></button>
+    <button class="btn" id="btnOpt2" hidden><span class="optlabel">Optimise route</span></button>
+  </div>
 </div>
 
 <div class="home" id="home" hidden>
@@ -951,9 +996,9 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <section><div class="gstep">Step 1</div><h3>Create a route</h3><p>Make one route for each run or day. Tap <b>⋮</b> on a route to rename it, copy it for tomorrow's run, or delete it.</p>
         <div class="gdemo"><div class="create" style="min-height:58px;font-size:22px"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div>
         <div class="rcard" style="margin-top:10px"><div class="ro"><div class="rb"><div class="rtop"><b class="rn">Run Fri, 23 Oct</b><span class="rstate go">In progress</span></div><div class="rm">23 Oct 2026 · 53 stops · 13 delivered</div><div class="rprog"><span class="rbar"><i style="width:24%;background:var(--ok)"></i><i style="width:2%;background:var(--fail)"></i></span><b class="rpc">25%</b></div></div></div></div></div></section>
-      <section><div class="gstep">Step 2</div><h3>Add your stops</h3><p><b>Scan run sheet</b> to photograph the paper manifest page by page, <b>Import manifest</b> for a CSV file, or <b>Add stop</b> and type a few letters of the address.</p>
+      <section><div class="gstep">Step 2</div><h3>Add your stops</h3><p>Tap the round <b>＋ Add stops</b> button: <b>Add stop</b> to type an address, <b>Scan manifest</b> to photograph the paper run sheet, or <b>Import manifest</b> for a CSV file or pasted list.</p>
         <div class="gdemo panel list"><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg></span><span class="lt"><b>Scan run sheet</b><small>Photo of the paper manifest</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div></div></section>
-      <section><div class="gstep">Step 3</div><h3>Optimise &amp; prepare</h3><p>Tap <b>Optimise route</b> for the fastest order from where you are. In <b>Details</b>, tap <b>Prepare for no signal</b> before leaving the depot.</p>
+      <section><div class="gstep">Step 3</div><h3>Optimise &amp; prepare</h3><p>Tap <b>Optimise route</b> for the fastest order. Each stop then shows its arrival time. Tap <b>Start delivering</b>: directions and the map are saved for no signal automatically (or use <b>⋯ → Prepare for no signal</b> at the depot).</p>
         <div class="gdemo"><div class="optrow" style="margin-top:0"><span class="btn cta grow big"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg>Optimise route</span><span class="btn outline big"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Fit map</span></div>
         <div class="panel list" style="margin-top:10px"><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Directions and map saved for the whole run</small></span></div></div></div></section>
       <section><div class="gstep">Step 4</div><h3>Deliver</h3><p>Tap <b>Navigate</b> for turn-by-turn voice directions. Mark each stop <b>Delivered</b>, <b>Failed</b> or <b>Skipped</b> and the next one slides in. Tap a stop to add <b>notes</b> or mark a <b>pickup</b>.</p>
@@ -1167,6 +1212,55 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
   </div>
   <p class="hint" style="margin:16px 4px 4px;font-size:12px">Address data: G-NAF © Geoscape Australia, CC BY 4.0. Map data © OpenStreetMap contributors.</p>
 </div>
+<div class="subpage" id="detailsPage" hidden role="dialog" aria-label="Route details">
+  <header class="top">
+    <button class="hback" id="detailsBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button>
+    <div class="htitle"><b>Route details</b><small id="detailsSub"></small></div>
+    <span class="hspace"></span>
+  </header>
+  <div class="subbody">
+    <div class="panel"><div class="label">Route</div><dl class="dl" id="detailsList"></dl></div>
+    <div class="panel" style="margin-top:12px"><div class="label">Plan</div><dl class="dl" id="detailsPlan"></dl>
+      <div class="planset">
+        <label>Leave at<input type="time" id="leaveAt"></label>
+        <label>Time at each stop<select id="svcMin"><option value="0">0 min</option><option value="1">1 min</option><option value="2">2 min</option><option value="3">3 min</option><option value="4">4 min</option><option value="5">5 min</option><option value="8">8 min</option><option value="10">10 min</option></select></label>
+      </div>
+      <p class="hint" style="margin:6px 0 0">Used for the arrival time at each stop and the finish time. Leave blank to use "now".</p>
+    </div>
+    <div class="panel list offpanel" style="margin-top:12px">
+        <div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Saves the turn-by-turn directions and map for every stop on this phone, so navigation keeps working where there is no mobile signal. <b>Do this before you leave, while you have good Wi-Fi or mobile data.</b> It also runs automatically when you tap Start delivering.</small></span></div>
+        <div class="lsub">
+          <div class="row" id="offRow" hidden style="flex-wrap:nowrap"><button class="btn cta grow big" id="btnOffline"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Prepare for no signal</button></div>
+          <p class="hint" id="offTxt" hidden></p>
+          <div class="bar" id="offBar" hidden><i id="offBarI"></i></div>
+          <p class="hint" id="offNeedOpt"><b>Step 1:</b> optimise the route first (Optimise route button on the route screen). <b>Step 2:</b> come back here and tap Prepare for no signal.</p>
+        </div>
+      </div>
+    <div class="panel list" style="margin-top:12px">
+        <button class="lrow" id="dRename"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></span><span class="lt"><b>Rename route</b></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="lrow" id="dCopy"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg></span><span class="lt"><b>Copy route</b><small>Same stops, all set back to pending</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="lrow" id="dExport"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lt"><b>Share route file</b><small>Save to Files, or send by WhatsApp or email</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="lrow" id="dDelete"><span class="tile" style="background:var(--fail-soft);color:var(--fail)"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></span><span class="lt"><b>Delete route</b></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="lrow" id="btnClear"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></span><span class="lt"><b>Clear all stops</b><small>Remove every stop from this route</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+    </div>
+      <div class="row" id="clearConfirm" hidden>
+        <span style="flex:1;font-weight:600">Remove all stops?</span>
+        <button class="btn" id="clearNo">Keep</button>
+        <button class="btn act-f" id="clearYes" style="background:var(--fail);color:#fff">Remove all</button>
+      </div>
+  </div>
+</div>
+<div class="sheet-bg" id="addSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Add stops">
+    <h3>Add stops</h3>
+    <div class="addlist">
+      <button class="addopt" id="btnManual"><span class="oi oi-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z"/><path d="M12 7v5M9.5 9.5h5"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="addopt" id="btnScan"><span class="oi oi-s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2"/><path d="M8 9h8M8 12h8M8 15h5"/></svg></span><span class="lt"><b>Scan manifest</b><small>Photo of the paper run sheet, page by page</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="addopt" id="btnImport"><span class="oi oi-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M12 11v6M9.5 14.5L12 17l2.5-2.5"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or a pasted address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+    </div>
+    <button class="btn" id="addClose" style="width:100%;margin-top:6px">Close</button>
+  </div>
+</div>
 <div class="nav" id="navScreen" hidden>
   <header class="top">
     <button class="hback" id="navBack" aria-label="Back to the route"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg></button>
@@ -1254,7 +1348,24 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <div class="psearch"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="addrIn" type="search" enterkeyhint="search" placeholder="Search address, e.g. 12 John St" autocomplete="off" aria-label="Stop address"></div>
     <div class="addedline" id="addedLine" hidden><svg class="ico" aria-hidden="true"><use href="#i-check-c"/></svg><span id="addedTxt"></span><button id="addedView">View stops</button></div>
     <div class="sugg" id="addrSugg" hidden></div>
-    <p class="hint phint">Type a few letters, then tap the right address to add it. Keep adding stops; tap <b>Done</b> when finished. They all go into the <b>Stops</b> tab.</p>
+    <p class="hint phint">Type a few letters, then tap the right address to add it. Keep adding stops; tap <b>Done</b> when finished. They all go into your stops list.</p>
+  </div>
+</div>
+<div class="optov" id="optOv" hidden role="dialog" aria-live="polite" aria-label="Optimising route">
+  <div class="optcard">
+    <div id="optRun">
+      <div class="orb"><i><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg></i></div>
+      <h3>Finding your best route</h3><p class="os" id="optSub"></p>
+      <ol class="osteps" id="optSteps"></ol>
+      <div class="opbar"><i id="optProg"></i></div>
+    </div>
+    <div class="optres" id="optRes" hidden>
+      <div class="orb ok"><i><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></i></div>
+      <h3>Route ready</h3><p class="os" id="optResTxt"></p>
+      <div class="big2" id="optResNums"></div>
+      <button class="btn cta big" id="optStart" style="width:100%"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg>Start delivering</button>
+      <button class="btn" id="optView" style="width:100%;margin-top:8px">View the route</button>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -2078,7 +2189,7 @@ function addStop(r){
   if (route.stops.some(s => has(s) && Math.abs(s.lat-r.lat)<1e-5 && Math.abs(s.lon-r.lon)<1e-5)){ toast("That address is already on the list."); return; }
   route.stops.push({id:uid(), label:r.label, query:r.label, lat:r.lat, lon:r.lon, geo:r.geo === "street" ? "street" : "exact", status:"pending", reason:"", parcels:[]});
   markStale(); persist(); render();
-  $("addedTxt").textContent = "Stop " + route.stops.length + " added: " + r.label.split(",")[0] + ". See all stops in the Stops tab.";
+  $("addedTxt").textContent = "Stop " + route.stops.length + " added: " + r.label.split(",")[0] + ". It is in your stops list.";
   $("addedLine").hidden = false; if (!$("stopPicker").hidden) setTimeout(() => { try{ $("addrIn").focus(); }catch(e){} }, 50);
   const tc = $("tabCnt"); tc.classList.remove("bump"); void tc.offsetWidth; tc.classList.add("bump");
 }
@@ -2431,6 +2542,42 @@ async function travelMatrix(pts, onProgress){
   return {D, Dist, road, estimated:estd};
 }
 
+/* ---------- the optimise moment: live steps over the map, then "Route ready" ---------- */
+const optUI = (() => {
+  const STEPS = ["Checking {n} addresses", "Getting road times between every stop", "Trying every possible order", "Avoiding doubling back", "Drawing your route"];
+  let on = false, t0 = 0, cur = -1;
+  const fact = n => { let f = 1; for (let i = 2; i <= n; i++) f *= i; return f; };
+  const li = i => $("optSteps").children[i];
+  return {
+    start(n){ on = !window.__fastOpt; if (!on) return; cur = -1;
+      $("optSub").textContent = n + " stops · real road times";
+      $("optSteps").innerHTML = STEPS.map(t => '<li><span class="c"></span><span class="t">' + t.replace("{n}", n) + '</span></li>').join("");
+      $("optRun").hidden = false; $("optRes").hidden = true; $("optProg").style.width = "4%"; $("optOv").hidden = false; document.body.classList.add("optrun"); t0 = Date.now(); },
+    async step(i, extra){ if (!on) return;
+      const wait = 700 - (Date.now() - t0); if (wait > 0) await sleep(wait);
+      for (let k = 0; k < i; k++){ const e = li(k); if (!e.classList.contains("done")){ e.className = "done"; e.querySelector(".c").innerHTML = ico("check"); } }
+      const e = li(i); e.className = "now"; if (extra) e.querySelector(".t").innerHTML = extra;
+      cur = i; $("optProg").style.width = Math.round(8 + i * 20) + "%"; t0 = Date.now(); },
+    progress(f){ if (on && cur === 1) $("optProg").style.width = Math.round(28 + f * 18) + "%"; },
+    async count(m){ if (!on) return; const total = m <= 13 ? fact(m) : 0, el = li(2).querySelector(".t");
+      if (!total){ el.innerHTML = "Testing thousands of possible orders…"; await sleep(700); return; }
+      const t1 = Date.now(), dur = 1100;
+      while (Date.now() - t1 < dur){ const f = (Date.now() - t1) / dur, v = Math.round(total * f * f);
+        el.innerHTML = 'Trying every possible order… <span class="n">' + v.toLocaleString("en-AU") + '</span>'; await sleep(45); }
+      el.innerHTML = 'Tried every possible order: <span class="n">' + total.toLocaleString("en-AU") + '</span>'; },
+    async result(r){ if (!on) return;
+      const wait = 650 - (Date.now() - t0); if (wait > 0) await sleep(wait);
+      document.body.classList.remove("optrun");
+      $("optRun").hidden = true; $("optRes").hidden = false;
+      $("optResTxt").innerHTML = r.text;
+      $("optResNums").innerHTML = r.nums.map(([a, b]) => '<span><b>' + esc(a) + '</b>' + esc(b) + '</span>').join("");
+      try{ navigator.vibrate && navigator.vibrate(30); }catch(e){} },
+    close(){ on = false; document.body.classList.remove("optrun"); $("optOv").hidden = true; }
+  };
+})();
+$("optView").addEventListener("click", () => { optUI.close(); setView("map"); fitAll(); });
+$("optStart").addEventListener("click", () => { optUI.close(); startDelivering(); });
+
 async function optimise(){
   if (busy){ toast("Still finding locations. Try again in a moment."); return; }
   const btn = $("btnOpt");
@@ -2448,9 +2595,12 @@ async function optimise(){
   const pts = [origin].concat(pend); let endIdx = null;
   if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
   btn.disabled = true; setOptLabel("Checking addresses…"); document.body.classList.add("optbusy");
+  optUI.start(pend.length); await optUI.step(0);
   try{ if (await snapStopsToOwnStreet(pend)) persist(); }catch(e){}
+  await optUI.step(1);
   setOptLabel("Getting road times…"); const bar = $("optBar"); bar.hidden = false; bar.firstElementChild.style.width = "0";
-  const M = await travelMatrix(pts, f => { bar.firstElementChild.style.width = Math.round(f*90)+"%"; });
+  const M = await travelMatrix(pts, f => { bar.firstElementChild.style.width = Math.round(f*90)+"%"; optUI.progress(f); });
+  await optUI.step(2);
   setOptLabel("Optimising…"); document.body.classList.add("optbusy"); await sleep(30);
   const method = M.estimated === 0 ? "road" : (M.road === 0 ? "estimate" : "partial");
   const D = M.D.map(r => r.map(v => v == null ? 1e7 : v)), Dist = M.Dist;
@@ -2459,9 +2609,11 @@ async function optimise(){
   const KM_WEIGHT = 0.04, C = D.map((r, i) => r.map((v, j) => v + KM_WEIGHT * (Dist[i] && Dist[i][j] != null ? Dist[i][j] : 0)));
   const before = tourCost(D, pend.map((_,i)=>i+1), endIdx);
   const res = solve(C, endIdx); res.cost = tourCost(D, res.order, endIdx);
+  await optUI.count(pend.length); await optUI.step(3);
+  let distBefore = 0; { let pv = 0; pend.forEach((_, i) => { distBefore += (Dist[pv] && Dist[pv][i+1]) || 0; pv = i + 1; }); }
   bar.firstElementChild.style.width = "100%";
   const ordered = res.order.map(k => pts[k]);
-  if (new Set(ordered.map(s=>s.id)).size !== pend.length){ showMsg("Optimisation failed a safety check. Your order was not changed.", true); btn.disabled=false; setOptLabel("Optimise route"); bar.hidden = true; return; }
+  if (new Set(ordered.map(s=>s.id)).size !== pend.length){ optUI.close(); showMsg("Optimisation failed a safety check. Your order was not changed.", true); btn.disabled=false; setOptLabel("Optimise route"); bar.hidden = true; return; }
   route.stops = done.concat(ordered, noLoc);
   let distSum = 0, prev = 0; for (const k of res.order){ distSum += Dist[prev][k]; prev = k; } if (endIdx!=null) distSum += Dist[prev][endIdx];
   route.opt = {method, duration:res.cost, distance:distSum, before, stops:pend.length, matrix:pts.length, solveMs:res.ms, at:Date.now(), stale:false, geometry:null, legs:null, closed:!!closed, origin:{lat:origin.lat, lon:origin.lon}};
@@ -2475,7 +2627,12 @@ async function optimise(){
   if (noLoc.length) t += " "+noLoc.length+" stop"+(noLoc.length>1?"s":"")+" without a location were left at the end.";
   showMsg(t, method !== "road");
   btn.disabled = false; setOptLabel("Re-optimise"); bar.hidden = true;
+  await optUI.step(4);
   await drawRoad();
+  { const o2 = route.opt, T2 = planTimes(), savedKm = (distBefore - (o2 ? o2.distance : 0)) / 1000;
+    const bits = []; if (saved > 30) bits.push("<b>" + fmtTime(saved) + "</b>"); if (savedKm > 0.2) bits.push("<b>" + savedKm.toFixed(1) + " km</b>");
+    await optUI.result({text: (bits.length ? "Saves " + bits.join(" and ") + " compared with your order." : "Your order was already close to the best.") + (method !== "road" ? " Some times are estimates (routing service busy)." : ""),
+      nums: [[fmtTime(o2 ? o2.duration : 0), "drive"], [fmtDist(o2 ? o2.distance : 0), "distance"], [T2.finish ? hm(T2.finish) : "–", "finish"]]}); }
 }
 /* ---------- no-signal support: directions and map for the whole run, saved on the phone ---------- */
 const idb = (() => { let dbp = null;
@@ -2531,7 +2688,7 @@ async function saveTiles(onProgress){
 function updateOffTxt(){
   const o = route.offlineLegs, t = $("offTxt"), pend = route.stops.filter(s => s.status === "pending" && has(s));
   $("offRow").hidden = !(route.opt && !route.opt.stale) || !pend.length;
-  $("offNeedOpt").hidden = !$("offRow").hidden; $("offNeedOpt").textContent = pend.length ? "Optimise the route first, then prepare." : "Add stops and optimise the route first.";
+  $("offNeedOpt").hidden = !$("offRow").hidden; $("offNeedOpt").innerHTML = pend.length ? "<b>Step 1:</b> optimise the route first (Optimise route button on the route screen). <b>Step 2:</b> come back here and tap Prepare for no signal, before you leave, while you have good Wi-Fi or mobile data." : "Add stops and optimise the route first.";
   if (!o){ t.hidden = true; return; }
   const cur = o.key && pend.every(s => o.key.split(",").includes(s.id));
   t.hidden = false;
@@ -2711,23 +2868,47 @@ function confetti(host){
     c.appendChild(e); }
   host.appendChild(c); setTimeout(() => c.remove(), 2600);
 }
+/* One route screen (map on top, counts, stops in order). "stops" scrolls to the list; "details" opens the Route details page. */
 function setView(v){
-  view = v; const a = $("appView"); a.classList.remove("v-map", "v-stops", "v-details"); a.classList.add("v-" + v);
-  document.querySelectorAll("#routeTabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
-  $("backLbl").textContent = v === "map" ? "Routes" : "Map";
-  $("app-main").scrollTop = 0; replay($("app-main"), "viewin", 500);
-  if (v === "stops") replay($("stops"), "anim", 900);
-  if (v === "map") setTimeout(() => map.invalidateSize(), 30);
+  if (v === "details"){ openDetails(); return; }
+  view = "map"; const a = $("appView"); a.classList.remove("v-stops", "v-details", "fullmap"); a.classList.add("v-map");
+  $("backLbl").textContent = "Routes"; showFullMapBtn();
+  if (v === "stops"){ const h = $("stopsSect"); if (h) setTimeout(() => h.scrollIntoView({block: "start", behavior: reduceMotion() ? "auto" : "smooth"}), 30); replay($("stops"), "anim", 900); }
+  else { $("app-main").scrollTop = 0; replay($("app-main"), "viewin", 500); setTimeout(() => map.invalidateSize(), 30); }
+}
+function openDetails(){ renderDetails(); $("detailsPage").hidden = false; }
+function closeDetails(){ $("detailsPage").hidden = true; }
+function showFullMapBtn(){ const f = $("appView").classList.contains("fullmap"), b = $("btnFullMap"); if (b) b.innerHTML = f ? ico("list") + "Back to stops" : '<svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Full map'; }
+const hm = t => new Date(t).toLocaleTimeString("en-AU", {hour: "numeric", minute: "2-digit"});
+/* Arrival time at each stop: leave time (or now, once delivering) + drive time + time spent at each earlier stop. */
+function leaveTime(){
+  if (route.leaveAt && /^\d\d:\d\d$/.test(route.leaveAt)){ const [h, m] = route.leaveAt.split(":").map(Number), d = new Date(); d.setHours(h, m, 0, 0); return d.getTime(); }
+  return Date.now();
+}
+function planTimes(){
+  const st = route.stops, o = route.opt, legs = o && !o.stale && o.legs ? o.legs : null;
+  const svc = (route.svcMin != null ? +route.svcMin : 2) * 60000;
+  const started = !!route.startedAt || st.some(s => s.status !== "pending");
+  let t = started ? Date.now() : leaveTime(); const out = {}; let last = null;
+  for (const s of st){ if (s.status !== "pending" || !legs || legs[s.id] == null) continue; t += legs[s.id] * 1000; out[s.id] = {arr: t, leg: legs[s.id]}; last = t; t += svc; }
+  return {at: out, finish: last};
 }
 function renderDetails(){
   const st = route.stops, o = route.opt, c = {pending:0,delivered:0,failed:0,skipped:0}; st.forEach(x => c[x.status]++);
-  const rows = [["Name", route.name || "Untitled"], ["Created", new Date(route.createdAt || route.updatedAt || Date.now()).toLocaleDateString("en-AU", {weekday:"short", day:"numeric", month:"short", year:"numeric"})],
-    ["Stops", st.length + (st.reduce((a, x) => a + pcount(x), 0) !== st.length ? " (" + st.reduce((a, x) => a + pcount(x), 0) + " parcels)" : "")], ["Pickups", st.filter(isPick).length],
-    ["Done", c.delivered + " delivered · " + c.failed + " failed · " + c.skipped + " skipped"],
-    ["Start", route.start ? startName(route.start) : "Not set"],
-    ["Drive time", o && !o.stale ? fmtTime(o.duration) : "–"], ["Distance", o && !o.stale ? fmtDist(o.distance) : "–"],
-    ];
-  $("detailsList").innerHTML = rows.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(String(v)) + '</dd>').join("");
+  const dt = t => new Date(t).toLocaleDateString("en-AU", {weekday:"short", day:"numeric", month:"short"}) + ", " + hm(t);
+  const picks = st.filter(isPick).length, parcelsN = st.reduce((a, x) => a + pcount(x), 0), T = planTimes();
+  const rows = [["Name", route.name || "Untitled"], ["Created", dt(route.createdAt || route.updatedAt || Date.now())],
+    ["Started", route.startedAt ? dt(route.startedAt) : "Not yet"],
+    ["Stops", st.length], ["Deliveries · pickups", (st.length - picks) + " · " + picks], ["Parcels", parcelsN],
+    ["Done", c.delivered + " delivered · " + c.failed + " failed · " + c.skipped + " skipped"]];
+  const plan = [["Start", route.start ? startName(route.start) : "Not set"],
+    ["Drive · distance", o && !o.stale ? fmtTime(o.duration) + " · " + fmtDist(o.distance) : "Not optimised yet"],
+    ["Finish (approx.)", T.finish ? hm(T.finish) : "–"],
+    ["Optimised", o ? (o.at ? dt(o.at) : "Yes") + (o.stale ? " (stops changed since)" : "") : "Not yet"]];
+  const dl = r => r.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(String(v)) + '</dd>').join("");
+  $("detailsList").innerHTML = dl(rows); $("detailsPlan").innerHTML = dl(plan);
+  $("detailsSub").textContent = route.name || "Route";
+  $("leaveAt").value = route.leaveAt || ""; $("svcMin").value = String(route.svcMin != null ? route.svcMin : 2);
 }
 function render(){
   try { if (startMeOn && route.start && route.start.me && route.stops.length && farFromStops(route.start)){ route.start = null; route.opt = null; } } catch(e){}
@@ -2737,15 +2918,20 @@ function render(){
     if (was !== "" && was !== String(n) && el.dataset.rid === route.id) replay(el, "tick", 500); el.dataset.rid = route.id; });
   $("nStops").textContent = st.length;
   const nParc = st.reduce((a,s) => a + pcount(s), 0), nPick = st.filter(isPick).length;
-  $("nParcels").textContent = [nParc !== st.length ? nParc+" parcels" : "", nPick ? nPick+" pickup"+(nPick>1?"s":"") : ""].filter(Boolean).join(" · ");
+  $("nParcels").textContent = [nParc !== st.length ? nParc+" parcels" : "", nPick ? nPick+" pickup"+(nPick>1?"s":"") : ""].filter(Boolean).join(" · ") || (st.length === 1 ? "Stop" : "Stops");
+  const T = planTimes(); $("mFinish").textContent = T.finish ? hm(T.finish) : "–";
   const o = route.opt, b = $("optBadge");
-  if (!o){ b.className = "badge"; b.textContent = "Not optimised"; $("mTime").textContent = "–"; $("mDist").textContent = "–"; }
-  else { $("mTime").textContent = o.stale ? "–" : fmtTime(o.duration); $("mDist").textContent = o.stale ? "–" : fmtDist(o.distance);
+  if (!o){ b.className = "badge"; b.textContent = "Not optimised"; $("mTime").textContent = "–"; $("mDist").textContent = "Drive"; }
+  else { $("mTime").textContent = o.stale ? "–" : fmtTime(o.duration); $("mDist").textContent = o.stale ? "Drive" : fmtDist(o.distance);
     if (o.stale){ b.className = "badge stale"; b.textContent = "Needs re-optimise"; $("optMsg").hidden = true; }
     else if (o.method === "road"){ b.className = "badge live"; b.textContent = "Optimised"; }
     else { b.className = "badge est"; b.textContent = "Estimate"; } }
   if (!busy) setOptLabel(o && !o.stale ? "Re-optimise" : "Optimise route");
   $("btnOpt2").disabled = $("btnOpt").disabled;
+  { const doneN = cnt.delivered + cnt.failed + cnt.skipped, started = !!route.startedAt || doneN > 0, opted = !!(o && !o.stale);
+    $("planBar").hidden = !st.length || !cnt.pending; $("fabAdd").hidden = !st.length;
+    $("btnStartRun").hidden = !(opted && !started && cnt.pending);
+    $("btnOpt").classList.toggle("second", opted); $("btnOpt").style.flex = $("btnStartRun").hidden ? "1" : "none"; }
   $("startAddrBox").hidden = startMeOn || !!(route.start && !route.start.me);
   showStart();
   $("emptyHint").hidden = st.length > 0;
@@ -2777,6 +2963,8 @@ function render(){
     $("nextN").textContent = nextIdx + 1; $("nextPill").textContent = isPick(nx) ? "Pickup" : "Pending"; $("nextPill").className = "pill " + (isPick(nx) ? "skipped" : "pending");
     document.querySelector('#nextCard .label').firstChild.nodeValue = isPick(nx) ? "Next pickup " : "Next stop ";
     $("nextMeta").textContent = (leg != null ? "About "+fmtTime(leg)+" drive · " : "") + parcelLine(nx);
+    { let ar = $("nextArrive"); if (!ar){ ar = document.createElement("span"); ar.id = "nextArrive"; ar.className = "arrive"; $("nextSub").parentNode.appendChild(ar); }
+      const tm = T.at[nx.id]; ar.hidden = !tm; if (tm) ar.innerHTML = ico("clock") + "Arrive ~" + hm(tm.arr); }
     $("nextChips").innerHTML = chipsFor(nx) + parcels(nx).filter(p => p.size).map(p => '<span class="chip pending" style="text-transform:none">'+esc((p.seq!=null?"#"+p.seq+" ":"")+p.size+" cm")+'</span>').join("");
     $("nextNote").hidden = !nx.notes; $("nextNote").textContent = nx.notes || "";
     $("nextNav").href = extHref(nx); $("nextNav").dataset.ext = nx.id; $("nextCard").dataset.id = nx.id;
@@ -2793,14 +2981,15 @@ function render(){
   let shown = 0;
   if (!typing) $("stops").innerHTML = st.map((s,i) => {
     let eta = "";
-    if (o && !o.stale && o.legs && s.status === "pending" && o.legs[s.id] != null){ elapsed += o.legs[s.id]; eta = "~"+fmtTime(elapsed)+" drive"; }
+    { const tm = T.at[s.id]; if (tm) eta = "Arrive " + hm(tm.arr) + " · " + fmtTime(tm.leg) + " drive";
+      else if (s.status !== "pending" && s.doneAt) eta = statusWord(s).replace(/^./, c => c.toUpperCase()) + " " + hm(s.doneAt); }
     if (!show(s)) return "";
     shown++;
     const exp = expandedId === s.id, [t1, t2] = splitLabel(s.label);
     return '<li class="stop'+(s.id===selId?" sel":"")+(s.id===flashId?" flash "+flashSt:"")+'" style="--i:'+(shown-1)+'" data-id="'+s.id+'">' +
       '<div class="num '+s.status+'">'+(i+1)+'</div>' +
       '<div class="txt" data-tap="'+s.id+'"><div class="a">'+esc(t1)+'</div>'+(t2 ? '<div class="s2">'+esc(t2)+'</div>' : '') +
-        '<div class="m"><span class="chip '+s.status+'">'+statusWord(s)+'</span>'+(s.reason ? '<span class="eta">'+esc(s.reason)+'</span>' : '')+'<span class="pc">'+ico("pkg")+esc(parcelLine(s))+'</span>'+(eta ? '<span class="eta">'+eta+'</span>' : '')+'</div>' +
+        '<div class="m"><span class="chip '+s.status+'">'+statusWord(s)+'</span>'+(s.reason ? '<span class="eta">'+esc(s.reason)+'</span>' : '')+'<span class="pc">'+ico("pkg")+esc(parcelLine(s))+'</span>'+(eta ? '<span class="eta at">'+eta+'</span>' : '')+'</div>' +
         '<div class="chips">'+chipsFor(s)+'</div>'+(s.notes ? '<span class="snote">'+esc(s.notes)+'</span>' : '')+'</div>' +
       '<div class="sctl"><button class="handle drag" aria-label="Drag to reorder">'+ico("grip")+'</button><button class="ud" aria-label="Move up" data-up="'+s.id+'">'+ico("up")+'</button><button class="ud" aria-label="Move down" data-down="'+s.id+'">'+ico("down")+'</button></div>' +
       (exp ? '<div class="more">' +
@@ -3431,7 +3620,7 @@ function renderHome(){
       + '<span class="rprog"><span class="rbar"><i style="width:'+w(t.c.delivered)+';background:var(--ok)"></i><i style="width:'+w(t.c.failed)+';background:var(--fail)"></i><i style="width:'+w(t.c.skipped)+';background:var(--skip)"></i></span><b class="rpc">'+p+'%</b></span></span>'+ico("chev-r")+'</button>'
       + '<button class="more" data-menu="'+esc(r.id)+'" aria-label="Options for '+esc(r.name||"route")+'">'+ico("dots-v")+'</button></div>'; }).join("");
 }
-function showHome(){ if (nav.on) try{ navStop(); }catch(e){} closePickers();
+function showHome(){ if (nav.on) try{ navStop(); }catch(e){} closePickers(); closeDetails(); $("appView").classList.remove("fullmap");
   document.querySelectorAll(".sheet-bg").forEach(b => b.hidden = true);
   try{ localStorage.setItem(STORE_OPEN, ""); }catch(e){}
   renderHome(); $("home").hidden = false; replay($("routeList"), "anim", 1400); }
@@ -3467,7 +3656,24 @@ $("routeSort").addEventListener("click", () => { const mode = (loadJSON(STORE_SO
   saveJSON(STORE_SORT, {m: SORTS[(k + 1) % SORTS.length][0]}); renderHome(); });
 $("routeList").addEventListener("click", e => { const o = e.target.closest("[data-open]"), m = e.target.closest("[data-menu]");
   if (m) openMenu(m.dataset.menu); else if (o) openRoute(o.dataset.open); });
-$("btnRoutes").addEventListener("click", () => { if (view !== "map") setView("map"); else showHome(); });
+$("btnRoutes").addEventListener("click", () => { if ($("appView").classList.contains("fullmap")){ $("btnFullMap").click(); return; } closeDetails(); showHome(); });
+$("detailsBack").addEventListener("click", closeDetails);
+$("leaveAt").addEventListener("change", e => { route.leaveAt = e.target.value || null; persist(); render(); renderDetails(); });
+$("svcMin").addEventListener("change", e => { route.svcMin = +e.target.value; persist(); render(); renderDetails(); });
+$("fabAdd").addEventListener("click", () => { $("addSheet").hidden = false; });
+$("addClose").addEventListener("click", () => { $("addSheet").hidden = true; });
+["btnManual", "btnScan", "btnImport"].forEach(k => $(k).addEventListener("click", () => { $("addSheet").hidden = true; }, true));
+[["emptyManual", "btnManual"], ["emptyScan", "btnScan"], ["emptyImport", "btnImport"]].forEach(([a, b]) => $(a).addEventListener("click", () => $(b).click()));
+$("btnFullMap").addEventListener("click", () => { $("appView").classList.toggle("fullmap"); showFullMapBtn(); setTimeout(() => { map.invalidateSize(); if ($("appView").classList.contains("fullmap")) fitAll(); }, 60); });
+/* Start delivering: save directions for no signal (in the background) and open turn-by-turn to the first stop. */
+async function startDelivering(){
+  route.startedAt = route.startedAt || Date.now(); persist(); render();
+  try{ const o = route.offlineLegs, pend = route.stops.filter(s => s.status === "pending" && has(s));
+    const ready = o && o.key && pend.every(s => o.key.split(",").includes(s.id));
+    if (!ready && navigator.onLine !== false && route.opt && !route.opt.stale){ toast("Saving directions and the map for no signal…"); prepareOffline().catch(() => {}); } }catch(e){}
+  $("nextGo").click();
+}
+$("btnStartRun").addEventListener("click", startDelivering);
 $("routeTabs").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) setView(b.dataset.view); });
 $("stopSearch").addEventListener("input", () => render());
 $("stopFilter").addEventListener("change", () => render());
@@ -3476,7 +3682,7 @@ $("dRename").addEventListener("click", () => { persist(); openMenu(route.id); se
 $("dCopy").addEventListener("click", () => { persist(); menuId = route.id; $("menuCopy").click(); });
 $("dExport").addEventListener("click", () => { persist(); menuId = route.id; $("menuExport").click(); });
 $("dDelete").addEventListener("click", () => { persist(); openMenu(route.id); $("menuDelConfirm").hidden = false; });
-$("btnRouteMenu").addEventListener("click", () => { persist(); openMenu(route.id); });
+$("btnRouteMenu").addEventListener("click", () => { persist(); openDetails(); });
 $("menuRename").addEventListener("click", () => { const a = lib(), r = a[menuId]; if (!r) return; r.name = $("menuName").value.trim() || r.name;
   if (route.id === menuId) route.name = r.name; saveLib(a); $("menuTitle").textContent = r.name; renderHome(); render(); toast("Renamed to “"+r.name+"”"); $("menuSheet").hidden = true; });
 $("menuCopy").addEventListener("click", () => { const r = copyRoute(menuId); $("menuSheet").hidden = true; if (!r) return;
@@ -3591,7 +3797,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "7.6";
+const APP_VERSION = "8.0";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -3881,6 +4087,8 @@ async function androidLocationPrompt(){
 }
 /* Android phone Back button: close what is open, step back a screen, and only leave the app from the routes list. */
 function handleBack(){
+  if (!$("detailsPage").hidden && [...document.querySelectorAll(".sheet-bg")].every(x => x.hidden)){ closeDetails(); return true; }
+  if ($("appView").classList.contains("fullmap") && $("home").hidden){ $("btnFullMap").click(); return true; }
   if (!$("startPicker").hidden){ $("startPickBack").click(); return true; }
   if (!$("stopPicker").hidden){ $("stopPickBack").click(); return true; }
   if (!$("subPage").hidden){ $("subBack").click(); return true; }
@@ -3982,7 +4190,7 @@ setTimeout(() => {
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 /* keep a copy of the app on the phone so it opens with no signal (website only; not in local tests) */
 try{ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {}); }catch(e){}
-window.RP = {gnafFile, handleBack, syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {setView, planTimes, gnafFile, handleBack, syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

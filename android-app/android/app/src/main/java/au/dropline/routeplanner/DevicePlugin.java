@@ -191,6 +191,27 @@ public class DevicePlugin extends Plugin {
         } catch (Exception e) { call.reject("Could not share the file"); }
     }
 
+    /** Share a file made in the app (e.g. the PDF run report), sent as base64. */
+    @PluginMethod
+    public void shareData(PluginCall call) {
+        try {
+            Context c = getContext();
+            String name = call.getString("name", "dropline-report.pdf").replace("/", "-");
+            String mime = call.getString("mime", "application/pdf");
+            byte[] data = android.util.Base64.decode(call.getString("base64", ""), android.util.Base64.DEFAULT);
+            if (data.length == 0) { call.reject("No file data"); return; }
+            java.io.File dir = new java.io.File(c.getCacheDir(), "shared"); dir.mkdirs();
+            java.io.File f = new java.io.File(dir, name);
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(f)) { out.write(data); }
+            Uri uri = androidx.core.content.FileProvider.getUriForFile(c, c.getPackageName() + ".fileprovider", f);
+            Intent send = new Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri)
+                    .putExtra(Intent.EXTRA_SUBJECT, call.getString("title", "DropLine report")).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Intent chooser = Intent.createChooser(send, call.getString("title", "Share report")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            c.startActivity(chooser);
+            JSObject r = new JSObject(); r.put("shared", true); call.resolve(r);
+        } catch (Exception e) { call.reject("Could not share the file"); }
+    }
+
     @PluginMethod
     public void clearBadge(PluginCall call) {
         NotificationManagerCompat.from(getContext()).cancelAll();   // launchers show a number only while notifications are waiting

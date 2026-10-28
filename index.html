@@ -133,7 +133,7 @@ label.panel{display:block}
 .stats .si .ico{width:19px;height:19px}
 .si-s{background:#E8EEF3;color:var(--navy,#102A43)} .si-t{background:var(--pale,#E1F5F1);color:#0E8F83} .si-f{background:#E6EEFD;color:#1B6FE6}
 .stats b{display:block;font:700 19px/1.05 var(--f-display);white-space:nowrap}
-.stats small{display:block;font:600 10.5px/1.25 var(--f-display);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats small{display:block;font:600 10.5px/1.25 var(--f-display);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:normal;overflow-wrap:anywhere}
 .optline{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
 .linkbtn{border:0;background:none;color:var(--accent,#12A99B);font:600 14px var(--f-body);display:inline-flex;align-items:center;gap:6px;padding:6px 2px}
 .linkbtn .ico{width:18px;height:18px}
@@ -289,6 +289,14 @@ label.panel{display:block}
 .sheet .repatt{padding:0;margin:0 0 12px} .sheet .repatt li{margin:0}
 .repatt li{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:14px}
 .repatt li + li{border-top:1px solid var(--line)}
+.repall{margin:0 0 12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.repall summary{padding:11px 12px;font-weight:600;cursor:pointer}
+.repall ol{list-style:none;margin:0;padding:0;max-height:40vh;overflow:auto}
+.repall li{display:flex;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);font-size:13.5px}
+.repall .n{width:24px;height:24px;flex:none;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-weight:700;font-size:12px}
+.repall .a{flex:1;min-width:0}.repall .a b,.repall .a small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.repall small{color:var(--muted);font-size:12px}.repall .r{text-align:right;flex:none;max-width:40%}.repall .r b,.repall .r small{display:block}
+.repall li.delivered .r b{color:var(--ok)} .repall li.failed .r b{color:var(--fail)} .repall li.skipped .r b{color:#B26E00}
 .repatt li span{flex:1;min-width:0}
 .repatt li small{display:block;color:var(--muted)}
 .repatt li button{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:7px 10px;font:600 13px var(--f-body)}
@@ -546,7 +554,17 @@ textarea:focus{border-color:var(--teal);outline:none}
 .navme{width:46px;height:46px;border-radius:50%;background:#1B6FE6;border:4px solid #fff;box-shadow:0 0 0 8px rgba(27,111,230,.18),0 3px 8px rgba(9,23,38,.35);display:grid;place-items:center;color:#fff}
 .navme .ico{width:20px;height:20px;fill:#fff;stroke:#fff}
 .nsheet{background:var(--surface);border-radius:22px 22px 0 0;margin-top:-18px;position:relative;z-index:700;padding:8px max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));box-shadow:0 -8px 30px rgba(9,23,38,.18);max-height:62vh;overflow:auto}
-.nsheet .grab{display:block;width:44px;height:5px;border-radius:3px;background:var(--line2);margin:2px auto 10px}
+.nsheet .grab{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:var(--muted);font:600 11.5px var(--f-body);margin:-2px auto 6px;padding:2px 20px}
+.nsheet .grab i{display:block;width:44px;height:5px;border-radius:3px;background:var(--line2)}
+.navmini{display:none;width:100%;align-items:center;gap:10px;border:0;background:none;color:var(--ink);font:inherit;padding:4px 2px 2px;text-align:left}
+.navmini .num{width:30px;height:30px;border-radius:50%;background:rgba(32,199,183,.16);color:#0E8F83;display:grid;place-items:center;font-weight:700}
+.navmini b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px}
+.navmini .sm{color:#0E8F83;font-weight:600;font-size:13.5px}
+.nav.sheetmin .nsheet > *:not(.navmini){display:none!important}
+.nav.sheetmin .navmini{display:flex}
+.nav.sheetmin .nsheet{padding-top:12px}
+#navFailed.on{box-shadow:0 0 0 3px var(--fail) inset}
+.navbtm .btn:disabled{opacity:.4}
 .nstopcard{border:1px solid var(--line);border-radius:var(--r-card);padding:14px;box-shadow:var(--shadow)}
 .nav-stop{min-width:0}
 .nrowlist{margin-top:12px}
@@ -910,7 +928,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <div class="stats">
         <div><span class="si si-s"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg></span><span><b id="nStops">0</b><small id="nParcels">Stops</small></span></div>
         <div><span class="si si-t"><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg></span><span><b id="mTime">–</b><small id="mDist">Drive</small></span></div>
-        <div><span class="si si-f"><svg class="ico" aria-hidden="true"><use href="#i-flag"/></svg></span><span><b id="mFinish">–</b><small>Finish</small></span></div>
+        <div><span class="si si-f"><svg class="ico" aria-hidden="true"><use href="#i-flag"/></svg></span><span><b id="mFinish">–</b><small id="mFinishL">Finish</small></span></div>
       </div>
       <div class="optline"><span class="badge" id="optBadge">Not optimised</span><button class="linkbtn" id="btnFit"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Fit map</button></div>
       <div class="alert" id="geoAlert" hidden><span id="geoAlertTxt"></span><button class="btn" id="btnLocate" style="min-height:38px;padding:6px 12px">Find locations</button><button class="btn" id="btnShowProb" style="min-height:38px;padding:6px 12px">Check pins</button></div>
@@ -934,7 +952,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
         <span class="label" style="font-size:15px">Stops in order</span>
         <span class="m">Drag <svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg> or ▲▼ to reorder</span>
       </div>
-    <div class="row" id="stopTools" style="flex-wrap:nowrap">
+    <div class="row" id="stopTools" style="flex-wrap:nowrap;margin-top:12px">
       <label class="search"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="stopSearch" type="search" placeholder="Search stops or address" autocomplete="off" aria-label="Search stops"></label>
       <label class="iconbtn" id="filterBtn" title="Filter"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><select id="stopFilter" aria-label="Filter stops">
         <option value="all">All stops</option><option value="pending">Pending</option><option value="delivered">Delivered</option><option value="failed">Failed</option><option value="skipped">Skipped</option><option value="pickup">Pickups</option><option value="check">Check pin</option></select></label>
@@ -1225,7 +1243,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
         <label>Leave at<input type="time" id="leaveAt"></label>
         <label>Time at each stop<select id="svcMin"><option value="0">0 min</option><option value="1">1 min</option><option value="2">2 min</option><option value="3">3 min</option><option value="4">4 min</option><option value="5">5 min</option><option value="8">8 min</option><option value="10">10 min</option></select></label>
       </div>
-      <p class="hint" style="margin:6px 0 0">Used for the arrival time at each stop and the finish time. Leave blank to use "now".</p>
+      <p class="hint" id="leaveHint" style="margin:6px 0 0"></p>
     </div>
     <div class="panel list offpanel" style="margin-top:12px">
         <div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Saves the turn-by-turn directions and map for every stop on this phone, so navigation keeps working where there is no mobile signal. <b>Do this before you leave, while you have good Wi-Fi or mobile data.</b> It also runs automatically when you tap Start delivering.</small></span></div>
@@ -1275,10 +1293,11 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <div class="top"><div class="nav-arrow" id="navArrow"></div><div class="nav-txt" style="min-width:0"><div class="nav-dist" id="navDist"></div><div class="nav-instr" id="navInstr"></div><div class="nav-then" id="navThen"></div></div></div>
       <div class="eta"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg><div><b id="navRemain">–</b><span id="navArrTxt">Arrive at stop</span><b id="navEta" style="font-size:18px;margin-top:2px"></b></div></div>
     </div>
-    <div class="nctl"><button class="round" id="navVoice" aria-label="Voice on"><svg class="ico" aria-hidden="true"><use href="#i-vol"/></svg></button><button class="round" id="navCentre" aria-label="Follow my position"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg></button></div>
+    <div class="nctl"><button class="round" id="navMapBig" aria-label="Bigger map"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg></button><button class="round" id="navVoice" aria-label="Voice on"><svg class="ico" aria-hidden="true"><use href="#i-vol"/></svg></button><button class="round" id="navCentre" aria-label="Follow my position"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg></button></div>
   </div>
   <div class="nsheet">
-    <i class="grab"></i>
+    <button class="grab" id="navSheetToggle" aria-label="Hide stop details to see the map"><i></i><span>Hide</span></button>
+    <button class="navmini" id="navMini"><span class="num">⌃</span><b id="navMiniTitle"></b><span class="sm">Show stop</span></button>
     <div style="position:relative">
       <div class="stamp" id="navStamp" hidden></div>
       <div class="nstopcard">
@@ -1328,7 +1347,10 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 <div class="sheet-bg" id="repSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Run report">
     <div id="repBody"></div>
-    <button class="btn cta" id="repShare" style="width:100%;margin-top:4px"><svg class="ico" aria-hidden="true"><use href="#i-share"/></svg>Share report</button>
+    <div class="row" style="gap:8px;margin-top:4px;flex-wrap:nowrap">
+      <button class="btn cta" id="repPdf" style="flex:1"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>PDF report</button>
+      <button class="btn" id="repShare" style="flex:1"><svg class="ico" aria-hidden="true"><use href="#i-share"/></svg>Share summary</button>
+    </div>
     <button class="btn" id="repRoutes" style="width:100%;margin-top:8px">Back to my routes</button>
     <button class="btn" id="repClose" style="width:100%;margin-top:8px">Close</button>
   </div>
@@ -1820,7 +1842,7 @@ document.addEventListener("click", e => {
   if (!navApp()){ e.preventDefault(); openNavAppSheet(s.id); return; }
   a.href = extUrl(s, navApp());
 }, true);
-function geoLink(s){ return has(s) ? "geo:"+ll(s)+"?q="+ll(s)+"("+encodeURIComponent(s.label.split(",")[0])+")" : "geo:0,0?q="+encodeURIComponent(s.query || s.label); }
+function geoLink(s){ return has(s) ? "geo:"+ll(s)+"?q="+ll(s)+"("+encodeURIComponent(splitLabel(s.label)[0])+")" : "geo:0,0?q="+encodeURIComponent(s.query || s.label); }
 function prevPoint(i){ for (let k = i-1; k >= 0; k--) if (has(route.stops[k])) return route.stops[k]; return route.start; }
 async function fetchJSON(url, ms){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms||12000);
   try{ const r = await fetch(url,{signal:c.signal}); const j = await r.json().catch(()=>null); if(!r.ok){ const e = new Error("HTTP "+r.status); e.status = r.status; e.body = j; throw e; } return j; } finally{ clearTimeout(t); } }
@@ -1844,7 +1866,9 @@ function toggleNote(s, q){
   s.notes = parts.join(", ");
 }
 const ico = (n, c) => '<svg class="ico' + (c ? " " + c : "") + '" aria-hidden="true"><use href="#i-' + n + '"/></svg>';
-function splitLabel(label){ const p = String(label || "").split(", "); return p.length > 1 ? [p[0], p.slice(1).join(", ")] : [p[0], ""]; }
+function splitLabel(label){ const p = String(label || "").split(", ");
+  if (p.length > 2 && /^\d+[a-z]?(\s*[-\/]\s*\d+[a-z]?)?$/i.test(p[0].trim())) p.splice(0, 2, p[0].trim() + " " + p[1]);   // "12, Chester Crescent" → one line
+  return p.length > 1 ? [p[0], p.slice(1).join(", ")] : [p[0], ""]; }
 function setOptLabel(t){ if (!/…$/.test(t)) document.body.classList.remove("optbusy"); document.querySelectorAll(".optlabel").forEach(x => x.textContent = t); }
 function pcount(s){ return s.qty > 0 ? s.qty : parcels(s).length; }
 const isPick = s => s && s.kind === "pickup";
@@ -1866,7 +1890,17 @@ let lastNom = 0;
 async function nominatim(q, limit){
   const wait = 1100 - (Date.now() - lastNom); if (wait > 0) await sleep(wait); lastNom = Date.now();
   const j = await fetchJSON(NOMINATIM+"?format=jsonv2&addressdetails=1&countrycodes=au&limit="+(limit||6)+"&q="+encodeURIComponent(q), 10000);
-  return (j||[]).map(r => ({label:r.display_name.replace(/, Australia$/,""), lat:+r.lat, lon:+r.lon, housenumber:r.address && r.address.house_number, postcode:r.address && r.address.postcode}));
+  return (j||[]).map(r => ({label:nomLabel(r), lat:+r.lat, lon:+r.lon, housenumber:r.address && r.address.house_number, postcode:r.address && r.address.postcode}));
+}
+/* "12 Chester Crescent, Deer Park VIC 3023" from Nominatim's address parts (falls back to its long display name). */
+function nomLabel(r){
+  const a = r.address || {}, street = a.road || a.pedestrian || a.footway || a.residential || "";
+  const line1 = [a.house_number, street].filter(Boolean).join(" ");
+  const sub = a.suburb || a.city_district || a.town || a.village || a.hamlet || a.city || "";
+  const tail = [sub, a.state ? stateAbbr(a.state) : "", a.postcode].filter(Boolean).join(" ");
+  const nm = r.name && r.name !== street && r.name !== line1 && !/^\d/.test(r.name) ? r.name : "";
+  if (!line1 && !nm) return String(r.display_name || "").replace(/, Australia$/, "");
+  return [nm, line1, tail].filter(Boolean).join(", ");
 }
 async function photon(q, limit, bias){
   const b = bias || biasPoint();
@@ -2168,7 +2202,7 @@ function wireSearch(input, box, onPick){
     clearTimeout(timer); const q = input.value.trim();
     if (q.length < 3){ close(); return; }
     const show = list => { results = list; box.hidden = false;
-      box.innerHTML = list.map((r,i) => { const parts = r.label.split(", "); return '<button data-i="'+i+'">'+esc(parts[0])+'<span class="sub">'+esc(parts.slice(1).join(", "))+(r.note ? ' · '+esc(r.note) : r.street ? ' · street' : '')+'</span></button>'; }).join(""); };
+      box.innerHTML = list.map((r,i) => { const parts = splitLabel(r.label); return '<button data-i="'+i+'">'+esc(parts[0])+'<span class="sub">'+esc(parts[1])+(r.note ? ' · '+esc(r.note) : r.street ? ' · street' : '')+'</span></button>'; }).join(""); };
     timer = setTimeout(async () => {
       const my = ++seq; if (box.hidden || !results.length){ box.hidden = false; box.innerHTML = '<button disabled>Searching…</button>'; }
       let out; try{ out = await searchAddresses(q, 6, early => { if (my === seq) show(early); }); }catch(e){ out = null; }
@@ -2189,7 +2223,7 @@ function addStop(r){
   if (route.stops.some(s => has(s) && Math.abs(s.lat-r.lat)<1e-5 && Math.abs(s.lon-r.lon)<1e-5)){ toast("That address is already on the list."); return; }
   route.stops.push({id:uid(), label:r.label, query:r.label, lat:r.lat, lon:r.lon, geo:r.geo === "street" ? "street" : "exact", status:"pending", reason:"", parcels:[]});
   markStale(); persist(); render();
-  $("addedTxt").textContent = "Stop " + route.stops.length + " added: " + r.label.split(",")[0] + ". It is in your stops list.";
+  $("addedTxt").textContent = "Stop " + route.stops.length + " added: " + splitLabel(r.label)[0] + ". It is in your stops list.";
   $("addedLine").hidden = false; if (!$("stopPicker").hidden) setTimeout(() => { try{ $("addrIn").focus(); }catch(e){} }, 50);
   const tc = $("tabCnt"); tc.classList.remove("bump"); void tc.offsetWidth; tc.classList.add("bump");
 }
@@ -2226,7 +2260,7 @@ function showPin(id){
   if (!has(s)){ toast("This stop has no map location yet. Use Move pin to place it."); return; }
   selId = id; setView("map"); render();
   setTimeout(() => { map.invalidateSize(); map.setView([s.lat, s.lon], 17, {animate:true});
-    layer.eachLayer(m => { if (m.options && m.options.title && m.options.title.startsWith((route.stops.indexOf(s)+1) + ". ")) m.bindTooltip(esc(s.label.split(",")[0]), {direction:"top", offset:[0,-34]}).openTooltip(); }); }, 80);
+    layer.eachLayer(m => { if (m.options && m.options.title && m.options.title.startsWith((route.stops.indexOf(s)+1) + ". ")) m.bindTooltip(esc(splitLabel(s.label)[0]), {direction:"top", offset:[0,-34]}).openTooltip(); }); }, 80);
 }
 /* ---------- run complete: summary report ---------- */
 function runReport(){
@@ -2240,6 +2274,7 @@ function runReport(){
   const o = route.opt && !route.opt.stale ? route.opt : null;
   return {c, picks, drops, parcelsDone, t0, t1, hm, o, att: st.filter(x => x.status === "failed" || x.status === "skipped")};
 }
+function stLabel(x){ return x.status === "delivered" ? (isPick(x) ? "Picked up" : "Delivered") : x.status === "failed" ? "Failed" : x.status === "skipped" ? "Skipped" : "Not done"; }
 function reportText(){
   const R = runReport(), d = new Date(route.createdAt || Date.now()).toLocaleDateString("en-AU", {weekday:"short", day:"numeric", month:"short", year:"numeric"});
   const L = ["DropLine run report", (route.name || "Route") + " · " + d, "",
@@ -2261,11 +2296,15 @@ function showReport(){
       (left ? " · " + left + " stop" + (left > 1 ? "s" : "") + " still to do" : " · every stop has been dealt with") + '</p></div>' +
     '<div class="reptiles">' + tile(R.drops, "Delivered", "ok") + (R.picks ? tile(R.picks, "Picked up", "ok") : "") + tile(R.c.failed, "Failed", "fail") + tile(R.c.skipped, "Skipped", "skip") + '</div>' +
     '<dl class="repdl">' + (R.parcelsDone ? '<dt>Parcels delivered</dt><dd>' + R.parcelsDone + '</dd>' : '') +
-      (R.t0 ? '<dt>First stop done</dt><dd>' + R.hm(R.t0) + '</dd><dt>Last stop done</dt><dd>' + R.hm(R.t1) + '</dd><dt>Time on the run</dt><dd>' + fmtTime((R.t1 - R.t0) / 1000) + '</dd>' : '') +
+      (route.startedAt ? '<dt>Started</dt><dd>' + R.hm(route.startedAt) + '</dd>' : '') +
+      (R.t0 ? '<dt>First stop done</dt><dd>' + R.hm(R.t0) + '</dd><dt>Last stop done</dt><dd>' + R.hm(R.t1) + '</dd><dt>Time on the run</dt><dd>' + fmtTime((R.t1 - (route.startedAt && route.startedAt < R.t0 ? route.startedAt : R.t0)) / 1000) + '</dd>' : '') +
       (R.o ? '<dt>Planned distance</dt><dd>' + fmtDist(R.o.distance) + '</dd>' : '') + '</dl>' +
     (R.att.length ? '<div class="label" style="margin:4px 0 6px">Needs attention (' + R.att.length + ')</div><ul class="repatt">' + R.att.map(x =>
-      '<li><span><b>#' + (route.stops.indexOf(x)+1) + ' ' + esc(x.label.split(",")[0]) + '</b><small>' + (x.status === "failed" ? "Failed" + (x.reason ? " · " + esc(x.reason) : "") : "Skipped") + '</small></span><button data-retry="' + x.id + '">Try again</button></li>').join("") + '</ul>' +
-      '<p class="hint" style="margin:-4px 0 12px">Tap <b>Try again</b> to put a stop back on the run, or share the report with your depot.</p>' : '');
+      '<li><span><b>#' + (route.stops.indexOf(x)+1) + ' ' + esc(splitLabel(x.label)[0]) + '</b><small>' + (x.status === "failed" ? "Failed" + (x.reason ? " · " + esc(x.reason) : "") : "Skipped") + '</small></span><button data-retry="' + x.id + '">Try again</button></li>').join("") + '</ul>' +
+      '<p class="hint" style="margin:-4px 0 12px">Tap <b>Try again</b> to put a stop back on the run, or share the report with your depot.</p>' : '') +
+    '<details class="repall"><summary>All stops (' + route.stops.length + ')</summary><ol>' + route.stops.map((x, i) => { const [a1, a2] = splitLabel(x.label);
+      return '<li class="' + x.status + '"><span class="n">' + (i + 1) + '</span><span class="a"><b>' + esc(a1) + '</b><small>' + esc(a2) + '</small></span><span class="r"><b>' + esc(stLabel(x)) + '</b><small>' +
+        (x.doneAt ? R.hm(x.doneAt) : '') + (x.status === "failed" && x.reason ? ' · ' + esc(x.reason) : '') + '</small></span></li>'; }).join("") + '</ol></details>';
   $("repSheet").hidden = false;
   if (!left){ const sh = $("repSheet").querySelector(".sheet"); sh.style.position = "relative"; setTimeout(() => confetti(sh), 250); try{ navigator.vibrate && navigator.vibrate([30, 60, 30]); }catch(e){} }
 }
@@ -2279,6 +2318,83 @@ $("repShare").addEventListener("click", async () => {
   try{ await navigator.clipboard.writeText(text); toast("Report copied. Paste it into a message or email."); }catch(e){ toast("Sharing is not available on this phone."); }
 });
 $("doneView").addEventListener("click", showReport);
+/* ---------- PDF run report (made on the phone; works with no signal once the app has been opened online) ---------- */
+let jsPDFp = null;
+function loadJsPDF(){
+  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  return jsPDFp = jsPDFp || new Promise((ok, bad) => { const sc = document.createElement("script"); sc.src = "assets/vendor/jspdf-2.5.1.umd.min.js";
+    sc.onload = () => window.jspdf && window.jspdf.jsPDF ? ok(window.jspdf.jsPDF) : bad(new Error("no jsPDF")); sc.onerror = () => { jsPDFp = null; bad(new Error("load")); };
+    document.head.appendChild(sc); });
+}
+const pdfTxt = t => String(t == null ? "" : t).replace(/[\u2013\u2014]/g, "-").replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').replace(/\u2026/g, "...").replace(/[^\x00-\xff]/g, "");
+function buildReportPDF(jsPDF){
+  const doc = new jsPDF({unit: "mm", format: "a4"}), W = 210, H = 297, M = 14, R = runReport(), st = route.stops;
+  const navy = [14, 43, 75], teal = [14, 143, 131], grey = [100, 112, 128], line = [220, 226, 232];
+  const col = {delivered: [22, 140, 76], failed: [205, 45, 45], skipped: [178, 110, 0], pending: grey};
+  const dfmt = t => new Date(t).toLocaleDateString("en-AU", {weekday: "long", day: "numeric", month: "long", year: "numeric"});
+  const T = (t, x, y, o) => doc.text(pdfTxt(t), x, y, o || {});
+  const fit = (t, w) => { t = pdfTxt(t); if (doc.getTextWidth(t) <= w) return t; while (t.length > 1 && doc.getTextWidth(t + "...") > w) t = t.slice(0, -1); return t + "..."; };
+  // header
+  doc.setFillColor(...navy); doc.rect(0, 0, W, 26, "F");
+  doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(20); T("DropLine", M, 16);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11); T("Run report", W - M, 16, {align: "right"});
+  let y = 38; doc.setTextColor(...navy); doc.setFont("helvetica", "bold"); doc.setFontSize(17); T(fit(route.name || "Route", W - 2 * M), M, y);
+  y += 6; doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...grey);
+  T(dfmt(route.startedAt || R.t0 || route.createdAt || Date.now()) + (R.c.pending ? "  ·  " + R.c.pending + " stop" + (R.c.pending > 1 ? "s" : "") + " still to do" : "  ·  Run complete"), M, y);
+  // tiles
+  y += 7; const tiles = [[R.drops, "Delivered", col.delivered], ...(R.picks ? [[R.picks, "Picked up", col.delivered]] : []), [R.c.failed, "Failed", col.failed], [R.c.skipped, "Skipped", col.skipped], [st.length, "Total stops", navy]];
+  const tw = (W - 2 * M - (tiles.length - 1) * 4) / tiles.length;
+  tiles.forEach(([n, l, c], i) => { const x = M + i * (tw + 4); doc.setFillColor(244, 247, 250); doc.roundedRect(x, y, tw, 20, 2.5, 2.5, "F");
+    doc.setTextColor(...c); doc.setFont("helvetica", "bold"); doc.setFontSize(18); T(String(n), x + tw / 2, y + 10, {align: "center"});
+    doc.setTextColor(...grey); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); T(l.toUpperCase(), x + tw / 2, y + 16, {align: "center"}); });
+  // facts
+  y += 28; const facts = [];
+  if (R.parcelsDone) facts.push(["Parcels delivered", R.parcelsDone]);
+  if (route.startedAt) facts.push(["Started", R.hm(route.startedAt)]);
+  if (R.t0){ facts.push(["First stop done", R.hm(R.t0)], ["Last stop done", R.hm(R.t1)], ["Time on the run", fmtTime((R.t1 - (route.startedAt && route.startedAt < R.t0 ? route.startedAt : R.t0)) / 1000)]); }
+  if (R.o) facts.push(["Planned drive", fmtTime(R.o.duration) + " · " + fmtDist(R.o.distance)]);
+  if (route.start) facts.push(["Start", startName(route.start)]);
+  doc.setFontSize(10);
+  facts.forEach(([k, v], i) => { const x = M + (i % 2) * ((W - 2 * M) / 2), yy = y + Math.floor(i / 2) * 6.5;
+    doc.setTextColor(...grey); doc.setFont("helvetica", "normal"); T(k, x, yy); doc.setTextColor(...navy); doc.setFont("helvetica", "bold"); T(fit(String(v), 50), x + 38, yy); });
+  y += Math.ceil(facts.length / 2) * 6.5 + 6;
+  // stops table
+  const cx = {n: M, a: M + 10, s: 128, t: 152, r: 166}, head = () => { doc.setFillColor(...navy); doc.rect(M, y - 4.5, W - 2 * M, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    T("#", cx.n + 2, y); T("Address", cx.a, y); T("Status", cx.s, y); T("Time", cx.t, y); T("Note", cx.r, y); y += 6; };
+  doc.setTextColor(...navy); doc.setFont("helvetica", "bold"); doc.setFontSize(12); T("Stops", M, y); y += 7; head();
+  st.forEach((x, i) => {
+    if (y > H - 22){ doc.addPage(); y = 20; head(); }
+    const [a1, a2] = splitLabel(x.label), note = x.status === "failed" ? (x.reason || "") : (x.notes || "");
+    if (i % 2){ doc.setFillColor(247, 249, 251); doc.rect(M, y - 4, W - 2 * M, 10, "F"); }
+    doc.setFontSize(9.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...navy); T(String(i + 1), cx.n + 2, y); T(fit(a1, cx.s - cx.a - 3), cx.a, y);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...grey); T(fit(a2 + (isPick(x) ? " · Pickup" : "") + (pcount(x) > 1 ? " · " + pcount(x) + " parcels" : ""), cx.s - cx.a - 3), cx.a, y + 4);
+    doc.setFontSize(9.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...(col[x.status] || grey)); T(stLabel(x), cx.s, y);
+    doc.setFont("helvetica", "normal"); doc.setTextColor(...navy); T(x.doneAt ? R.hm(x.doneAt) : "-", cx.t, y);
+    doc.setFontSize(8.5); doc.setTextColor(...grey); T(fit(note, W - M - cx.r), cx.r, y);
+    doc.setDrawColor(...line); doc.line(M, y + 6, W - M, y + 6); y += 10; });
+  // footer on every page
+  const pages = doc.getNumberOfPages(), made = new Date().toLocaleString("en-AU", {day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit"});
+  for (let i = 1; i <= pages; i++){ doc.setPage(i); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...grey);
+    T("Made with DropLine · " + made, M, H - 8); T("Page " + i + " of " + pages, W - M, H - 8, {align: "right"}); }
+  return doc;
+}
+async function shareReportPDF(){
+  const b = $("repPdf"); if (b.disabled) return; b.disabled = true;
+  try{
+    let jsPDF; try{ jsPDF = await loadJsPDF(); }catch(e){ toast("Could not make the PDF right now. Connect to the internet once and try again."); return; }
+    const doc = buildReportPDF(jsPDF), d = new Date(route.startedAt || Date.now()).toISOString().slice(0, 10);
+    const name = "DropLine-report-" + ((route.name || "route").replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "") || "route") + "-" + d + ".pdf", title = "DropLine run report: " + (route.name || "route");
+    window.__lastPdf = {name, size: doc.output("arraybuffer").byteLength};
+    const D = devicePlugin(), unimpl = e => /not implemented|unimplemented/i.test(String((e && e.code) || "") + " " + String((e && e.message) || ""));
+    if (D) try{ await D.shareData({name, base64: doc.output("datauristring").split(",").pop(), mime: "application/pdf", title}); return; }catch(e){ if (!unimpl(e)) return; }
+    const blob = doc.output("blob");
+    try{ const f = new File([blob], name, {type: "application/pdf"});
+      if (navigator.canShare && navigator.canShare({files: [f]})){ await navigator.share({files: [f], title}); return; } }catch(e){ if (e && e.name === "AbortError") return; }
+    if (!isNativeApp()){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); toast("PDF report downloaded."); return; }
+    toast("This app version cannot share PDF files yet. Please update the app. You can use Share summary for now.");
+  } finally { b.disabled = false; }
+}
+$("repPdf").addEventListener("click", shareReportPDF);
 $("nextPin").addEventListener("click", e => { e.preventDefault(); const id = $("nextCard").dataset.id; if (id) showPin(id); });
 $("addedView").addEventListener("click", () => { $("addedLine").hidden = true; closePickers(); setView("stops"); });
 
@@ -2474,7 +2590,7 @@ const rpKey = p => p.lat.toFixed(5) + "," + p.lon.toFixed(5);
 const rp = p => (p && p.rp && p.rpKey === rpKey(p)) ? p.rp : p;
 const osrmLL = p => { const q = rp(p); return q.lon.toFixed(6) + "," + q.lat.toFixed(6); };
 function stopStreet(s){
-  let a = String(s.label || "").split(",")[0].trim();
+  let a = splitLabel(s.label)[0].trim();
   if (!/\d/.test(a)) return null;                                     // a place name, not a street address
   a = a.replace(/^(unit|u|apt|apartment|flat|shop|suite|lot|level|lvl)\s*/i, "");
   a = a.replace(/^[\w\/-]*\d[\w\/-]*\s+/, "").replace(/^[\w\/-]*\d[\w\/-]*\s+/, "");
@@ -2822,7 +2938,7 @@ function drawMap(){
     const key = s.lat.toFixed(5)+","+s.lon.toFixed(5), k = seen[key] = (seen[key] || 0) + 1;
     const a = k * 2.4, r = k > 1 ? 0.00012 * Math.sqrt(k) : 0;
     const m = L.marker([s.lat + r*Math.sin(a), s.lon + r*Math.cos(a)], {icon:pin(s.status+(isPick(s)?" pickup":"")+(s.id===selId?" sel":""), i+1), title:(i+1)+". "+s.label}).addTo(layer);
-    m.on("click", ev => { if (placingId){ map.fire("click", {latlng:ev.latlng}); return; } selId = expandedId = s.id; setView("stops"); render(); const el = document.querySelector('[data-id="'+s.id+'"]'); if(el) el.scrollIntoView({block:"center"}); });
+    m.on("click", ev => { if (placingId){ map.fire("click", {latlng:ev.latlng}); return; } selId = expandedId = s.id; $("stopSearch").value = ""; $("stopFilter").value = "all"; render(); scrollToStop(s.id); });
   });
   if (route.opt && !route.opt.stale && route.opt.geometry){
     const pl = L.polyline(route.opt.geometry, {color:"#1B6FE6", weight:5, opacity:.9}).addTo(layer);
@@ -2831,7 +2947,16 @@ function drawMap(){
   else { const line = (has(route.start) ? [[route.start.lat, route.start.lon]] : []).concat(route.stops.filter(has).map(s => [s.lat, s.lon]));
     if (line.length > 1) L.polyline(line, {color:"#526574", weight:2, dashArray:"6 6", opacity:.7}).addTo(layer); }
 }
-function fitAll(){ const pts = route.stops.filter(has).map(s=>[s.lat,s.lon]); if(has(route.start)) pts.push([route.start.lat,route.start.lon]); if(pts.length) map.fitBounds(pts, {padding:[30,30], maxZoom:15}); }
+/* Scroll the route screen so this stop's row sits just below the map (works with the row expanded). */
+function scrollToStop(id){
+  const run = () => { const el = document.querySelector('#stops [data-id="' + id + '"]'), main = $("app-main"); if (!el || !main) return;
+    const top = el.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop - 10;
+    main.scrollTo({top: Math.max(0, top), behavior: reduceMotion() ? "auto" : "smooth"}); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); };
+  requestAnimationFrame(() => requestAnimationFrame(run));
+}
+function fitAll(){ const pts = route.stops.filter(has).map(s=>[s.lat,s.lon]); if(has(route.start)) pts.push([route.start.lat,route.start.lon]); if(!pts.length) return;
+  map.invalidateSize(false);                                   // the map's box can change (half screen / full screen); measure it first
+  map.fitBounds(pts, {paddingTopLeft:[60, 56], paddingBottomRight:[60, 40], maxZoom:16, animate:false}); }
 map.on("click", e => {
   if (!placingId) return; const s = route.stops.find(x => x.id === placingId); placingId = null; document.body.classList.remove("placing");
   if (!s) return; s.lat = e.latlng.lat; s.lon = e.latlng.lng; s.geo = "manual"; s.approx = false; cachePut(s.query || s.label, s); cacheSave(); markStale(); persist(); render(); toast("Pin moved for stop "+(route.stops.indexOf(s)+1));
@@ -2881,10 +3006,16 @@ function closeDetails(){ $("detailsPage").hidden = true; }
 function showFullMapBtn(){ const f = $("appView").classList.contains("fullmap"), b = $("btnFullMap"); if (b) b.innerHTML = f ? ico("list") + "Back to stops" : '<svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Full map'; }
 const hm = t => new Date(t).toLocaleTimeString("en-AU", {hour: "numeric", minute: "2-digit"});
 /* Arrival time at each stop: leave time (or now, once delivering) + drive time + time spent at each earlier stop. */
-function leaveTime(){
-  if (route.leaveAt && /^\d\d:\d\d$/.test(route.leaveAt)){ const [h, m] = route.leaveAt.split(":").map(Number), d = new Date(); d.setHours(h, m, 0, 0); return d.getTime(); }
-  return Date.now();
+/* Planned leave time. A time that already passed more than 2 hours ago means tomorrow (e.g. 7:00 am set the evening before);
+   a time that passed only a little while ago means "now" — you cannot leave in the past. */
+function leaveInfo(){
+  const now = Date.now();
+  if (!(route.leaveAt && /^\d\d:\d\d$/.test(route.leaveAt))) return {t: now, set: false, now: true, tomorrow: false};
+  const [h, m] = route.leaveAt.split(":").map(Number), d = new Date(); d.setHours(h, m, 0, 0); let t = d.getTime(), tomorrow = false;
+  if (t < now - 2 * 3600e3){ t += 864e5; tomorrow = true; }
+  return t <= now ? {t: now, set: true, now: true, tomorrow: false} : {t, set: true, now: false, tomorrow};
 }
+function leaveTime(){ return leaveInfo().t; }
 function planTimes(){
   const st = route.stops, o = route.opt, legs = o && !o.stale && o.legs ? o.legs : null;
   const svc = (route.svcMin != null ? +route.svcMin : 2) * 60000;
@@ -2909,6 +3040,11 @@ function renderDetails(){
   $("detailsList").innerHTML = dl(rows); $("detailsPlan").innerHTML = dl(plan);
   $("detailsSub").textContent = route.name || "Route";
   $("leaveAt").value = route.leaveAt || ""; $("svcMin").value = String(route.svcMin != null ? route.svcMin : 2);
+  { const L = leaveInfo(), started = !!route.startedAt || st.some(x => x.status !== "pending");
+    $("leaveHint").textContent = started ? "You have started this run, so arrival and finish times now count from the current time."
+      : !L.set ? "Arrival and finish times count from now. Set a time if you are leaving later."
+      : L.now ? "That time has passed, so times count from now. Change it if you are leaving later."
+      : "Times count from " + hm(L.t) + (L.tomorrow ? " tomorrow" : " today") + ". Clear it to count from now."; }
 }
 function render(){
   try { if (startMeOn && route.start && route.start.me && route.stops.length && farFromStops(route.start)){ route.start = null; route.opt = null; } } catch(e){}
@@ -2919,7 +3055,13 @@ function render(){
   $("nStops").textContent = st.length;
   const nParc = st.reduce((a,s) => a + pcount(s), 0), nPick = st.filter(isPick).length;
   $("nParcels").textContent = [nParc !== st.length ? nParc+" parcels" : "", nPick ? nPick+" pickup"+(nPick>1?"s":"") : ""].filter(Boolean).join(" · ") || (st.length === 1 ? "Stop" : "Stops");
-  const T = planTimes(); $("mFinish").textContent = T.finish ? hm(T.finish) : "–";
+  const T = planTimes();
+  { const started = !!route.startedAt || st.some(x => x.status !== "pending"), L = leaveInfo();
+    const lastDone = st.map(x => x.doneAt || 0).reduce((a, b) => Math.max(a, b), 0);
+    if (st.length && !cnt.pending){ $("mFinish").textContent = lastDone ? hm(route.finishedAt || lastDone) : "–"; $("mFinishL").textContent = "Finished"; }
+    else { $("mFinish").textContent = T.finish ? hm(T.finish) : "–";
+      $("mFinishL").textContent = !T.finish ? "Finish" : started ? "Finish (est.)" : L.tomorrow ? "Finish tomorrow" : (L.set && !L.now) ? "Finish · leave " + hm(L.t) : "Finish if you leave now"; }
+    if (started || !cnt.pending) $("optMsg").hidden = true; }
   const o = route.opt, b = $("optBadge");
   if (!o){ b.className = "badge"; b.textContent = "Not optimised"; $("mTime").textContent = "–"; $("mDist").textContent = "Drive"; }
   else { $("mTime").textContent = o.stale ? "–" : fmtTime(o.duration); $("mDist").textContent = o.stale ? "Drive" : fmtDist(o.distance);
@@ -2934,7 +3076,8 @@ function render(){
     $("btnOpt").classList.toggle("second", opted); $("btnOpt").style.flex = $("btnStartRun").hidden ? "1" : "none"; }
   $("startAddrBox").hidden = startMeOn || !!(route.start && !route.start.me);
   showStart();
-  $("emptyHint").hidden = st.length > 0;
+  $("emptyHint").hidden = st.length > 0; $("stopTools").hidden = st.length <= 4;
+  if (st.length <= 4 && ($("stopSearch").value || $("stopFilter").value !== "all")){ $("stopSearch").value = ""; $("stopFilter").value = "all"; }
   $("routeTitle").firstChild.nodeValue = route.name || "Route";
   $("routeSub").textContent = st.length ? st.length+" stop"+(st.length===1?"":"s")+" · "+cnt.delivered+" delivered" : "No stops yet";
   $("sumPanel").hidden = !st.length;
@@ -3020,7 +3163,7 @@ wireSearch($("addrIn"), $("addrSugg"), addStop);
 wireSearch($("startIn"), $("startSugg"), setStart);
 $("btnOpt").addEventListener("click", optimise);
 $("btnOpt2").addEventListener("click", () => { setView("map"); optimise(); });
-$("btnFit").addEventListener("click", fitAll);
+$("btnFit").addEventListener("click", () => { $("app-main").scrollTo({top: 0, behavior: reduceMotion() ? "auto" : "smooth"}); fitAll(); });
 $("btnOffline").addEventListener("click", prepareOffline);
 /* Avoid toll roads shows "Coming soon" until the routing server supports it; checked quietly once per session,
    so when DropLine's own routing server arrives the switch turns on by itself. */
@@ -3097,9 +3240,9 @@ function finishNext(id, st, reason){
   const pick = isPick(route.stops.find(x => x.id === id));
   slideSwap($("nextBody"), $("nextStamp"), st, doneWord(st, pick), () => { animNext = true; setStatus(id, st, reason); animNext = false; });
 }
-document.querySelector("#nextCard .acts").addEventListener("click", e => { const st = e.target.dataset.next; if(!st || swapping) return; const id = $("nextCard").dataset.id;
+document.querySelector("#nextCard .acts").addEventListener("click", e => { const b = e.target.closest("[data-next]"), st = b && b.dataset.next; if(!st || swapping) return; const id = $("nextCard").dataset.id;
   if (st === "failed"){ failPickId = failPickId === id ? null : id; render(); return; } finishNext(id, st); });
-$("nextReasons").addEventListener("click", e => { const r = e.target.dataset.nreason; if(!r) return; finishNext($("nextCard").dataset.id, "failed", r); });
+$("nextReasons").addEventListener("click", e => { const b = e.target.closest("[data-nreason]"), r = b && b.dataset.nreason; if(!r) return; failPickId = null; $("nextReasons").hidden = true; finishNext($("nextCard").dataset.id, "failed", r); });
 let noteT;
 $("stops").addEventListener("input", e => { const id = e.target.dataset.note; if (!id) return; const s = route.stops.find(x => x.id === id); if (!s) return;
   s.notes = e.target.value.slice(0, 300); clearTimeout(noteT); noteT = setTimeout(persist, 400);
@@ -3434,7 +3577,7 @@ function navUpdate(pos){
   const st = nav.steps[nav.stepIdx], toStep = Math.max(0, st.at - along);
   $("navArrow").innerHTML = turnIcon(turnName(st));
   $("navDist").textContent = showDist(toStep);
-  $("navInstr").textContent = stepText(st) + (st.maneuver.type === "arrive" ? ": " + nav.stop.label.split(",")[0] : "");
+  $("navInstr").textContent = stepText(st) + (st.maneuver.type === "arrive" ? ": " + splitLabel(nav.stop.label)[0] : "");
   const nx = nav.steps[nav.stepIdx + 1]; $("navThen").textContent = nx && nx.maneuver.type !== "arrive" ? "Then " + lcFirst(stepText(nx)) : "";
   const mins = Math.max(1, Math.round(remaining / Math.max(1, nav.total) * nav.duration / 60));
   $("navEta").textContent = mins + " min"; $("navRemain").textContent = showDist(remaining);
@@ -3444,8 +3587,8 @@ function navUpdate(pos){
   const key = nav.stepIdx + ":";
   if (st.maneuver.type === "arrive"){
     if (remaining < 30 && !nav.arrived){ nav.arrived = true;
-      phoneNotify(4, "Arrived: #" + (route.stops.indexOf(nav.stop) + 1), nav.stop.label + (nav.stop.notes ? " — " + nav.stop.notes : "")); speak("You have arrived. " + nav.stop.label.split(",")[0] + "." + (nav.stop.notes ? " Note: " + nav.stop.notes + "." : "")); $("navArriveBox").hidden = false; }
-    else if (remaining < 250 && !nav.said[key+"far"]){ nav.said[key+"far"] = 1; speak(sayDist(remaining) + ", you will arrive at " + nav.stop.label.split(",")[0]); }
+      phoneNotify(4, "Arrived: #" + (route.stops.indexOf(nav.stop) + 1), nav.stop.label + (nav.stop.notes ? " — " + nav.stop.notes : "")); speak("You have arrived. " + splitLabel(nav.stop.label)[0] + "." + (nav.stop.notes ? " Note: " + nav.stop.notes + "." : "")); $("navArriveBox").hidden = false; }
+    else if (remaining < 250 && !nav.said[key+"far"]){ nav.said[key+"far"] = 1; speak(sayDist(remaining) + ", you will arrive at " + splitLabel(nav.stop.label)[0]); }
     return;
   }
   const far = pos.speed && pos.speed > 22 ? 800 : 300;
@@ -3495,7 +3638,7 @@ async function navStart(stop){
   try{ await navRoute(from); }catch(e){ $("navArrow").innerHTML = turnIcon("warn"); $("navInstr").textContent = "No road route found to this stop. Check your internet connection, or tap Back."; return; }
   try{ if (navigator.wakeLock) nav.wake = await navigator.wakeLock.request("screen"); }catch(e){}
   const first = nav.steps[1] || nav.steps[0];
-  speak("Starting route to " + stop.label.split(",")[0] + ". " + stepText(nav.steps[0]) + (first ? ", then " + lcFirst(stepText(first)) : ""));
+  speak("Starting route to " + splitLabel(stop.label)[0] + ". " + stepText(nav.steps[0]) + (first ? ", then " + lcFirst(stepText(first)) : ""));
   navUpdate({lat: from.lat, lon: from.lon});
   if (nav.sim) navSimulate(); else navWatch();
 }
@@ -3511,6 +3654,12 @@ function renderNavStop(stop){
   $("navTitle").textContent = route.name || "Route"; $("navSub").textContent = (k + 1) + " of " + route.stops.length + " · " + route.stops.filter(x => x.status === "delivered").length + " delivered";
   document.querySelector("#navDelivered .t").textContent = isPick(stop) ? "Mark as Picked up" : "Mark as Delivered";
   $("navNote").textContent = stop.notes || "Add a note for this stop";
+  $("navReasons").hidden = true; $("navFailed").classList.remove("on");
+  const pendingAt = i => route.stops[i] && route.stops[i].status === "pending" && has(route.stops[i]);
+  let hasNext = false, hasPrev = false; for (let i = k + 1; i < route.stops.length; i++) if (pendingAt(i)){ hasNext = true; break; }
+  for (let i = k - 1; i >= 0; i--) if (pendingAt(i)){ hasPrev = true; break; }
+  $("navNext").disabled = !hasNext; $("navPrev").disabled = !hasPrev;
+  $("navMiniTitle").textContent = (k + 1) + " · " + t1;
 }
 function navWatch(){
   if (nav.watch != null || !navigator.geolocation) return;
@@ -3543,7 +3692,7 @@ function navDone(status, reason){
   setStatus(was.id, status, reason);
   const next = route.stops.find(s => s.status === "pending" && has(s));
   if (!next){ speak("All stops are done. Well done."); setTimeout(() => { navStop(); setView("map"); showReport(); }, 600); return; }
-  speak((status === "delivered" ? (pick ? "Picked up. " : "Delivered. ") : "") + (isPick(next) ? "Next pickup: " : "Next stop: ") + next.label.split(",")[0]);
+  speak((status === "delivered" ? (pick ? "Picked up. " : "Delivered. ") : "") + (isPick(next) ? "Next pickup: " : "Next stop: ") + splitLabel(next.label)[0]);
   const ns = $("navStop");
   if (reduceMotion()){ navStart(next); return; }
   ns.classList.add("out");
@@ -3564,6 +3713,10 @@ function navStep(dir){
   toast(dir > 0 ? "No more pending stops after this one." : "No pending stops before this one.");
 }
 $("navNext").addEventListener("click", () => navStep(1));
+function navSheet(min){ $("navScreen").classList.toggle("sheetmin", min); setTimeout(() => { try{ nav.map && nav.map.invalidateSize(); }catch(e){} }, 260); }
+$("navSheetToggle").addEventListener("click", () => navSheet(true));
+$("navMini").addEventListener("click", () => navSheet(false));
+$("navMapBig").addEventListener("click", () => navSheet(!$("navScreen").classList.contains("sheetmin")));
 $("navPrev").addEventListener("click", () => navStep(-1));
 $("navNoteRow").addEventListener("click", () => {
   const s = nav.stop; if (!s) return; $("noteText").value = s.notes || "";
@@ -3576,8 +3729,9 @@ $("navSim").addEventListener("change", e => { nav.sim = e.target.checked; if (!n
   if (!nav.coords.length || nav.coordsFor !== nav.stop){ navStart(nav.stop); return; } if (nav.sim){ if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; } navSimulate(); } else { clearInterval(nav.simTimer); navWatch(); } });
 $("navDelivered").addEventListener("click", () => navDone("delivered"));
 $("navSkip").addEventListener("click", () => navDone("skipped"));
-$("navFailed").addEventListener("click", () => { $("navReasons").hidden = !$("navReasons").hidden; });
-$("navReasons").addEventListener("click", e => { const r = e.target.dataset.nr; if (r) navDone("failed", r); });
+$("navFailed").addEventListener("click", () => { const h = !$("navReasons").hidden; $("navReasons").hidden = h; $("navFailed").classList.toggle("on", !h);
+  if (!h) setTimeout(() => $("navReasons").scrollIntoView({block: "nearest", behavior: "smooth"}), 30); });
+$("navReasons").addEventListener("click", e => { const b = e.target.closest("[data-nr]"), r = b && b.dataset.nr; if (r){ $("navReasons").hidden = true; $("navFailed").classList.remove("on"); navDone("failed", r); } });
 $("nextGo").addEventListener("click", () => { const id = $("nextCard").dataset.id; const s = route.stops.find(x => x.id === id); if (s) navStart(s); });
 
 /* import sheet */
@@ -3797,7 +3951,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.0";
+const APP_VERSION = "8.1";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -4190,7 +4344,7 @@ setTimeout(() => {
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 /* keep a copy of the app on the phone so it opens with no signal (website only; not in local tests) */
 try{ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {}); }catch(e){}
-window.RP = {setView, planTimes, gnafFile, handleBack, syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {setView, planTimes, leaveInfo, splitLabel, gnafFile, handleBack, syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

@@ -20,7 +20,8 @@ public class DevicePlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificationCenter
         CAPPluginMethod(name: "startUpdates", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopUpdates", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openChat", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "shareFile", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "shareFile", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "shareData", returnType: CAPPluginReturnPromise)
     ]
     private let locMgr = CLLocationManager()
     // Location straight from iOS (one permission prompt; the web view's own location prompt is never used)
@@ -156,6 +157,22 @@ public class DevicePlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificationCenter
         let text = call.getString("text") ?? ""
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         do { try text.write(to: url, atomically: true, encoding: .utf8) } catch { call.reject("Could not prepare the file"); return }
+        DispatchQueue.main.async {
+            guard let vc = self.bridge?.viewController else { call.reject("No screen to show sharing"); return }
+            let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+            sheet.popoverPresentationController?.sourceView = vc.view
+            sheet.popoverPresentationController?.sourceRect = CGRect(x: vc.view.bounds.midX, y: vc.view.bounds.maxY - 40, width: 1, height: 1)
+            sheet.completionWithItemsHandler = { _, completed, _, _ in call.resolve(["shared": completed]) }
+            vc.present(sheet, animated: true)
+        }
+    }
+
+    /// Share a file made in the app (e.g. the PDF run report), sent as base64.
+    @objc func shareData(_ call: CAPPluginCall) {
+        let name = (call.getString("name") ?? "dropline-report.pdf").replacingOccurrences(of: "/", with: "-")
+        guard let b64 = call.getString("base64"), let data = Data(base64Encoded: b64, options: .ignoreUnknownCharacters) else { call.reject("No file data"); return }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        do { try data.write(to: url, options: .atomic) } catch { call.reject("Could not prepare the file"); return }
         DispatchQueue.main.async {
             guard let vc = self.bridge?.viewController else { call.reject("No screen to show sharing"); return }
             let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)

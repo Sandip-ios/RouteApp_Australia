@@ -976,6 +976,14 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <button class="btn" id="navAppCancel" style="width:100%">Cancel</button>
   </div>
 </div>
+<div class="sheet-bg" id="testLocSheet" hidden>
+  <div class="sheet" role="dialog" aria-label="Test location">
+    <h3>Test location</h3>
+    <p class="hint" style="margin-top:0">For testing outside Australia. DropLine will act as if the phone is in the city you choose: start from my location, nearby search and offline addresses. To see moving navigation, use ⋯ → Simulate driving.</p>
+    <div class="setgroup" id="testLocList"></div>
+    <button class="btn" id="testLocCancel" style="width:100%">Cancel</button>
+  </div>
+</div>
 <div class="sheet-bg" id="offSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Offline addresses">
     <h3>Offline addresses</h3>
@@ -1093,6 +1101,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <div class="setgroup">
       <button class="setlink" id="setNavApp"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg></span><span><b>Navigation app</b><small id="setNavAppTxt">Google Maps</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setOffline"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span><b>Offline addresses</b><small id="setOffTxt">Saved automatically for your area</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      <button class="setlink" id="setTestLoc" hidden><span class="tile" style="background:#FFF0D6;color:#B26E00"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></span><span><b>Test location</b><small id="setTestLocTxt">Off – using the phone's real location</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setGuide"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg></span><span><b>How-to guide</b><small>The 30-second walkthrough</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setAbout"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg></span><span><b>What works</b><small>Features in this version</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     </div>
@@ -1613,6 +1622,28 @@ const SAMPLE = [
   }
   try{ Object.defineProperty(navigator, "geolocation", {configurable: true, value: {getCurrentPosition: get, watchPosition: watch, clearWatch: clear}}); }catch(e){}
 })();
+/* Test location: for testing outside Australia, the app can pretend the phone is in an Australian city.
+   Settings shows the option only when the phone's real position is outside Australia (or the option is on). */
+const TEST_PLACES = {sydney: {name: "Sydney · Parramatta", lat: -33.8150, lon: 151.0030}, melbourne: {name: "Melbourne CBD", lat: -37.8136, lon: 144.9631},
+  brisbane: {name: "Brisbane CBD", lat: -27.4698, lon: 153.0251}, adelaide: {name: "Adelaide CBD", lat: -34.9285, lon: 138.6007}, perth: {name: "Perth CBD", lat: -31.9523, lon: 115.8613}};
+const inAU = p => !!p && p.lat < -9 && p.lat > -44.5 && p.lon > 112 && p.lon < 154.5;
+function testPlace(){ try{ return TEST_PLACES[localStorage.getItem("dropline.testloc.v1")] || null; }catch(e){ return null; } }
+(function testLocation(){
+  const geo = navigator.geolocation; if (!geo) return;
+  const rGet = geo.getCurrentPosition.bind(geo), rWatch = geo.watchPosition.bind(geo), rClear = geo.clearWatch.bind(geo);
+  const fake = t => ({coords: {latitude: t.lat, longitude: t.lon, accuracy: 12, speed: null, heading: null, altitude: null, altitudeAccuracy: null}, timestamp: Date.now()});
+  const note = p => { try{ if (!inAU({lat: p.coords.latitude, lon: p.coords.longitude})) localStorage.setItem("dropline.outsideAU", "1"); else localStorage.removeItem("dropline.outsideAU"); }catch(e){} };
+  const ws = {}; let n = 0;
+  const api = {
+    getCurrentPosition(ok, fail, opt){ const t = testPlace(); if (t){ setTimeout(() => ok(fake(t)), 30); return; } rGet(p => { note(p); ok(p); }, fail, opt); },
+    watchPosition(ok, fail, opt){ const id = ++n, t = testPlace();
+      if (t){ setTimeout(() => ok(fake(t)), 30); ws[id] = {timer: setInterval(() => ok(fake(t)), 4000)}; }
+      else ws[id] = {real: rWatch(p => { note(p); ok(p); }, fail, opt)};
+      return id; },
+    clearWatch(id){ const w = ws[id]; if (!w) return; delete ws[id]; if (w.timer) clearInterval(w.timer); else rClear(w.real); }
+  };
+  try{ Object.defineProperty(navigator, "geolocation", {configurable: true, value: api}); }catch(e){}
+})();
 
 /* ---------- state ---------- */
 const uid = () => Math.random().toString(36).slice(2,10);
@@ -1719,7 +1750,7 @@ function photonLabel(p){
   const tail = [sub, p.state ? stateAbbr(p.state) : "", p.postcode].filter(Boolean).join(" ");
   return (nm + [line1, tail].filter(Boolean).join(", ")).replace(/^, /,"");
 }
-function biasPoint(){ if (has(myLoc)) return myLoc; if (has(route.start)) return route.start; const s = route.stops.find(has); return s || {lat:PARRA[0], lon:PARRA[1]}; }
+function biasPoint(){ if (has(myLoc) && inAU(myLoc)) return myLoc; if (has(route.start)) return route.start; const s = route.stops.find(has); return s || {lat:PARRA[0], lon:PARRA[1]}; }
 let lastNom = 0;
 async function nominatim(q, limit){
   const wait = 1100 - (Date.now() - lastNom); if (wait > 0) await sleep(wait); lastNom = Date.now();
@@ -1866,7 +1897,7 @@ async function gnafSuggest(q){
 }
 
 /* Address search, local first: official addresses in the postcodes nearest to you, then the open map search sorted by distance. */
-function knownCentre(){ if (has(myLoc)) return myLoc; if (has(route.start)) return route.start; const s = route.stops.find(has); return s || null; }
+function knownCentre(){ if (has(myLoc) && inAU(myLoc)) return myLoc; if (has(route.start)) return route.start; const s = route.stops.find(has); return s || null; }
 /* Which state's addresses to keep on this phone: chosen by the driver, else worked out from where they are (and the
    stops on the open route). Border towns get both states (Albury–Wodonga, Tweed–Gold Coast, Canberra–Queanbeyan). */
 const STATES = ["NSW","VIC","QLD","SA","WA","TAS","NT","ACT"];
@@ -3485,7 +3516,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "7.2";
+const APP_VERSION = "7.3";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -3503,6 +3534,7 @@ async function techDetails(){
 }
 const DEV_PHONE = "919909949254";
 async function openSettings(){
+  try{ showTestLocRow(); }catch(e){}
   const st = await permState().catch(() => ({}));
   const native = st.platform === "android" || st.platform === "ios";
   // the switch is DropLine's own on/off; the phone's permission is separate
@@ -3663,6 +3695,19 @@ async function openOfflineSheet(){
     '<dt>Space used</dt><dd>' + (pcs.length ? fmtMB(kb) : "–") + '</dd>';
 }
 $("setOffline").addEventListener("click", openOfflineSheet);
+function showTestLocRow(){ let out = false; try{ out = localStorage.getItem("dropline.outsideAU") === "1"; }catch(e){}
+  const t = testPlace(); $("setTestLoc").hidden = !(out || t || (has(myLoc) && !inAU(myLoc)));
+  $("setTestLocTxt").textContent = t ? "On – pretending to be in " + t.name : "Off – using the phone's real location"; }
+$("setTestLoc").addEventListener("click", () => {
+  const cur = (() => { try{ return localStorage.getItem("dropline.testloc.v1") || ""; }catch(e){ return ""; } })();
+  $("testLocList").innerHTML = Object.entries(TEST_PLACES).map(([k, v]) => '<button class="appopt'+(k === cur ? " on" : "")+'" data-tl="'+k+'"><span class="badge2" style="background:#0F5A7A">'+v.name[0]+'</span><span><b>'+v.name+'</b></span>'+ico("check", "tickmark")+'</button>').join("")
+    + '<button class="appopt'+(cur ? "" : " on")+'" data-tl=""><span class="badge2" style="background:#526574">'+ico("x")+'</span><span><b>Off</b><small>Use the phone\'s real location</small></span>'+ico("check", "tickmark")+'</button>';
+  $("settingsSheet").hidden = true; $("testLocSheet").hidden = false; });
+$("testLocList").addEventListener("click", e => { const b = e.target.closest("[data-tl]"); if (!b) return;
+  try{ if (b.dataset.tl) localStorage.setItem("dropline.testloc.v1", b.dataset.tl); else localStorage.removeItem("dropline.testloc.v1"); }catch(err){}
+  try{ localStorage.setItem("dropline.startMe", "1"); sessionStorage.setItem("dropline.splash", "1"); }catch(err){}
+  toast(b.dataset.tl ? "Test location on: " + TEST_PLACES[b.dataset.tl].name : "Test location off"); setTimeout(() => location.reload(), 600); });
+$("testLocCancel").addEventListener("click", () => { $("testLocSheet").hidden = true; openSettings(); });
 $("setNavApp").addEventListener("click", () => { $("settingsSheet").hidden = true; openNavAppSheet(null); });
 $("navAppList").addEventListener("click", e => {
   const b = e.target.closest("[data-app]"); if (!b) return;

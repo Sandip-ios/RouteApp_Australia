@@ -615,6 +615,18 @@ textarea:focus{border-color:var(--teal);outline:none}
 .permrow .btn{min-height:40px;padding:6px 12px}
 .homeill{display:block;width:100%;height:auto;margin-top:6px;opacity:.95}
 .madeby{text-align:center;color:var(--muted);font-size:12.5px;margin:6px 0 0}
+.home .hlist > .madeby{margin-top:auto;padding-top:10px}   /* footer + road picture sit at the bottom of the screen when there are few routes */
+.ask-bg{position:fixed;inset:0;z-index:3000;background:rgba(10,24,40,.55);display:grid;place-items:center;padding:24px}
+.ask{width:100%;max-width:360px;background:var(--surface);color:var(--ink);border-radius:22px;padding:24px 20px 18px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.ask .ai{width:58px;height:58px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:var(--fail-soft,#FDECEC);color:var(--fail)}
+.ask .ai .ico{width:28px;height:28px}
+.ask h3{margin:0 0 8px;font:700 22px/1.2 var(--f-display)}
+.ask p{margin:0 0 18px;color:var(--muted);font-size:15px;line-height:1.45}
+.ask .btn{width:100%;min-height:50px;font-size:16px}
+.ask #askOk{background:var(--fail);color:#fff;border-color:var(--fail)}
+.ask #askNo{margin-top:8px}
+@media (prefers-reduced-motion:no-preference){.ask-bg:not([hidden]) .ask{animation:askin .22s cubic-bezier(.2,.9,.25,1)}}
+@keyframes askin{from{transform:scale(.92);opacity:0}to{transform:none;opacity:1}}
 .madeby b{color:var(--ink);font-weight:600}
 
 /* ---------- splash & guide ---------- */
@@ -1342,6 +1354,14 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <div class="qnotes" id="noteQuick"></div>
     <button class="btn cta" id="noteSave" style="width:100%;margin-top:12px">Save note</button>
     <button class="btn" id="noteCancel" style="width:100%;margin-top:8px">Cancel</button>
+  </div>
+</div>
+<div class="ask-bg" id="askBox" hidden>
+  <div class="ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">
+    <div class="ai"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></div>
+    <h3 id="askTitle"></h3><p id="askText"></p>
+    <button class="btn" id="askOk"></button>
+    <button class="btn" id="askNo">Cancel</button>
   </div>
 </div>
 <div class="sheet-bg" id="repSheet" hidden>
@@ -3201,7 +3221,8 @@ $("btnShowProb").addEventListener("click", () => {
   probIdx = (probIdx + 1) % probs.length; const s = probs[probIdx]; selId = expandedId = s.id; setView("stops"); render();
   const el = document.querySelector('[data-id="'+s.id+'"]'); if (el) el.scrollIntoView({block:"center", behavior:"smooth"});
   if (has(s)) map.setView([s.lat, s.lon], 17); toast("Pin check "+(probIdx+1)+" of "+probs.length+" — stop #"+(route.stops.indexOf(s)+1)+": "+(s.geo === "missing" ? "no map pin yet. Tap Move pin, then tap the map." : "is the pin in the right place? If not, tap Move pin.")); });
-$("btnClear").addEventListener("click", () => $("clearConfirm").hidden = false);
+$("btnClear").addEventListener("click", async () => { const n = route.stops.length;
+  if (await askConfirm("Remove all stops?", "All " + n + " stop" + (n === 1 ? "" : "s") + " in this route will be removed. The route itself stays. This cannot be undone.", "Remove all stops")) $("clearYes").click(); });
 $("clearNo").addEventListener("click", () => $("clearConfirm").hidden = true);
 $("clearYes").addEventListener("click", () => { route = emptiedRoute(); $("clearConfirm").hidden = true; $("optMsg").hidden = true; persist(); render(); });
 $("stops").addEventListener("click", e => {
@@ -3443,7 +3464,8 @@ $("scanNext").addEventListener("click", () => {
     w.textContent = u+" yellow row"+(u>1?"s are":" is")+" not checked yet. Check "+(u>1?"them":"it")+", or tap Next page again to keep the text as read."; return; }
   acceptPage(); renderScan(); scanMsg("Page saved. Now photograph page "+(scan.pages.length+1)+", or tap Done if that was the last page.");
   document.querySelector("#scanSheet .sheet").scrollTop = 0; });
-$("scanRestart").addEventListener("click", () => { $("scanRestartConfirm").hidden = false; });
+$("scanRestart").addEventListener("click", async () => {
+  if (await askConfirm("Start the scan again?", "The pages you have scanned so far will be thrown away.", "Discard pages")) $("scanRestartYes").click(); });
 $("scanRestartNo").addEventListener("click", () => { $("scanRestartConfirm").hidden = true; });
 $("scanRestartYes").addEventListener("click", () => { scan = {pages:[], total:null}; scanPage = null; scanSave(); $("scanRestartConfirm").hidden = true; $("scanMsg").hidden = true; renderScan(); });
 $("scanCopy").addEventListener("click", async () => {
@@ -3835,7 +3857,7 @@ $("btnCentre").addEventListener("click", () => { if (has(myLoc)) map.setView([my
 $("dRename").addEventListener("click", () => { persist(); openMenu(route.id); setTimeout(() => { $("menuName").focus(); $("menuName").select(); }, 80); });
 $("dCopy").addEventListener("click", () => { persist(); menuId = route.id; $("menuCopy").click(); });
 $("dExport").addEventListener("click", () => { persist(); menuId = route.id; $("menuExport").click(); });
-$("dDelete").addEventListener("click", () => { persist(); openMenu(route.id); $("menuDelConfirm").hidden = false; });
+$("dDelete").addEventListener("click", () => { persist(); openMenu(route.id); askDeleteRoute(route.id); });
 $("btnRouteMenu").addEventListener("click", () => { persist(); openDetails(); });
 $("menuRename").addEventListener("click", () => { const a = lib(), r = a[menuId]; if (!r) return; r.name = $("menuName").value.trim() || r.name;
   if (route.id === menuId) route.name = r.name; saveLib(a); $("menuTitle").textContent = r.name; renderHome(); render(); toast("Renamed to “"+r.name+"”"); $("menuSheet").hidden = true; });
@@ -3856,7 +3878,21 @@ async function shareRouteFile(r){
   catch(e){ toast("Sharing is not available in this app version. Please update the app."); }
 }
 $("menuExport").addEventListener("click", () => { const r = lib()[menuId]; if (r) shareRouteFile(r); });
-$("menuDelete").addEventListener("click", () => $("menuDelConfirm").hidden = false);
+/* A clear yes/no question in the middle of the screen (used before deleting anything). */
+let askDone = null;
+function askConfirm(title, text, ok){
+  $("askTitle").textContent = title; $("askText").textContent = text; $("askOk").textContent = ok; $("askBox").hidden = false;
+  setTimeout(() => $("askNo").focus(), 30);
+  return new Promise(res => { askDone = v => { $("askBox").hidden = true; askDone = null; res(v); }; });
+}
+$("askOk").addEventListener("click", () => askDone && askDone(true));
+$("askNo").addEventListener("click", () => askDone && askDone(false));
+$("askBox").addEventListener("click", e => { if (e.target === $("askBox") && askDone) askDone(false); });
+async function askDeleteRoute(id){
+  const r = lib()[id] || (route.id === id ? route : null), n = r && r.stops ? r.stops.length : 0;
+  if (await askConfirm("Delete this route?", "“" + ((r && r.name) || "Route") + "” and its " + n + " stop" + (n === 1 ? "" : "s") + " will be removed from this phone. This cannot be undone.", "Delete route")) $("menuDelYes").click();
+}
+$("menuDelete").addEventListener("click", () => askDeleteRoute(menuId));
 $("menuDelNo").addEventListener("click", () => $("menuDelConfirm").hidden = true);
 $("menuDelYes").addEventListener("click", () => { const a = lib(), r = a[menuId]; delete a[menuId]; saveLib(a); $("menuSheet").hidden = true;
   if (route.id === menuId){ route = blankRoute(); saveJSON(STORE_CUR, route); showHome(); } else renderHome();
@@ -3951,7 +3987,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.1";
+const APP_VERSION = "8.2";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -4241,6 +4277,7 @@ async function androidLocationPrompt(){
 }
 /* Android phone Back button: close what is open, step back a screen, and only leave the app from the routes list. */
 function handleBack(){
+  if (askDone){ askDone(false); return true; }
   if (!$("detailsPage").hidden && [...document.querySelectorAll(".sheet-bg")].every(x => x.hidden)){ closeDetails(); return true; }
   if ($("appView").classList.contains("fullmap") && $("home").hidden){ $("btnFullMap").click(); return true; }
   if (!$("startPicker").hidden){ $("startPickBack").click(); return true; }

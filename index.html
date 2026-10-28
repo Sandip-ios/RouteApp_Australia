@@ -853,7 +853,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <div class="lsub" id="startAddrBox" hidden><button class="pickrow" id="startSet"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><span>Search the starting address (e.g. your depot)</span></button></div>
       <div class="startshow" id="startShow" hidden><span class="spin">S</span><span class="lt"><small>Starting point</small><b id="startShowAddr"></b></span><button class="chg" id="startChange" hidden>Change</button></div>
       <button class="btn ghost" id="btnMyLoc" hidden>Use my location as start</button>
-      <label class="lrow switchrow" for="avoidTolls" id="tollRow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-road"/></svg></span><span class="lt"><b>Avoid toll roads</b><small id="tollTxt">For now routes may use toll roads</small></span>
+      <label class="lrow switchrow" for="avoidTolls" id="tollRow" hidden><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-road"/></svg></span><span class="lt"><b>Avoid toll roads</b><small id="tollTxt">For now routes may use toll roads</small></span>
         <span class="soon" id="tollSoon">Coming soon</span>
         <span class="switch" id="tollSw" hidden><input type="checkbox" id="avoidTolls" role="switch" disabled><span class="knob"></span></span></label>
     </section>
@@ -1145,7 +1145,6 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <div class="label" style="color:#B26E00">Limits today</div>
     <ul class="wlist">
       <li>Free public map and routing services: no live traffic and no guaranteed uptime</li>
-      <li>Avoid toll roads: coming soon (needs DropLine's own routing server)</li>
       <li>Navigation works while the app is open and the screen is on</li>
       <li>Photo scanning is tuned to the current run-sheet layout</li>
     </ul>
@@ -1535,6 +1534,7 @@ const OSRM = "https://router.project-osrm.org";
 /* "Avoid toll roads": sent to the routing server as exclude=toll. The public server does not support it yet;
    our own routing server (planned) will, and then this switch works with no app change. */
 let tollOK = false;
+const TOLLS_FEATURE = false;          // "Avoid toll roads" is removed from the app for now (needs DropLine's own routing server)
 const tollX = () => tollOK && route.avoidTolls ? "&exclude=toll" : "";
 async function tollSupported(){
   try{ const j = await fetchJSON(OSRM + "/route/v1/driving/151.2093,-33.8688;151.1240,-33.7760?overview=false&exclude=toll", 10000); return !!(j && j.code === "Ok"); }
@@ -2635,7 +2635,7 @@ function renderDetails(){
     ["Done", c.delivered + " delivered · " + c.failed + " failed · " + c.skipped + " skipped"],
     ["Start", route.start ? startName(route.start) : "Not set"],
     ["Drive time", o && !o.stale ? fmtTime(o.duration) : "–"], ["Distance", o && !o.stale ? fmtDist(o.distance) : "–"],
-    ["Toll roads", route.avoidTolls ? "Avoided" : "Allowed (avoiding tolls coming soon)"]];
+    ];
   $("detailsList").innerHTML = rows.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(String(v)) + '</dd>').join("");
 }
 function render(){
@@ -2752,7 +2752,7 @@ function showTollState(){
 }
 (async () => {
   let k = null; try{ k = sessionStorage.getItem("dropline.toll"); }catch(e){}
-  if (k === null && navigator.onLine !== false){ const ok = await tollSupported(); if (ok !== null){ k = ok ? "1" : "0"; try{ sessionStorage.setItem("dropline.toll", k); }catch(e){} } }
+  if (TOLLS_FEATURE && k === null && navigator.onLine !== false){ const ok = await tollSupported(); if (ok !== null){ k = ok ? "1" : "0"; try{ sessionStorage.setItem("dropline.toll", k); }catch(e){} } }
   tollOK = k === "1";
   if (!tollOK && route && route.avoidTolls){ route.avoidTolls = false; persist(); }
   showTollState();
@@ -3485,7 +3485,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "7.1";
+const APP_VERSION = "7.2";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

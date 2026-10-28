@@ -10,6 +10,7 @@ coords = ";".join(f"{p['lon']},{p['lat']}" for p in P)
 j = get(f"https://router.project-osrm.org/table/v1/driving/{coords}?annotations=duration,distance")
 D, Di = j["durations"], j["distances"]
 names = [p["a"].split(",")[0] for p in P]
+print("MATRIX " + json.dumps({"D": D, "Di": Di}))
 print("Attached roads:")
 for p, w in zip(P, j["destinations"]): print(f"  {p['a'].split(',')[0]:28s} -> {w.get('name')!r} ({round(w.get('distance', 0))} m)")
 print("\nDrive times (seconds) between key stops:")

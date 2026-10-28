@@ -2370,7 +2370,8 @@ function stopStreet(s){
   return a && /[a-z]/i.test(a) ? streetNorm(a) : null;
 }
 const streetBase = x => x.replace(/ (STREET|ROAD|AVENUE|DRIVE|COURT|CRESCENT|PLACE|CLOSE|GROVE|LANE|PARADE|TERRACE|WAY|CIRCUIT|BOULEVARD|HIGHWAY|SQUARE|WALK|ESPLANADE|RISE|VIEW|PARKWAY|LOOP|TRAIL|MEWS|GARDENS|HEIGHTS|RIDGE|VISTA|END)$/, "");
-function sameStreet(a, b){ if (!a || !b) return false; a = streetNorm(a); b = streetNorm(b); return a === b || streetBase(a) === streetBase(b); }
+const dirFull = x => x.replace(/ (N|S|E|W)$/, m => ({" N": " NORTH", " S": " SOUTH", " E": " EAST", " W": " WEST"})[m]);
+function sameStreet(a, b){ if (!a || !b) return false; a = dirFull(streetNorm(a)); b = dirFull(streetNorm(b)); return a === b || streetBase(a) === streetBase(b); }
 async function snapStopsToOwnStreet(stops){
   const todo = stops.filter(s => has(s) && s.rpChk !== rpKey(s) && stopStreet(s));
   if (!todo.length || navigator.onLine === false) return 0;

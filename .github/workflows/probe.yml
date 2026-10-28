@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sh tools/probe/osrm_tolls.sh > probe.txt 2>&1 || true; cat probe.txt
+      - run: python3 tools/probe/snap_probe.py > probe.txt 2>&1 || true; cat probe.txt
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |

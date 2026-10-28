@@ -883,7 +883,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <div class="panel list" style="margin-top:12px">
         <button class="lrow" id="dRename"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></span><span class="lt"><b>Rename route</b></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
         <button class="lrow" id="dCopy"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg></span><span class="lt"><b>Copy route</b><small>Same stops, all set back to pending</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-        <button class="lrow" id="dExport"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lt"><b>Save as file</b><small>To move this route to another phone</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="lrow" id="dExport"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lt"><b>Share route file</b><small>Save to Files, or send by WhatsApp or email</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
         <button class="lrow" id="dDelete"><span class="tile" style="background:var(--fail-soft);color:var(--fail)"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></span><span class="lt"><b>Delete route</b></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       </div>
     </section>
@@ -928,7 +928,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <div class="permrow"><span id="permLocTxt">Location…</span><button class="btn outline" id="permLocBtn" hidden>Allow</button></div>
       <div class="permrow" id="permNotRow"><span id="permNotTxt">Notifications…</span><button class="btn outline" id="permNotBtn" hidden>Allow</button></div></div>
     </section>
-    <label class="panel list" style="cursor:pointer"><span class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Open a route file</b><small>A route saved on another phone with “Save as file”</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
+    <label class="panel list" style="cursor:pointer"><span class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Open a route file</b><small>A route shared from another phone with “Share route file”</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
     <p class="madeby">DropLine <span class="appver"></span> · Made with <span class="heart" aria-label="love">♥</span> by <b>Enterprise Analytic</b></p>
     <svg class="homeill" viewBox="0 0 400 120" aria-hidden="true">
       <defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#D9ECF8"/><stop offset="1" stop-color="#E4F6F3"/></linearGradient></defs>
@@ -1023,7 +1023,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <div class="field"><label for="menuName" class="label">Name</label>
       <div class="row" style="flex-wrap:nowrap"><input id="menuName" type="text" maxlength="60" style="flex:1"><button class="btn primary" id="menuRename">Rename</button></div></div>
     <button class="btn ghost" id="menuCopy" style="width:100%;margin-top:4px">Copy route (same stops, all set back to pending)</button>
-    <button class="btn ghost" id="menuExport" style="width:100%;margin-top:8px">Save as file (to move to another phone)</button>
+    <button class="btn ghost" id="menuExport" style="width:100%;margin-top:8px">Share route file (Save to Files, WhatsApp, email)</button>
     <button class="btn ghost" id="menuDelete" style="width:100%;margin-top:8px;color:var(--fail)">Delete route</button>
     <div class="row" id="menuDelConfirm" hidden style="margin-top:8px"><span style="flex:1">Delete this route and its stops?</span><button class="btn" id="menuDelNo">Keep</button><button class="btn act-f" id="menuDelYes">Delete</button></div>
     <button class="btn ghost" id="menuSettings" style="width:100%;margin-top:8px">⚙ App settings</button>
@@ -3394,7 +3394,11 @@ $("nextGo").addEventListener("click", () => { const id = $("nextCard").dataset.i
 /* import sheet */
 $("btnImport").addEventListener("click", () => { $("importSheet").hidden = false; });
 $("closeImport").addEventListener("click", () => $("importSheet").hidden = true);
-$("impGo").addEventListener("click", () => { const t = $("impText").value; if (!t.trim()){ impStatus("Paste at least one address first.", 0, true); return; } importText(t); });
+function openRouteJSON(txt){ const r = JSON.parse(txt); if (!r || !Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0;
+  r.id = uid(); r.createdAt = r.createdAt || Date.now(); const a = lib(); a[r.id] = r; saveLib(a); openRoute(r.id); toast("Opened “"+(r.name||"route")+"” with "+r.stops.length+" stops"); }
+$("impGo").addEventListener("click", () => { const t = $("impText").value; if (!t.trim()){ impStatus("Paste at least one address first.", 0, true); return; }
+  if (/^\s*\{/.test(t)) try{ openRouteJSON(t.trim()); $("importSheet").hidden = true; $("impText").value = ""; return; }catch(e){}        // a route sent from another phone
+  importText(t); });
 $("impFile").addEventListener("change", e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
   rd.onload = () => { const txt = String(rd.result);
     if (/^\s*\{/.test(txt)){ try{ const r = JSON.parse(txt); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0; r.id = route.id; r.name = route.name || r.name; r.createdAt = route.createdAt; route = r; persist(); render(); fitAll(); impStatus("Imported a saved route with "+r.stops.length+" stops.", 1); }catch(err){ impStatus("That file is not a DropLine route.", 0, true); } return; }
@@ -3477,9 +3481,21 @@ $("menuRename").addEventListener("click", () => { const a = lib(), r = a[menuId]
   if (route.id === menuId) route.name = r.name; saveLib(a); $("menuTitle").textContent = r.name; renderHome(); render(); toast("Renamed to “"+r.name+"”"); $("menuSheet").hidden = true; });
 $("menuCopy").addEventListener("click", () => { const r = copyRoute(menuId); $("menuSheet").hidden = true; if (!r) return;
   if ($("home").hidden) openRoute(r.id); else renderHome(); toast("Copied as “"+r.name+"”"); });
-$("menuExport").addEventListener("click", () => { const r = lib()[menuId]; if (!r) return;
-  const blob = new Blob([JSON.stringify(r, null, 1)], {type:"application/json"}); const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = (r.name || "dropline-route").replace(/[^\w-]+/g,"-")+".json"; document.body.appendChild(a); a.click(); a.remove(); });
+/* Save / send a route as a file: the phone's Share sheet (Save to Files, WhatsApp, email…). Browser downloads do not work in the apps. */
+async function shareRouteFile(r){
+  const name = (r.name || "dropline-route").replace(/[^\w-]+/g, "-") + ".json", text = JSON.stringify(r), title = "DropLine route: " + (r.name || "route");
+  $("menuSheet").hidden = true;
+  const D = devicePlugin(), unimpl = e => /not implemented|unimplemented/i.test(String((e && e.code) || "") + " " + String((e && e.message) || ""));
+  if (D) try{ await D.shareFile({name, text, title}); return; }catch(e){ if (!unimpl(e)) return; }          // newer app builds
+  try{ const f = new File([text], name, {type: "application/json"});
+    if (navigator.canShare && navigator.canShare({files: [f]})){ await navigator.share({files: [f], title}); return; } }catch(e){ if (e && e.name === "AbortError") return; }
+  if (!isNativeApp()){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], {type: "application/json"})); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); toast("Route file downloaded."); return; }
+  try{ if (navigator.share){ await navigator.share({title, text}); return; } }catch(e){ if (e && e.name === "AbortError") return; }
+  try{ await navigator.clipboard.writeText(text); toast("Route copied. Paste it into WhatsApp or an email to send it."); }
+  catch(e){ toast("Sharing is not available in this app version. Please update the app."); }
+}
+$("menuExport").addEventListener("click", () => { const r = lib()[menuId]; if (r) shareRouteFile(r); });
 $("menuDelete").addEventListener("click", () => $("menuDelConfirm").hidden = false);
 $("menuDelNo").addEventListener("click", () => $("menuDelConfirm").hidden = true);
 $("menuDelYes").addEventListener("click", () => { const a = lib(), r = a[menuId]; delete a[menuId]; saveLib(a); $("menuSheet").hidden = true;
@@ -3488,8 +3504,7 @@ $("menuDelYes").addEventListener("click", () => { const a = lib(), r = a[menuId]
 $("menuClose").addEventListener("click", () => $("menuSheet").hidden = true);
 $("menuSettings").addEventListener("click", () => { $("menuSheet").hidden = true; openSettings(); });
 $("importIn").addEventListener("change", e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
-  rd.onload = () => { try{ const r = JSON.parse(rd.result); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0;
-      r.id = uid(); r.createdAt = r.createdAt || Date.now(); const a = lib(); a[r.id] = r; saveLib(a); openRoute(r.id); toast("Opened “"+(r.name||"route")+"” with "+r.stops.length+" stops"); }catch(err){ toast("That file is not a DropLine route."); } };
+  rd.onload = () => { try{ openRouteJSON(rd.result); }catch(err){ toast("That file is not a DropLine route."); } };
   rd.readAsText(f); e.target.value = ""; });
 $("btnManual").addEventListener("click", () => { $("addedLine").hidden = true; openPicker("stopPicker"); });
 $("stopPickBack").addEventListener("click", closePickers);
@@ -3576,7 +3591,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "7.5";
+const APP_VERSION = "7.6";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

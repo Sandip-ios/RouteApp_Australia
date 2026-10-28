@@ -173,6 +173,24 @@ public class DevicePlugin extends Plugin {
         } catch (ActivityNotFoundException e) { call.reject("No chat app found"); }
     }
 
+    /** Share a small text file (a route) through the Android share sheet: Drive, WhatsApp, Gmail… */
+    @PluginMethod
+    public void shareFile(PluginCall call) {
+        try {
+            Context c = getContext();
+            String name = call.getString("name", "dropline-route.json").replace("/", "-");
+            java.io.File dir = new java.io.File(c.getCacheDir(), "shared"); dir.mkdirs();
+            java.io.File f = new java.io.File(dir, name);
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(f)) { out.write(call.getString("text", "").getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+            Uri uri = androidx.core.content.FileProvider.getUriForFile(c, c.getPackageName() + ".fileprovider", f);
+            Intent send = new Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, uri)
+                    .putExtra(Intent.EXTRA_SUBJECT, call.getString("title", "DropLine route")).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Intent chooser = Intent.createChooser(send, call.getString("title", "Share route")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            c.startActivity(chooser);
+            JSObject r = new JSObject(); r.put("shared", true); call.resolve(r);
+        } catch (Exception e) { call.reject("Could not share the file"); }
+    }
+
     @PluginMethod
     public void clearBadge(PluginCall call) {
         NotificationManagerCompat.from(getContext()).cancelAll();   // launchers show a number only while notifications are waiting

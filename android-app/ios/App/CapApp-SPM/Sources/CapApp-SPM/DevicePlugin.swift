@@ -19,7 +19,8 @@ public class DevicePlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificationCenter
         CAPPluginMethod(name: "getPosition", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startUpdates", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopUpdates", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openChat", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "openChat", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "shareFile", returnType: CAPPluginReturnPromise)
     ]
     private let locMgr = CLLocationManager()
     // Location straight from iOS (one permission prompt; the web view's own location prompt is never used)
@@ -149,6 +150,22 @@ public class DevicePlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificationCenter
     }
 
     /// Chat with the developer: WhatsApp when it is installed, otherwise Messages.
+    /// Share a small text file (a route) through the iPhone Share sheet: Save to Files, WhatsApp, Mail…
+    @objc func shareFile(_ call: CAPPluginCall) {
+        let name = (call.getString("name") ?? "dropline-route.json").replacingOccurrences(of: "/", with: "-")
+        let text = call.getString("text") ?? ""
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        do { try text.write(to: url, atomically: true, encoding: .utf8) } catch { call.reject("Could not prepare the file"); return }
+        DispatchQueue.main.async {
+            guard let vc = self.bridge?.viewController else { call.reject("No screen to show sharing"); return }
+            let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+            sheet.popoverPresentationController?.sourceView = vc.view
+            sheet.popoverPresentationController?.sourceRect = CGRect(x: vc.view.bounds.midX, y: vc.view.bounds.maxY - 40, width: 1, height: 1)
+            sheet.completionWithItemsHandler = { _, completed, _, _ in call.resolve(["shared": completed]) }
+            vc.present(sheet, animated: true)
+        }
+    }
+
     @objc func openChat(_ call: CAPPluginCall) {
         let phone = call.getString("phone") ?? "", text = call.getString("text") ?? ""
         let enc = text.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""

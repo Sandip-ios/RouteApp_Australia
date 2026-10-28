@@ -23,7 +23,11 @@ print(f"\nApp order (Greenstead last):        {round(cost(A))} s, {round(sum(Di[
 print(f"Greenstead after Flowerdale:         {round(cost(B))} s, {round(sum(Di[x][y] for x,y in zip(B,B[1:])))} m")
 best = min(([0] + list(p) for p in itertools.permutations(range(1, len(P)))), key=cost)
 print(f"Best possible (every order tried):   {round(cost(best))} s  -> " + " > ".join(names[i] for i in best))
-for (x, y) in [(3, 7), (7, 4), (6, 7), (3, 4)]:
+for k in (0.02, 0.04, 0.06):
+    cc = lambda o: sum(D[x][y] + k * Di[x][y] for x, y in zip(o, o[1:]))
+    b2 = min(([0] + list(p) for p in itertools.permutations(range(1, len(P)))), key=cc)
+    print(f"Best with distance weight {k} s/m: {round(cost(b2))} s, {round(sum(Di[x][y] for x,y in zip(b2,b2[1:])))} m -> " + " > ".join(names[i] for i in b2))
+for (x, y) in []:
     r = get(f"https://router.project-osrm.org/route/v1/driving/{P[x]['lon']},{P[x]['lat']};{P[y]['lon']},{P[y]['lat']}?steps=true&overview=false")
     st = r["routes"][0]["legs"][0]["steps"]
     print(f"\n{names[x]} -> {names[y]}: {round(r['routes'][0]['duration'])} s, {round(r['routes'][0]['distance'])} m via " + " / ".join(f"{s.get('name') or '-'}({round(s['distance'])}m)" for s in st))

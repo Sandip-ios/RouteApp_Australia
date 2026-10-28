@@ -231,6 +231,27 @@ label.panel{display:block}
 .appopt .badge2{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font:700 16px/1 var(--f-display);flex:none}
 .appopt b{display:block} .appopt small{color:var(--muted)}
 .appopt .tickmark{margin-left:auto;color:#12A99B;visibility:hidden} .appopt.on .tickmark{visibility:visible}
+.picker{position:fixed;left:0;right:0;top:0;height:100%;z-index:1500;background:var(--bg);display:flex;flex-direction:column}
+.phead{display:flex;align-items:center;gap:8px;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 10px max(6px,env(safe-area-inset-left));background:linear-gradient(160deg,#0E2B4B 0%,#0F3A63 55%,#0F5A7A 100%);color:#fff}
+.phead b{flex:1;text-align:center;font:700 20px/1.1 var(--f-display);letter-spacing:.02em}
+.phead .hback{color:#fff;min-width:84px}
+.phead .pspace{min-width:84px}
+.pdone{min-width:84px;border:0;border-radius:12px;padding:10px 14px;background:linear-gradient(90deg,#1ED6C3,#17B4D3 52%,#1B6FE6);color:#fff;font:700 15px var(--f-body)}
+.pbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px max(14px,env(safe-area-inset-right)) 24px max(14px,env(safe-area-inset-left))}
+.psearch{position:relative}
+.psearch .ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--muted)}
+.psearch input{font-size:17px;width:100%;box-sizing:border-box;border:1.5px solid var(--line2);border-radius:14px;padding:13px 14px 13px 44px;background:var(--surface);min-height:52px;color:var(--ink);-webkit-appearance:none;appearance:none}
+.psearch input:focus{border-color:var(--teal);outline:none;box-shadow:0 0 0 3px rgba(32,199,183,.18)}
+.picker .sugg{position:static;max-height:none;overflow:visible;box-shadow:none;margin-top:12px;border-radius:14px}
+.picker .sugg button{padding:14px 16px;font-size:16px}
+.picker .sugg .sub{font-size:14px;margin-top:2px}
+.phint{margin:12px 2px 0}
+.picker .addedline{margin-top:12px}
+.pickrow{display:flex;align-items:center;gap:12px;width:100%;border:1.5px dashed var(--line2);background:var(--surface);color:var(--ink);border-radius:14px;padding:13px 14px;font:600 15.5px var(--f-body);text-align:left}
+.pickrow .ico{color:#12A99B;flex:none}
+.pickrow.me{margin-top:12px;border-style:solid}
+.startshow .chg{flex:none;border:0;border-radius:10px;padding:8px 12px;background:var(--surface);color:var(--ink);font:600 14px var(--f-body);box-shadow:0 1px 3px rgba(16,42,67,.15)}
+@media (prefers-reduced-motion:no-preference){.picker:not([hidden]){animation:pagein .26s cubic-bezier(.2,.9,.25,1)}}
 .startshow{display:flex;align-items:center;gap:12px;margin:2px 14px 12px;padding:10px 12px;border-radius:12px;background:var(--pale,#E1F5F1);color:var(--navy,#102A43)}
 .startshow .spin{flex:none;width:30px;height:30px;border-radius:50%;background:#1B6FE6;color:#fff;display:grid;place-items:center;font:700 15px/1 var(--f-display);box-shadow:0 0 0 3px #fff}
 .startshow small{display:block;font:600 11.5px/1.2 var(--f-display);text-transform:uppercase;letter-spacing:.07em;color:#0E8F83;margin-bottom:2px}
@@ -829,10 +850,8 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <section class="panel list vs-map" aria-label="Start and roads">
       <label class="lrow switchrow" for="startMe"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></span><span class="lt"><b>Start from my location</b><small id="startMeTxt">Finding your location…</small></span>
         <span class="switch"><input type="checkbox" id="startMe" role="switch" checked><span class="knob"></span></span></label>
-      <div class="lsub" id="startAddrBox" hidden><div class="addr">
-        <input id="startIn" type="text" placeholder="Depot or starting address" autocomplete="off" aria-label="Start address">
-        <div class="sugg" id="startSugg" hidden></div></div></div>
-      <div class="startshow" id="startShow" hidden><span class="spin">S</span><span class="lt"><small>Starting point</small><b id="startShowAddr"></b></span></div>
+      <div class="lsub" id="startAddrBox" hidden><button class="pickrow" id="startSet"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><span>Search the starting address (e.g. your depot)</span></button></div>
+      <div class="startshow" id="startShow" hidden><span class="spin">S</span><span class="lt"><small>Starting point</small><b id="startShowAddr"></b></span><button class="chg" id="startChange" hidden>Change</button></div>
       <button class="btn ghost" id="btnMyLoc" hidden>Use my location as start</button>
       <label class="lrow switchrow" for="avoidTolls" id="tollRow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-road"/></svg></span><span class="lt"><b>Avoid toll roads</b><small id="tollTxt">For now routes may use toll roads</small></span>
         <span class="soon" id="tollSoon">Coming soon</span>
@@ -842,14 +861,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <div class="sect vs-map"><span class="label">Add stops</span></div>
     <section class="panel list vs-map" aria-label="Add stops">
       <button class="lrow" id="btnManual"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-      <div class="lsub" id="manualBox" hidden>
-        <div class="addr">
-          <input id="addrIn" type="text" placeholder="e.g. 12 John St, Burnside" autocomplete="off" aria-label="Stop address">
-          <div class="sugg" id="addrSugg" hidden></div>
-        </div>
-        <p class="hint">Type a few letters of the address and pick a suggestion. Nearby addresses come first. Each address you add goes into the <b>Stops</b> tab.</p>
-        <div class="addedline" id="addedLine" hidden><svg class="ico" aria-hidden="true"><use href="#i-check-c"/></svg><span id="addedTxt"></span><button id="addedView">View stops</button></div>
-      </div>
+      <div id="manualBox" hidden></div>
       <button class="lrow" id="btnScan"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg></span><span class="lt"><b>Scan run sheet</b><small>Photo of the paper manifest, page by page</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="lrow" id="btnImport"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or a pasted address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     </section>
@@ -1217,6 +1229,24 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <button class="btn cta" id="repShare" style="width:100%;margin-top:4px"><svg class="ico" aria-hidden="true"><use href="#i-share"/></svg>Share report</button>
     <button class="btn" id="repRoutes" style="width:100%;margin-top:8px">Back to my routes</button>
     <button class="btn" id="repClose" style="width:100%;margin-top:8px">Close</button>
+  </div>
+</div>
+<div class="picker" id="startPicker" hidden role="dialog" aria-label="Starting point">
+  <header class="phead"><button class="hback" id="startPickBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Starting point</b><span class="pspace"></span></header>
+  <div class="pbody">
+    <div class="psearch"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="startIn" type="search" enterkeyhint="search" placeholder="Search depot or start address" autocomplete="off" aria-label="Start address"></div>
+    <button class="pickrow me" id="startPickMe"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg><span>Use my current location</span></button>
+    <div class="sugg" id="startSugg" hidden></div>
+    <p class="hint phint">Type a few letters of the address, then tap the right one. Nearby addresses come first.</p>
+  </div>
+</div>
+<div class="picker" id="stopPicker" hidden role="dialog" aria-label="Add stops">
+  <header class="phead"><button class="hback" id="stopPickBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Add stops</b><button class="pdone" id="stopPickDone">Done</button></header>
+  <div class="pbody">
+    <div class="psearch"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="addrIn" type="search" enterkeyhint="search" placeholder="Search address, e.g. 12 John St" autocomplete="off" aria-label="Stop address"></div>
+    <div class="addedline" id="addedLine" hidden><svg class="ico" aria-hidden="true"><use href="#i-check-c"/></svg><span id="addedTxt"></span><button id="addedView">View stops</button></div>
+    <div class="sugg" id="addrSugg" hidden></div>
+    <p class="hint phint">Type a few letters, then tap the right address to add it. Keep adding stops; tap <b>Done</b> when finished. They all go into the <b>Stops</b> tab.</p>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -2018,7 +2048,8 @@ function addStop(r){
   route.stops.push({id:uid(), label:r.label, query:r.label, lat:r.lat, lon:r.lon, geo:r.geo === "street" ? "street" : "exact", status:"pending", reason:"", parcels:[]});
   markStale(); persist(); render();
   $("addedTxt").textContent = "Stop " + route.stops.length + " added: " + r.label.split(",")[0] + ". See all stops in the Stops tab.";
-  $("addedLine").hidden = false; const tc = $("tabCnt"); tc.classList.remove("bump"); void tc.offsetWidth; tc.classList.add("bump");
+  $("addedLine").hidden = false; if (!$("stopPicker").hidden) setTimeout(() => { try{ $("addrIn").focus(); }catch(e){} }, 50);
+  const tc = $("tabCnt"); tc.classList.remove("bump"); void tc.offsetWidth; tc.classList.add("bump");
 }
 function farFromStops(p){ const st = route.stops.filter(has); if (!st.length || !has(p)) return false; return Math.min(...st.map(x => hav(p, x))) > 150000; }
 function startChanged(){
@@ -2028,6 +2059,7 @@ function startChanged(){
 }
 function setStart(r){
   if (farFromStops(r)){ toast("That start is more than 150 km from your stops. Choose a start near the deliveries."); render(); return; }
+  closePickers();
   route.start = {label:r.label, lat:r.lat, lon:r.lon}; if (startMeOn){ startMeOn = false; $("startMe").checked = false; try{ localStorage.setItem("dropline.startMe","0"); }catch(e){} } updateStartMeTxt(); startChanged(); }
 function markStale(){ if (route.opt) route.opt.stale = true; }
 function move(id, dir){ const i = route.stops.findIndex(s=>s.id===id), j = i+dir; if(i<0||j<0||j>=route.stops.length) return;
@@ -2106,7 +2138,7 @@ $("repShare").addEventListener("click", async () => {
 });
 $("doneView").addEventListener("click", showReport);
 $("nextPin").addEventListener("click", e => { e.preventDefault(); const id = $("nextCard").dataset.id; if (id) showPin(id); });
-$("addedView").addEventListener("click", () => { $("addedLine").hidden = true; setView("stops"); });
+$("addedView").addEventListener("click", () => { $("addedLine").hidden = true; closePickers(); setView("stops"); });
 
 /* ---------- import ---------- */
 function parseCSV(text){
@@ -2560,6 +2592,18 @@ map.on("click", e => {
 /* ---------- render ---------- */
 const REASONS = ["No one home","Address not found","Refused","Unsafe access","Other"];
 let view = "map";
+/* ---------- full-screen address search (start point and stops): results always visible above the keyboard ---------- */
+function openPicker(id){
+  const pk = $(id); pk.hidden = false; fitPicker();
+  const inp = pk.querySelector("input"); inp.value = ""; pk.querySelector(".sugg").hidden = true;
+  setTimeout(() => { try{ inp.focus(); }catch(e){} }, 60);
+}
+function closePickers(){ ["startPicker", "stopPicker"].forEach(k => { const p = $(k); if (p) p.hidden = true; }); try{ document.activeElement && document.activeElement.blur(); }catch(e){} }
+function fitPicker(){
+  const vv = window.visualViewport;
+  document.querySelectorAll(".picker").forEach(p => { if (vv){ p.style.height = vv.height + "px"; p.style.top = vv.offsetTop + "px"; } else { p.style.height = ""; p.style.top = ""; } });
+}
+if (window.visualViewport){ visualViewport.addEventListener("resize", fitPicker); visualViewport.addEventListener("scroll", fitPicker); }
 /* restart a CSS animation class (no-op when the phone asks for reduced motion: the CSS has no animation then) */
 function replay(el, cls, ms){ if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); clearTimeout(el["_t" + cls]); el["_t" + cls] = setTimeout(() => el.classList.remove(cls), ms || 800); }
 let flashId = null, flashSt = "", lineAnim = false;
@@ -2611,7 +2655,7 @@ function render(){
     else { b.className = "badge est"; b.textContent = "Estimate"; } }
   if (!busy) setOptLabel(o && !o.stale ? "Re-optimise" : "Optimise route");
   $("btnOpt2").disabled = $("btnOpt").disabled;
-  if (document.activeElement !== $("startIn")) $("startIn").value = route.start && !route.start.me ? route.start.label : "";
+  $("startAddrBox").hidden = startMeOn || !!(route.start && !route.start.me);
   showStart();
   $("emptyHint").hidden = st.length > 0;
   $("routeTitle").firstChild.nodeValue = route.name || "Route";
@@ -2726,7 +2770,7 @@ $("avoidTolls").addEventListener("change", e => {
 $("btnMyLoc").addEventListener("click", () => startLocation());
 $("nsOpt").addEventListener("click", () => { $("nextStep").hidden = true; optimise(); });
 $("nsLocOpt").addEventListener("click", () => { $("nsLocOpt").textContent = "Finding your location…"; setStartMode(true, true); startLocation(() => { $("nextStep").hidden = true; optimise(); }); });
-$("nsStart").addEventListener("click", () => { setStartMode(false, true); const i = $("startIn"); i.scrollIntoView({block:"center", behavior:"smooth"}); setTimeout(() => i.focus(), 300); });
+$("nsStart").addEventListener("click", () => { setStartMode(false, true); openPicker("startPicker"); });
 $("btnLocate").addEventListener("click", locatePending);
 let probIdx = -1;
 $("btnShowProb").addEventListener("click", () => {
@@ -3292,7 +3336,7 @@ function renderHome(){
       + '<span class="rprog"><span class="rbar"><i style="width:'+w(t.c.delivered)+';background:var(--ok)"></i><i style="width:'+w(t.c.failed)+';background:var(--fail)"></i><i style="width:'+w(t.c.skipped)+';background:var(--skip)"></i></span><b class="rpc">'+p+'%</b></span></span>'+ico("chev-r")+'</button>'
       + '<button class="more" data-menu="'+esc(r.id)+'" aria-label="Options for '+esc(r.name||"route")+'">'+ico("dots-v")+'</button></div>'; }).join("");
 }
-function showHome(){ if (nav.on) try{ navStop(); }catch(e){}
+function showHome(){ if (nav.on) try{ navStop(); }catch(e){} closePickers();
   document.querySelectorAll(".sheet-bg").forEach(b => b.hidden = true);
   try{ localStorage.setItem(STORE_OPEN, ""); }catch(e){}
   renderHome(); $("home").hidden = false; replay($("routeList"), "anim", 1400); }
@@ -3300,7 +3344,7 @@ function openRoute(id){ try{ $("addedLine").hidden = true; }catch(e){}
   const r = lib()[id]; if (!r) { toast("That route is no longer on this phone."); return; }
   route = r; if (!Array.isArray(route.stops)) route.stops = [];
   route.stops.forEach(x => { if (x.geo === "searching") x.geo = "pending"; });
-  selId = expandedId = failPickId = placingId = null; $("optMsg").hidden = true; $("manualBox").hidden = true; $("btnManual").classList.remove("on");
+  selId = expandedId = failPickId = placingId = null; $("optMsg").hidden = true; closePickers();
   $("stopSearch").value = ""; $("stopFilter").value = "all"; setView("map");
   try{ localStorage.setItem(STORE_OPEN, id); }catch(e){}
   saveJSON(STORE_CUR, route);
@@ -3356,7 +3400,13 @@ $("importIn").addEventListener("change", e => { const f = e.target.files[0]; if(
   rd.onload = () => { try{ const r = JSON.parse(rd.result); if(!Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0;
       r.id = uid(); r.createdAt = r.createdAt || Date.now(); const a = lib(); a[r.id] = r; saveLib(a); openRoute(r.id); toast("Opened “"+(r.name||"route")+"” with "+r.stops.length+" stops"); }catch(err){ toast("That file is not a DropLine route."); } };
   rd.readAsText(f); e.target.value = ""; });
-$("btnManual").addEventListener("click", () => { const box = $("manualBox"); box.hidden = !box.hidden; $("btnManual").classList.toggle("on", !box.hidden); if (!box.hidden) $("addrIn").focus(); });
+$("btnManual").addEventListener("click", () => { $("addedLine").hidden = true; openPicker("stopPicker"); });
+$("stopPickBack").addEventListener("click", closePickers);
+$("stopPickDone").addEventListener("click", () => { const n = route.stops.length; closePickers(); if (!$("addedLine").hidden){ setView("stops"); toast(n + " stop" + (n === 1 ? "" : "s") + " in this route."); } });
+$("startPickBack").addEventListener("click", () => { closePickers(); if (!startMeOn && !route.start && has(myLoc)) setStartMode(true, true); });
+$("startPickMe").addEventListener("click", () => { closePickers(); setStartMode(true, true); });
+$("startSet").addEventListener("click", () => openPicker("startPicker"));
+$("startChange").addEventListener("click", () => openPicker("startPicker"));
 
 
 
@@ -3435,7 +3485,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "7.0";
+const APP_VERSION = "7.1";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -3711,6 +3761,8 @@ async function androidLocationPrompt(){
 }
 /* Android phone Back button: close what is open, step back a screen, and only leave the app from the routes list. */
 function handleBack(){
+  if (!$("startPicker").hidden){ $("startPickBack").click(); return true; }
+  if (!$("stopPicker").hidden){ $("stopPickBack").click(); return true; }
   if (!$("subPage").hidden){ $("subBack").click(); return true; }
   if (!$("guide").hidden){ if (gIdx > 0) guideShow(gIdx - 1); else closeGuide(); return true; }
   const sheets = [...document.querySelectorAll(".sheet-bg")].filter(x => !x.hidden);
@@ -3734,7 +3786,7 @@ function setStartMode(on, quiet){
   if (on){ if (has(myLoc)) useMyLocAsStart(); else { updateStartMeTxt(); askLocation(true); } }
   else {
     if (route.start && route.start.me){ route.start = null; markStale(); persist(); render(); }
-    updateStartMeTxt(); if (!quiet) setTimeout(() => $("startIn").focus(), 100);
+    updateStartMeTxt(); if (!quiet && !route.start) openPicker("startPicker");
   }
 }
 /* The address at a map point, from the official address list on the phone (no extra internet service):
@@ -3772,13 +3824,13 @@ async function lookupStartAddr(){
 function startName(s){ return !s ? "" : s.me ? (s.addr || "Your current location") : s.label; }
 function showStart(){
   const s = route.start, box = $("startShow"); if (!box) return;
-  box.hidden = !has(s);
+  box.hidden = !has(s); $("startChange").hidden = !has(s) || !!s.me;
   if (has(s) && s.me && !s.addr) setTimeout(lookupStartAddr, 0);
   if (has(s)) $("startShowAddr").textContent = s.me ? (s.addr || (startAddrBusy || !((s.lat.toFixed(4) + "," + s.lon.toFixed(4)) in startAddrCache) ? "Your current location · finding the address…" : "Your current location (" + s.lat.toFixed(5) + ", " + s.lon.toFixed(5) + ")")) : s.label;
 }
 function updateStartMeTxt(){
   const t = $("startMeTxt");
-  if (!startMeOn){ t.textContent = "Type the address where the run starts (for example the depot)."; return; }
+  if (!startMeOn){ t.textContent = route.start && !route.start.me ? "Starting from the address below." : "Search the address where the run starts (for example the depot)."; return; }
   if (route.start && route.start.me) t.textContent = "Using where you are now" + (myLoc && myLoc.at ? " (updated " + new Date(myLoc.at).toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}) + ")" : "") + ".";
   else if (has(myLoc) && farFromStops(myLoc)) t.textContent = "You are more than 150 km from these stops. Switch this off and type a start address near the deliveries.";
   else t.textContent = "Waiting for your location… If location is off, switch this off and type a start address.";

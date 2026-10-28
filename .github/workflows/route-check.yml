@@ -1,0 +1,22 @@
+name: Route check (live app)
+on:
+  push:
+    branches: [main]
+    paths: ["tools/probe/app_route_check.py", "tools/probe/user_route2.json"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install playwright==1.47.0 && python -m playwright install --with-deps chromium
+      - run: mkdir -p shots && (python tools/probe/app_route_check.py > shots/result.txt 2>&1 || true) && cat shots/result.txt
+      - env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          mkdir -p shots; cd shots && zip -qr ../route-check.zip . && cd ..
+          gh release delete route-check --yes --cleanup-tag || true
+          gh release create route-check route-check.zip --prerelease --title "Route check" --notes "Live app route check"

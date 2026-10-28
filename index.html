@@ -3987,7 +3987,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.2";
+const APP_VERSION = "8.3";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -4159,11 +4159,14 @@ async function openOfflineSheet(){
   const st = $("offStats"); st.innerHTML = '<dt>Checking…</dt><dd></dd>';
   updateDataPanel();
   let idx = {}; try{ idx = await pcIndex(); }catch(e){}
-  const use = loadJSON(STORE_USE) || {}, pcs = Object.keys(use), area = lastSync ? lastSync.area : null;
+  const use = loadJSON(STORE_USE) || {}, area = lastSync ? lastSync.area : null;
+  // everything saved on this phone: your area, route stops and any whole state you saved
+  let pcs = Object.keys(use); try{ const C = geoStore ? await geoStore.catch(() => null) : null;
+    if (C){ const saved = (await C.keys().catch(() => [])).map(r => (r.url.match(/\/au\/(\d{4})\.json/) || [])[1]).filter(Boolean); pcs = [...new Set(pcs.concat(saved))]; } }catch(e){}
   const kb = pcs.reduce((a, pc) => a + ((idx[pc] && idx[pc][3]) || 0), 0);
   st.innerHTML = '<dt>Your area</dt><dd>' + (area != null ? area + " postcodes around you" : has(myLoc) ? "Saving…" : "Needs your location") + '</dd>' +
     '<dt>Route stops</dt><dd>' + routePostcodes().size + ' postcodes</dd>' +
-    '<dt>Space used</dt><dd>' + (pcs.length ? fmtMB(kb) : "–") + '</dd>';
+    '<dt>Saved on this phone</dt><dd>' + (pcs.length ? pcs.length + " postcodes · " + fmtMB(kb) : "–") + '</dd>';
 }
 $("setOffline").addEventListener("click", openOfflineSheet);
 function showTestLocRow(){ let out = false; try{ out = localStorage.getItem("dropline.outsideAU") === "1"; }catch(e){}

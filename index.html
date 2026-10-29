@@ -682,6 +682,19 @@ textarea:focus{border-color:var(--teal);outline:none}
 
 /* scan + import */
 .slist{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.scanmode{display:flex;width:100%}.scanmode button{flex:1}
+.cropview{position:fixed;inset:0;z-index:2600;background:#0B1622;color:#fff;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+.cropview .phead{background:#0E2B4B;color:#fff}.cropview .phead .hback{color:#fff}
+.crophint{margin:10px 16px;font-size:14.5px;line-height:1.45;color:#CFE0EE}.crophint b{color:#fff}
+.cropstage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 16px;overflow:hidden}
+.cropwrap{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;max-width:100%;max-height:100%}
+.cropwrap img{display:block;max-width:100%;max-height:calc(100vh - 230px);object-fit:contain;pointer-events:none}
+.cropbox{position:absolute;border:2.5px solid #2BD3C1;box-shadow:0 0 0 9999px rgba(0,0,0,.55);touch-action:none;cursor:move}
+.cropbox i{position:absolute;width:30px;height:30px;border:4px solid #fff;touch-action:none}
+.cropbox i::after{content:"";position:absolute;inset:-14px}
+.cropbox i[data-h=nw]{left:-6px;top:-6px;border-right:0;border-bottom:0}.cropbox i[data-h=ne]{right:-6px;top:-6px;border-left:0;border-bottom:0}
+.cropbox i[data-h=sw]{left:-6px;bottom:-6px;border-right:0;border-top:0}.cropbox i[data-h=se]{right:-6px;bottom:-6px;border-left:0;border-top:0}
+.cropacts{display:flex;gap:8px;padding:10px 16px 14px}.cropacts .btn{min-height:52px}
 .sprogress{margin:0 0 10px;font-size:14px;color:var(--muted)}
 .sresult{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:14px;margin-top:6px}
 .sresult b{font:700 21px/1.2 var(--f-display)}
@@ -1129,6 +1142,12 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
   </div>
 </div>
 
+<div class="cropview" id="cropView" hidden role="dialog" aria-label="Select the addresses">
+  <header class="phead"><button class="hback" id="cropBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Select the addresses</b><span class="pspace"></span></header>
+  <p class="crophint">Drag the corners so the box covers <b>only the addresses</b>. Leave out names, numbers and other columns you don't need.</p>
+  <div class="cropstage" id="cropStage"><div class="cropwrap" id="cropWrap"><img id="cropImg" alt="Photo to crop"><div class="cropbox" id="cropBox"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div></div>
+  <div class="cropacts"><button class="btn" id="cropAll">Whole photo</button><button class="btn cta grow" id="cropGo">Read these addresses</button></div>
+</div>
 <div class="sheet-bg" id="scanSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Scan run sheet" style="max-height:94vh">
     <h3 id="scanTitle">Scan page 1</h3>
@@ -1141,9 +1160,11 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <p class="sprogress" id="scanSummary"></p>
       <p class="sprogress" id="scanLocating" hidden></p>
       <div id="scanShoot">
+        <div class="seg scanmode" id="scanMode" role="group" aria-label="What are you scanning?"><button data-mode="sheet" class="on">Run sheet (table)</button><button data-mode="list">Any address list</button></div>
+        <p class="hint" id="scanModeHint" style="margin:6px 0 10px"></p>
         <label class="btn primary" style="display:block;text-align:center"><span id="scanTake">Take photo of page 1</span><input type="file" id="scanCam" accept="image/*" capture="environment" hidden></label>
         <label class="btn ghost" style="display:block;text-align:center;margin-top:8px">Choose a saved photo<input type="file" id="scanGallery" hidden></label>
-        <p class="hint">Hold the phone flat above the page so the whole table fills the screen. Good light, no shadow.</p>
+        <p class="hint" id="scanShootHint">Hold the phone flat above the page so the whole table fills the screen. Good light, no shadow.</p>
       </div>
       <p class="msg" id="scanMsg" hidden></p>
       <div id="scanResult" hidden>
@@ -1725,7 +1746,68 @@ function readPage(lines, prevMaxSeq){
   return {rows: rowsOut, total, firstSeq: lo, lastSeq: hi, lineCount: L.length};
 }
 
-const api = {readPage, cleanAddress, classify};
+/* Any printed address list (not the run-sheet table): the person crops the photo to the addresses, and they are read
+   top to bottom, any state. Each address ends with "STATE 1234"; rows are numbered in reading order. */
+const STATE_PC = /\b(N\.?\s?S\.?\s?W|VIC|QLD|SA|WA|TAS|ACT|NT)\b\.?[\s,.]*([\dOolI]{4})\b/i;
+function readList(lines, prevMaxSeq){
+  const L = lines.filter(l => l.text && l.text.trim()).map(l => Object.assign({}, l, {cy: l.y + l.h/2}));
+  if (!L.length) return {rows: [], total: null, firstSeq: prevMaxSeq + 1, lastSeq: prevMaxSeq, lineCount: 0};
+  const H = median(L.map(l => l.h)) || 20;
+  L.sort((a, b) => a.cy - b.cy || a.x - b.x);
+  const vis = [];
+  for (const l of L){ const r = vis[vis.length - 1]; if (r && Math.abs(l.cy - r.cy) < 0.55*H) r.items.push(l); else vis.push({cy: l.cy, items: [l]}); }
+  const bb = (b, it) => it.reduce((o, i) => o ? {x: Math.min(o.x, i.x), y: Math.min(o.y, i.y), x2: Math.max(o.x2, i.x + i.w), y2: Math.max(o.y2, i.y + i.h)} : {x: i.x, y: i.y, x2: i.x + i.w, y2: i.y + i.h}, b);
+  const found = []; let cur = null;
+  for (const v of vis){
+    v.items.sort((a, b) => a.x - b.x);
+    let t = v.items.map(i => i.text.trim()).join(" ").replace(/[|\[\]{}_~]+/g, " ").replace(/\s+/g, " ").trim();
+    // a heading line ("Delivery list Monday") before an address that starts with a number or a list marker is not part of it
+    if (cur && !/\d/.test(cur.parts.join(" ")) && /^\s*(?:[•*·>-]|#?\d)/.test(t)) cur = null;
+    while (t){
+      if (!cur) cur = {parts: [], box: null};
+      cur.box = bb(cur.box, v.items);
+      const m = t.match(STATE_PC);
+      if (!m){ cur.parts.push(t); if (cur.parts.length > 4){ found.push(cur); cur = null; } break; }
+      cur.parts.push(t.slice(0, m.index + m[0].length)); cur.end = m; found.push(cur); cur = null;
+      t = t.slice(m.index + m[0].length).replace(/^[\s,.]*(australia|aus|au)\b\.?/i, "").replace(/^[\s,.;:-]+/, "").trim();
+      if (!/[A-Za-z]{3,}/.test(t) || !/\d/.test(t)) t = "";
+    }
+  }
+  if (cur && cur.parts.join(" ").replace(/[^A-Za-z]/g, "").length >= 8) found.push(cur);
+  const re = new RegExp("(\\d+)([A-Za-z]?)(?:\\s*[-–]\\s*\\d+[A-Za-z]?)?\\s+((?:[A-Za-z'’]+\\s+){0,4}?(?:"+STREET_TYPES+"))\\b\\.?", "i");
+  const rows = found.map((f, i) => {
+    let text = f.parts.join(" ").replace(/\s+/g, " ").trim(), seq = prevMaxSeq + 1 + i, name = "";
+    text = text.replace(/^\s*(?:[•*·>-]+|#?\d{1,3}\s*[.)]|#\d{1,3}\b)\s*/, "");          // bullets and list numbers ("1.", "2)", "#3")
+    text = text.replace(/\bNone\b/g, " ").replace(/\b([A-Za-z]{3,}(?: [A-Za-z]{3,})?)\s+\1\b/gi, "$1").replace(/\s+/g, " ").trim();   // "FREWVILLE Frewville"
+    const m = text.match(STATE_PC);
+    if (!m) return {seq, address: titleCase(text), search: text, status: "check", problem: "No state and postcode read — check it", box: f.box, name: ""};
+    const state = m[1].replace(/[^A-Za-z]/g, "").toUpperCase(), pc = digitsOf(m[2]);
+    let body = text.slice(0, m.index).replace(/[\s,.]+$/, ""), street, suburb;
+    const comma = body.lastIndexOf(",");
+    if (comma > 0){ street = body.slice(0, comma).trim(); suburb = body.slice(comma + 1).trim(); }
+    else { const sm = body.match(new RegExp("^(.*?\\b(?:"+STREET_TYPES+"))\\b\\.?\\s+([A-Za-z][A-Za-z'’ -]+)$", "i"));
+      if (sm){ street = sm[1]; suburb = sm[2]; } else { const w = body.split(" "); suburb = w.pop() || ""; street = w.join(" "); } }
+    street = street.replace(/,+/g, " ").replace(/\s+/g, " ").trim();
+    const hm = street.match(re);
+    if (hm && hm.index > 0 && /[\s/]/.test(street[hm.index - 1])){
+      const pre = street.slice(0, hm.index), keep = (pre.match(/(?:\b(?:unit|u|apt|suite|shop|lot|level|lvl|flat)\s*\d+[A-Za-z]?\s*[,/-]?\s*|\d+[A-Za-z]?\s*\/\s*)$/i) || [""])[0];
+      const rest = pre.slice(0, pre.length - keep.length).replace(/[-–,:;.\s]+$/, "").trim();
+      if (/[A-Za-z]{4,}/.test(rest)) name = rest;
+      street = (keep.replace(/\s+/g, " ").replace(/\s*\/\s*$/, "/") + street.slice(hm.index)).trim(); }
+    const fix = w => /[a-z]/.test(w) ? w : titleCase(w.toUpperCase()).replace(/\b([A-Z])([A-Z]+)\b/g, (x, a, b) => a + b.toLowerCase());
+    street = fix(street); suburb = fix(suburb);
+    const address = street + ", " + suburb + " " + state + " " + pc, hm2 = street.match(re);
+    const problems = [];
+    if (!/^\d{4}$/.test(pc)) problems.push("Postcode unclear");
+    if (!hm2) problems.push("No house number");
+    return {seq, address, search: (hm2 ? hm2[1] + hm2[2].toUpperCase() + " " + hm2[3] : street) + ", " + suburb + " " + state + " " + pc, size: "", box: f.box,
+      status: problems.length ? "check" : "ok", problem: problems.join(" · "), name};
+  }).filter(r => r.address.replace(/[^A-Za-z]/g, "").length >= 5);
+  rows.forEach((r, i) => r.seq = prevMaxSeq + 1 + i);
+  return {rows, total: null, firstSeq: prevMaxSeq + 1, lastSeq: prevMaxSeq + rows.length, lineCount: L.length};
+}
+
+const api = {readPage, readList, cleanAddress, classify};
 if (typeof module !== "undefined" && module.exports) module.exports = api; else root.DroplineScan = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -3415,6 +3497,11 @@ function pumpPrefetch(){
   }
   showPrefetch();
 }
+/* The official list has the building's address; keep the unit / level the sheet gave ("5/457 …", "Unit 2 20 …"). */
+function withUnit(read, official){
+  const u = (String(read || "").match(/^\s*((?:unit|u|apt|suite|shop|lot|level|lvl|flat)\s*\d+[A-Za-z]?\s*[,/-]?\s*|\d+[A-Za-z]?\s*\/\s*)(?=\d)/i) || [])[1];
+  return u && !/^\s*(?:unit|u|apt|suite|shop|lot|level|lvl|flat)\b|\//i.test(official) ? u.replace(/\s*\/\s*$/, "/").replace(/\s+$/, " ").replace(/([^/ ])$/, "$1 ") + official : official;
+}
 function flagFromLookup(q, r){
   if (!scanPage) return; let changed = false;
   for (const row of scanPage.rows){
@@ -3428,7 +3515,7 @@ function flagFromLookup(q, r){
     if (exactOfficial){
       row.official = r.official;
       const readNum = (String(row.search || "").match(/^\s*(\S+)/) || [])[1] || "", offNum = (r.official.match(/^(\S+)/) || [])[1] || "";
-      if (readNum && offNum && readNum.toUpperCase() !== offNum.toUpperCase()){ row.address = r.official; row.search = r.official; row.autofixed = true; changed = true; }
+      if (readNum && offNum && readNum.toUpperCase() !== offNum.toUpperCase()){ row.address = withUnit(row.address, r.official); row.search = r.official; row.autofixed = true; changed = true; }
       // the address exists exactly in the official list: no need to ask, unless the row number itself is in doubt
       if (row.status === "check" && !/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; changed = true; }
       continue;
@@ -3436,14 +3523,14 @@ function flagFromLookup(q, r){
     if (r && r.source === "gnaf" && r.geo === "exact" && r.corrected && r.official){
       // only the spelling of the street or suburb differed ("Fiorence" → Florence): take the official spelling
       const lead = (row.address.match(/^(.*?)(\d+[A-Za-z]?\s)/) || [])[1] || "";
-      row.address = r.official; row.search = r.official; row.autofixed = true;
+      row.address = withUnit(row.address, r.official); row.search = r.official; row.autofixed = true;
       if (!/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; }
       changed = true; continue;
     }
     // not in the official list: try to work out what was meant
     gnafSuggest(q).then(sug => {
       if (!scanPage || !scanPage.rows.includes(row) || row.status === "confirmed" || row.status === "fixed") return;
-      if (sug && sug.sure){ row.address = sug.official; row.search = sug.official; row.autofixed = true;
+      if (sug && sug.sure){ row.address = withUnit(row.address, sug.official); row.search = sug.official; row.autofixed = true;
         if (!/Row number|Two addresses/.test(row.problem || "")){ row.status = "ok"; row.problem = ""; } }
       else if (sug){ row.suggest = sug.official; row.status = "check"; row.problem = "Not in the official address list — check the house number"; }   // keep what was read; the guess is only offered
       else { row.status = "check"; row.problem = r ? "Not in the official address list — check the house number" : "Address not found — check it"; }
@@ -3460,8 +3547,62 @@ function showPrefetch(){
   el.textContent = left ? "Finding map locations in the background: "+preDone+" of "+preTotal+" done" : "✓ Map locations found for "+preDone+" addresses";
 }
 
+let scanMode = (() => { try{ return localStorage.getItem("dropline.scanMode") === "list" ? "list" : "sheet"; }catch(e){ return "sheet"; } })();
+function showScanMode(){
+  document.querySelectorAll("#scanMode button").forEach(b => b.classList.toggle("on", b.dataset.mode === scanMode));
+  $("scanModeHint").innerHTML = scanMode === "list" ? "For any other sheet or list, any state. After the photo you <b>drag a box around the addresses</b>; they are read top to bottom and numbered in that order."
+    : "For the courier run sheet: a table with row numbers, tracking IDs and parcel sizes.";
+  $("scanShootHint").textContent = scanMode === "list" ? "Each address should end with the state and postcode, e.g. VIC 3023. Good light, no shadow." : "Hold the phone flat above the page so the whole table fills the screen. Good light, no shadow.";
+}
+$("scanMode").addEventListener("click", e => { const b = e.target.closest("[data-mode]"); if (!b) return; scanMode = b.dataset.mode;
+  try{ localStorage.setItem("dropline.scanMode", scanMode); }catch(err){} showScanMode(); });
+showScanMode();
+/* ---- crop: drag a box around the addresses ---- */
+let cropCanvas = null, crop = null;
+function openCrop(canvas){
+  cropCanvas = canvas; $("cropImg").src = canvas.toDataURL("image/jpeg", 0.85); $("cropView").hidden = false;
+  $("cropImg").onload = () => { const w = $("cropImg").clientWidth, h = $("cropImg").clientHeight; crop = {x: w*.04, y: h*.04, w: w*.92, h: h*.92}; drawCrop(); };
+}
+function drawCrop(){ const b = $("cropBox").style; b.left = crop.x + "px"; b.top = crop.y + "px"; b.width = crop.w + "px"; b.height = crop.h + "px"; }
+{ let drag = null;
+  $("cropWrap").addEventListener("pointerdown", e => { if (!crop) return; const h = e.target.dataset && e.target.dataset.h;
+    if (!h && !e.target.closest("#cropBox")) return;
+    drag = {h: h || "move", x0: e.clientX, y0: e.clientY, c: Object.assign({}, crop)}; try{ e.target.setPointerCapture(e.pointerId); }catch(err){} e.preventDefault(); });
+  window.addEventListener("pointermove", e => { if (!drag) return; const W = $("cropImg").clientWidth, H = $("cropImg").clientHeight, M = 40;
+    const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0, c = drag.c; let {x, y, w, h} = c;
+    if (drag.h === "move"){ x = Math.max(0, Math.min(W - w, c.x + dx)); y = Math.max(0, Math.min(H - h, c.y + dy)); }
+    else {
+      if (drag.h.includes("w")){ x = Math.max(0, Math.min(c.x + c.w - M, c.x + dx)); w = c.x + c.w - x; }
+      if (drag.h.includes("e")){ w = Math.max(M, Math.min(W - c.x, c.w + dx)); }
+      if (drag.h.includes("n")){ y = Math.max(0, Math.min(c.y + c.h - M, c.y + dy)); h = c.y + c.h - y; }
+      if (drag.h.includes("s")){ h = Math.max(M, Math.min(H - c.y, c.h + dy)); } }
+    crop = {x, y, w, h}; drawCrop(); });
+  window.addEventListener("pointerup", () => { drag = null; }); window.addEventListener("pointercancel", () => { drag = null; }); }
+function closeCrop(){ $("cropView").hidden = true; cropCanvas = null; crop = null; }
+$("cropBack").addEventListener("click", closeCrop);
+$("cropAll").addEventListener("click", () => { const w = $("cropImg").clientWidth, h = $("cropImg").clientHeight; crop = {x: 0, y: 0, w, h}; drawCrop(); });
+$("cropGo").addEventListener("click", () => {
+  if (!cropCanvas || !crop) return; const k = cropCanvas.width / $("cropImg").clientWidth;
+  const sx = Math.round(crop.x * k), sy = Math.round(crop.y * k), sw = Math.round(crop.w * k), sh = Math.round(crop.h * k);
+  const c = document.createElement("canvas"); c.width = Math.max(1, sw); c.height = Math.max(1, sh);
+  c.getContext("2d").drawImage(cropCanvas, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  closeCrop(); readListPhoto(c); });
+async function readListPhoto(canvas){
+  const eng = nativeScanner(), n = scan.pages.length + 1, t0 = performance.now();
+  scanPage = null; renderScan(); scanMsg("Reading the addresses…");
+  let res; try{ res = await eng.recognize({image: canvas.toDataURL("image/jpeg", 0.92)}); }
+  catch(e){ scanMsg("That photo could not be read. Try again, or choose a different photo.", true); return; }
+  const page = DroplineScan.readList(res.lines || [], scanLastSeq());
+  if (!page.rows.length){ scanMsg("No addresses found in the box. Make sure the box covers the addresses and that each one ends with the state and postcode (e.g. VIC 3023).", true); return; }
+  page.rows.forEach(r => { thumbs[r.seq] = cropRow(canvas, r.box); delete r.box; });
+  scanPage = {rows: page.rows, lines: res.lines, ms: res.ms, secs: ((performance.now() - t0)/1000).toFixed(1), first: page.firstSeq, last: page.lastSeq, showAll: false, list: true};
+  page.rows.forEach(r => { if (r.address) prefetch(r.search || r.address); });
+  $("scanMsg").hidden = true; $("scanNextWarn").hidden = true; delete $("scanNext").dataset.warned; delete $("scanFinish").dataset.warned;
+  renderScan();
+}
 async function scanPhoto(file){
   const eng = nativeScanner(); if (!eng){ scanMsg("Photo scanning needs the DropLine Android app.", true); return; }
+  if (scanMode === "list"){ let c; try{ c = await photoToCanvas(file); }catch(e){ scanMsg("That photo could not be opened. Try again, or choose a different photo.", true); return; } openCrop(c); return; }
   const n = scan.pages.length + 1, t0 = performance.now();
   scanPage = null; renderScan(); scanMsg("Reading page "+n+"…");
   let canvas, res;
@@ -3505,7 +3646,7 @@ function renderScan(){
   const rows = scanPage.rows, look = rows.filter(r => !r.removed && needsLook(r)).length, total = rows.filter(r => !r.removed && r.status !== "missing").length;
   const box = $("scanResultBox"); box.className = "sresult " + (look ? "warn" : "good");
   $("scanResultTitle").textContent = look ? "⚠ "+look+" need"+(look === 1 ? "s" : "")+" your check" : "✓ All "+total+" addresses look right";
-  $("scanResultSub").textContent = "Rows #"+scanPage.first+"–#"+scanPage.last+" · read in "+scanPage.secs+" s";
+  $("scanResultSub").textContent = (scanPage.list ? "Addresses #" : "Rows #")+scanPage.first+"–#"+scanPage.last+" · read in "+scanPage.secs+" s";
   $("scanHowTo").textContent = look ? "Compare each row below with its photo. Fix the text if it is different, then tap Looks right." : "Tap Next page to photograph page "+(n+1)+", or Done if this was the last page.";
   $("scanList").innerHTML = rows.map((r,i) => r.wasLook || needsLook(r) || r.status === "fixed" || (r.status === "confirmed" && r.wasLook) ? rowCard(r, i) : "").join("");
   $("scanShowAll").textContent = scanPage.showAll ? "Hide the other addresses" : "Show all "+total+" addresses on this page";
@@ -4082,7 +4223,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.10";
+const APP_VERSION = "8.11";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -4375,6 +4516,7 @@ async function androidLocationPrompt(){
 }
 /* Android phone Back button: close what is open, step back a screen, and only leave the app from the routes list. */
 function handleBack(){
+  if (!$("cropView").hidden){ closeCrop(); return true; }
   if (askDone){ askDone(false); return true; }
   if (!$("detailsPage").hidden && [...document.querySelectorAll(".sheet-bg")].every(x => x.hidden)){ closeDetails(); return true; }
   if ($("appView").classList.contains("fullmap") && $("home").hidden){ $("btnFullMap").click(); return true; }

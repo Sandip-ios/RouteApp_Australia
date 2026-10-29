@@ -2389,14 +2389,19 @@ function addStop(r){
   $("addedLine").hidden = false; if (!$("stopPicker").hidden) setTimeout(() => { try{ $("addrIn").focus(); }catch(e){} }, 50);
   const tc = $("tabCnt"); tc.classList.remove("bump"); void tc.offsetWidth; tc.classList.add("bump");
 }
-function farFromStops(p){ const st = route.stops.filter(has); if (!st.length || !has(p)) return false; return Math.min(...st.map(x => hav(p, x))) > 150000; }
+/* A start can be far from the deliveries (a depot 100–300 km away on a country run): the drive there is part of the route.
+   Only a start that cannot be driven from is refused: outside Australia, or across the country (over 1,000 km). */
+const FAR_START = 1000000;
+function farFromStops(p){ const st = route.stops.filter(has); if (!st.length || !has(p)) return false;
+  return (typeof inAU === "function" && !inAU(p)) || Math.min(...st.map(x => hav(p, x))) > FAR_START; }
+function farText(p, who){ return (typeof inAU === "function" && !inAU(p) ? who + " outside Australia" : who + " more than 1,000 km from these stops") + ", so the route can't be driven from there."; }
 function startChanged(){
   markStale(); persist(); render();
   if (!$("nextStep").hidden && !route.opt) showNextStep(lastStepPages);
   if (route.opt && route.stops.filter(s => s.status === "pending" && has(s)).length >= 2){ toast("Start changed. Updating the route…"); optimise(); }
 }
 function setStart(r){
-  if (farFromStops(r)){ toast("That start is more than 150 km from your stops. Choose a start near the deliveries."); render(); return; }
+  if (farFromStops(r)){ toast(farText(r, "That start is") + " Choose your depot or the place you set off from."); render(); return; }
   closePickers();
   route.start = {label:r.label, lat:r.lat, lon:r.lon}; if (startMeOn){ startMeOn = false; $("startMe").checked = false; try{ localStorage.setItem("dropline.startMe","0"); }catch(e){} } updateStartMeTxt(); startChanged(); }
 function markStale(){ if (route.opt) route.opt.stale = true; }
@@ -2881,7 +2886,7 @@ async function optimise(){
   const liveOk = has(myLoc) && Date.now() - myLoc.at < 180000 && hav(myLoc, pend[0]) < 150000;
   const origin = done.length && liveOk ? {lat:myLoc.lat, lon:myLoc.lon, id:"__me"} : (lastDone || startPt);
   if (!origin){ showMsg("Set a start address or tap \"Use my location as start\" first.", true); return; }
-  if (hav(origin, pend[0]) > 150000 && pend.every(p => hav(origin, p) > 150000)){ showMsg("The start is more than 150 km from the stops. Choose a start near the deliveries.", true); return; }
+  if (pend.every(p => hav(origin, p) > FAR_START)){ showMsg("The start is more than 1,000 km from the stops. Choose your depot or the place you set off from.", true); return; }
   const closed = false;   // runs end at the last stop; the driver knows where to go after
   const pts = [origin].concat(pend); let endIdx = null;
   if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
@@ -3060,7 +3065,7 @@ function showNextStep(pages, busyText){
   $("nsLocOpt").textContent = "Allow location and optimise"; $("nsLocOpt").className = "btn primary";
   $("nsStart").textContent = startMeOn ? "Type a start address instead" : "Change the start address";
   if (hasStart) $("nsText").textContent = (miss ? miss + " stop" + (miss > 1 ? "s" : "") + " still need a map location (shown at the end of the list). " : "") + "Next: optimise the delivery order from " + (route.start.me ? (route.start.addr || "your location") : route.start.label) + ".";
-  else if (startMeOn && has(myLoc) && farFromStops(myLoc)){ $("nsText").textContent = "You are more than 150 km from these stops, so the route can't start from your location. Type a start address near the deliveries."; $("nsLocOpt").hidden = true; $("nsStart").className = "btn primary"; }
+  else if (startMeOn && has(myLoc) && farFromStops(myLoc)){ $("nsText").textContent = farText(myLoc, "You are") + " Type your depot or the address you set off from."; $("nsLocOpt").hidden = true; $("nsStart").className = "btn primary"; }
   else $("nsStart").className = "btn ghost";
   fitAll();
 }
@@ -3077,7 +3082,7 @@ function startLocation(then){
       $("btnMyLoc").disabled = false; drawMe();
       if (farFromStops(myLoc)){
         afterLocate = null; $("btnMyLoc").textContent = "Use my location as start"; $("nsLocOpt").textContent = "Start from my location and optimise";
-        const msg = "You are more than 150 km from these stops, so your location can't be the start. Type a start address near the deliveries (for example the depot).";
+        const msg = farText(myLoc, "You are") + " Type your depot or the address you set off from.";
         toast(msg); if (!$("nextStep").hidden) $("nsText").textContent = msg;
         return; }
       route.start = {label:"My location", lat:myLoc.lat, lon:myLoc.lon, me:true}; updateStartMeTxt();
@@ -3797,7 +3802,7 @@ async function finishScan(btn){
   const scanPagesDone = scan.pages.length; route.scanPages = (route.scanPages || 0) + scanPagesDone;
   scan = {pages:[], total:null}; scanSave();
   await importGroups([...groups.values()], false);      // scanned stops are added to the route; stops already on it are kept
-  showNextStep(scanPagesDone);
+  showNextStep(route.scanPages || scanPagesDone);
 }
 $("scanFinish").addEventListener("click", e => finishScan(e.currentTarget));
 $("scanFinishIdle").addEventListener("click", e => finishScan(e.currentTarget));
@@ -4290,7 +4295,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.15";
+const APP_VERSION = "8.16";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -4658,7 +4663,7 @@ function updateStartMeTxt(){
   const t = $("startMeTxt");
   if (!startMeOn){ t.textContent = route.start && !route.start.me ? "Starting from the address below." : "Search the address where the run starts (for example the depot)."; return; }
   if (route.start && route.start.me) t.textContent = "Using where you are now" + (myLoc && myLoc.at ? " (updated " + new Date(myLoc.at).toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}) + ")" : "") + ".";
-  else if (has(myLoc) && farFromStops(myLoc)) t.textContent = "You are more than 150 km from these stops. Switch this off and type a start address near the deliveries.";
+  else if (has(myLoc) && farFromStops(myLoc)) t.textContent = farText(myLoc, "You are") + " Switch this off and type your depot or start address.";
   else t.textContent = "Waiting for your location… If location is off, switch this off and type a start address.";
 }
 let statesPrimed = false;

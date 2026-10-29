@@ -551,6 +551,13 @@ textarea:focus{border-color:var(--teal);outline:none}
 .ninstr .eta b{display:block;font:700 22px/1.1 var(--f-display)}
 .ninstr .eta span{display:block;color:var(--muted);font-size:13.5px}
 .nctl{position:absolute;right:12px;top:12px;z-index:600;display:flex;flex-direction:column;gap:12px}
+.nctl a.round{display:grid;place-items:center;text-decoration:none}
+.round.extround{background:#fff!important;color:#1A73E8!important}
+.nav:not(.sheetmin) .nctl .extround{display:none}           /* panel open: the button is on the stop card instead */
+.nsright{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex:none}
+.round.small{width:46px;height:46px;box-shadow:0 2px 8px rgba(9,23,38,.25);text-decoration:none}.round.small .ico{width:24px;height:24px}
+/* the + / − zoom buttons only when the stop panel is hidden (they overlapped the round buttons on a short map); pinch-zoom always works */
+.nav:not(.sheetmin) #navMap .leaflet-control-zoom{display:none}
 .round{width:52px;height:52px;border-radius:50%;border:0;background:#fff;color:var(--navy);display:grid;place-items:center;box-shadow:0 3px 10px rgba(9,23,38,.25)}
 .round .ico{width:24px;height:24px}
 .round.off{color:var(--slate)}
@@ -619,6 +626,8 @@ textarea:focus{border-color:var(--teal);outline:none}
 .permrow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:8px;font-size:14.5px}
 .permrow .btn{min-height:40px;padding:6px 12px}
 .homeill{display:block;width:100%;height:auto;margin-top:6px;opacity:.95}
+.updbar{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2900;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 16px;border-radius:16px;background:#0E2B4B;color:#fff;font-size:14.5px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.updbar span{flex:1}.updbar button{border:0;border-radius:12px;padding:10px 14px;font:700 14.5px var(--f-body);color:#0E2B4B;background:#2BD3C1}
 .madeby{text-align:center;color:var(--muted);font-size:12.5px;margin:6px 0 0}
 .home .hlist > .madeby{margin-top:auto;padding-top:10px}   /* footer + road picture sit at the bottom of the screen when there are few routes */
 .ask-bg{position:fixed;inset:0;z-index:3000;background:rgba(10,24,40,.55);display:grid;place-items:center;padding:24px}
@@ -857,6 +866,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
 <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="currentColor" stroke="none"/><path d="M18 13l.9 2.5 2.6.9-2.6.9L18 19.9l-.9-2.6-2.6-.9 2.6-.9z" fill="currentColor" stroke="none"/><path d="M17.5 3l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-turnsign" viewBox="0 0 24 24"><path d="M12 2.8l9.2 9.2-9.2 9.2L2.8 12z"/><path d="M9 14.5v-2.2a1.5 1.5 0 011.5-1.5H15M13 8.8l2 2-2 2"/></symbol>
 <symbol id="i-map" viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></symbol>
 <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor" stroke="none"/></symbol>
@@ -1345,7 +1355,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <div class="top"><div class="nav-arrow" id="navArrow"></div><div class="nav-txt" style="min-width:0"><div class="nav-dist" id="navDist"></div><div class="nav-instr" id="navInstr"></div><div class="nav-then" id="navThen"></div></div></div>
       <div class="eta"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg><div><b id="navRemain">–</b><span id="navArrTxt">Arrive at stop</span><b id="navEta" style="font-size:18px;margin-top:2px"></b></div></div>
     </div>
-    <div class="nctl"><button class="round" id="navMapBig" aria-label="Bigger map"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg></button><button class="round" id="navVoice" aria-label="Voice on"><svg class="ico" aria-hidden="true"><use href="#i-vol"/></svg></button><button class="round" id="navCentre" aria-label="Follow my position"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg></button></div>
+    <div class="nctl"><button class="round" id="navMapBig" aria-label="Bigger map"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg></button><button class="round" id="navVoice" aria-label="Voice on"><svg class="ico" aria-hidden="true"><use href="#i-vol"/></svg></button><button class="round" id="navCentre" aria-label="Follow my position"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg></button><a class="round extround" id="navExtBtn" data-ext="" aria-label="Open in Google Maps" title="Open in Google Maps"><svg class="ico" aria-hidden="true"><use href="#i-turnsign"/></svg></a></div>
   </div>
   <div class="nsheet">
     <button class="grab" id="navSheetToggle" aria-label="Hide stop details to see the map"><i></i><span>Hide</span></button>
@@ -1356,7 +1366,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
         <div class="nav-stop" id="navStop">
           <div class="nstop" style="margin-top:0"><span class="num" id="navNum">1</span><div class="lt"><b class="t" id="navStopTitle"></b><span class="a" id="navStopAddr"></span>
             <div class="nmeta"><span><svg class="ico" aria-hidden="true"><use href="#i-pkg"/></svg><i id="navParcels" style="font-style:normal"></i></span><span><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg><i id="navEst" style="font-style:normal"></i></span></div></div>
-            <span class="pill pending" id="navPill">Pending</span></div>
+            <span class="nsright"><span class="pill pending" id="navPill">Pending</span><a class="round extround small" id="navExtCard" data-ext="" aria-label="Open in Google Maps" title="Open in Google Maps"><svg class="ico" aria-hidden="true"><use href="#i-turnsign"/></svg></a></span></div>
         </div>
         <span class="snote" id="navOffline" hidden style="background:var(--pend-soft);color:var(--ink)">No signal: following directions saved earlier</span>
       </div>
@@ -1452,6 +1462,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
+<div class="updbar" id="updBar" hidden><span>A new version of DropLine is ready.</span><button id="updGo">Update now</button></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
@@ -1986,14 +1997,16 @@ function openNavAppSheet(stopId){
   $("navAppList").innerHTML = navAppList().map(a => '<button class="appopt'+(a.id === cur ? " on" : "")+'" data-app="'+a.id+'"><span class="badge2" style="background:'+a.color+'">'+a.letter+'</span><span><b>'+a.name+'</b><small>'+a.note+'</small></span>'+ico("check", "tickmark")+'</button>').join("");
   $("navAppRemember").parentElement.hidden = !stopId; $("navAppSheet").hidden = false;
 }
-function showNavAppName(){ document.querySelectorAll(".extname").forEach(x => x.textContent = extName()); const t = $("setNavAppTxt"); if (t) t.textContent = navApp() ? extName() : "Ask each time"; }
+function showNavAppName(){ document.querySelectorAll(".extname").forEach(x => x.textContent = extName()); ["navExtBtn", "navExtCard"].forEach(id => { const b = document.getElementById(id); if (b){ b.setAttribute("aria-label", "Open in " + extName()); b.title = "Open in " + extName(); } }); const t = $("setNavAppTxt"); if (t) t.textContent = navApp() ? extName() : "Ask each time"; }
 /* any "open in maps app" link: with no app chosen yet, ask first (then open it) */
 document.addEventListener("click", e => {
   const a = e.target.closest && e.target.closest("a[data-ext]"); if (!a) return;
-  if (a.id === "navExt") a.dataset.ext = nav.stop ? nav.stop.id : "";
+  if (a.id === "navExt" || a.id === "navExtBtn" || a.id === "navExtCard") a.dataset.ext = nav.stop ? nav.stop.id : "";
   const s = route.stops.find(x => x.id === a.dataset.ext); if (!s){ e.preventDefault(); return; }
   if (!navApp()){ e.preventDefault(); openNavAppSheet(s.id); return; }
   a.href = extUrl(s, navApp());
+  // leaving for the maps app: close the navigation menu, so DropLine is ready to use when the driver comes back
+  setTimeout(() => { const m = $("navMenu"); if (m) m.hidden = true; }, 300);
 }, true);
 function geoLink(s){ return has(s) ? "geo:"+ll(s)+"?q="+ll(s)+"("+encodeURIComponent(splitLabel(s.label)[0])+")" : "geo:0,0?q="+encodeURIComponent(s.query || s.label); }
 function prevPoint(i){ for (let k = i-1; k >= 0; k--) if (has(route.stops[k])) return route.stops[k]; return route.start; }
@@ -4017,7 +4030,7 @@ function renderNavStop(stop){
   $("navTitle").textContent = route.name || "Route"; $("navSub").textContent = (k + 1) + " of " + route.stops.length + " · " + route.stops.filter(x => x.status === "delivered").length + " delivered";
   document.querySelector("#navDelivered .t").textContent = isPick(stop) ? "Mark as Picked up" : "Mark as Delivered";
   $("navNote").textContent = stop.notes || "Add a note for this stop";
-  $("navReasons").hidden = true; $("navFailed").classList.remove("on");
+  $("navReasons").hidden = true; $("navFailed").classList.remove("on"); showNavAppName();
   const pendingAt = i => route.stops[i] && route.stops[i].status === "pending" && has(route.stops[i]);
   let hasNext = false, hasPrev = false; for (let i = k + 1; i < route.stops.length; i++) if (pendingAt(i)){ hasNext = true; break; }
   for (let i = k - 1; i >= 0; i--) if (pendingAt(i)){ hasPrev = true; break; }
@@ -4306,7 +4319,21 @@ $("permLocBtn").addEventListener("click", async () => { const st = await permSta
 $("permNotBtn").addEventListener("click", askNotifications);
 /* Back from Settings (or back in the app): pick up the new permissions straight away, no restart needed. */
 let resumeT = 0, resumeLater = null;
+/* Slow mobile data can leave the phone showing its saved copy of an older version. Check the website for a newer one
+   when the app opens and comes back to the front, and offer it (never in the middle of navigation). */
+let updChecked = 0;
+async function checkUpdate(){
+  if (Date.now() - updChecked < 10*60e3 || navigator.onLine === false || !/^https?:/.test(location.protocol)) return; updChecked = Date.now();
+  try{ const r = await fetch("index.html?v=" + Date.now(), {cache: "no-store"}); if (!r.ok) return;
+    const live = ((await r.text()).match(/const APP_VERSION = "([\d.]+)"/) || [])[1]; if (!live) return;
+    const newer = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++){ if ((x[i]||0) !== (y[i]||0)) return (x[i]||0) > (y[i]||0); } return false; };
+    if (newer(live, APP_VERSION)){ $("updBar").querySelector("span").textContent = "A new version of DropLine (v" + live + ") is ready."; $("updBar").hidden = !$("navScreen").hidden; }
+  }catch(e){}
+}
+$("updGo").addEventListener("click", () => { try{ persist(); }catch(e){} location.reload(); });
+setTimeout(checkUpdate, 6000);
 async function onResume(){
+  checkUpdate();
   if (Date.now() - resumeT < 300){ clearTimeout(resumeLater); resumeLater = setTimeout(onResume, 350); return; }   // several signals at once: check again just after
   resumeT = Date.now();
   clearBadge();
@@ -4329,7 +4356,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.20";
+const APP_VERSION = "8.22";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

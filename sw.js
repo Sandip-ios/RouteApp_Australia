@@ -1,6 +1,6 @@
 /* Dropline offline support: keeps a copy of the app on the phone so it opens with no signal.
    With signal, the latest version is loaded from the website as usual (and the copy is refreshed). */
-const SHELL = "dropline-shell-v4";
+const SHELL = "dropline-shell-v5";
 const TILES = "dropline-tiles-v1";
 const LIBS = [
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
@@ -41,8 +41,12 @@ self.addEventListener("fetch", e => {
     e.respondWith((async () => {
       const c = await caches.open(SHELL);
       try{
-        const r = await Promise.race([fetch(req, {cache: "no-cache"}), timeout(4000)]);
-        if (r && r.ok){ c.put("./", r.clone()).catch(() => {}); return r; }
+        // keep the download going even when it is slow: the saved copy is replaced as soon as it arrives,
+        // so the next start (or "Update now") gets the new version
+        const net = fetch(req, {cache: "no-cache"}).then(r => { if (r && r.ok) c.put("./", r.clone()).catch(() => {}); return r; });
+        e.waitUntil(net.catch(() => {}));
+        const r = await Promise.race([net, timeout(4000)]);
+        if (r && r.ok) return r.clone();
         throw new Error("bad");
       }catch(err){
         const hit = await c.match("./") || await c.match(req);

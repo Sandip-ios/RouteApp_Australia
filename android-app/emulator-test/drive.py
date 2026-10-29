@@ -103,6 +103,8 @@ try:
         ev("""(async () => { const b = await (await fetch('data:image/jpeg;base64,' + %s)).blob();
             const dt = new DataTransfer(); dt.items.add(new File([b], 'page.jpg', {type:'image/jpeg'}));
             const inp = document.getElementById('scanGallery'); inp.files = dt.files; inp.dispatchEvent(new Event('change', {bubbles:true})); return true; })()""" % json.dumps(data))
+        if wait_for("!document.getElementById('cropView').hidden || !document.getElementById('scanResult').hidden", 60) and ev("!document.getElementById('cropView').hidden"):
+            time.sleep(1); click("#cropGo")                                   # crop screen (page edges found automatically): Done
         wait_for("!document.getElementById('scanResult').hidden || /could not|No addresses|needs the/.test(document.getElementById('scanMsg').textContent)", 90)
         if ev("!document.getElementById('scanShowAll').hidden && !document.getElementById('scanAllList').innerHTML"): click("#scanShowAll")
         secs = round(time.time() - t0, 1)

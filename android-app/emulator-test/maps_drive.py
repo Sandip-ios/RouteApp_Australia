@@ -77,11 +77,17 @@ try:
     ev("document.getElementById('navSim').checked = true; window.__simSpeed = 1; true")
     tap("#nextGo"); wait("!document.getElementById('navScreen').hidden", 30); time.sleep(3)
     for k in range(3):
-        tap("#navMore"); time.sleep(1); shot(f"menu-{k+1}.png")
+        if ev("document.getElementById('navMenu').hidden"): tap("#navMore"); time.sleep(1)
+        shot(f"menu-{k+1}.png")
         before = front(); tap("#navExt"); time.sleep(5); after = front(); shot(f"menu-after-{k+1}.png")
         ok = after not in ("au.dropline.routeplanner", "?"); results.append(("navigation menu, try %d" % (k+1), ok, after)); say("menu try", k+1, ":", before, "->", after)
         back_to_app("menu")
         say("  navigation still open:", ev("!document.getElementById('navScreen').hidden"), "| menu open:", ev("!document.getElementById('navMenu') || !document.getElementById('navMenu').hidden"))
+    # C. the new round maps button on the stop card, 3 times
+    for k in range(3):
+        before = front(); tap("#navExtCard"); time.sleep(5); after = front(); shot(f"cardbtn-{k+1}.png")
+        ok = after not in ("au.dropline.routeplanner", "?"); results.append(("stop card maps button, try %d" % (k+1), ok, after)); say("card button try", k+1, ":", before, "->", after)
+        back_to_app("cardbtn")
 except Exception as e:
     say("ERROR", repr(e)[:400]); shot("error.png")
 say("\nRESULTS"); [say(("PASS " if ok else "FAIL ") + n + " -> " + str(a)) for n, ok, a in results]

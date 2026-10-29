@@ -1,0 +1,43 @@
+name: Maps button test
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["android-app/emulator-test/maps_drive.py", ".github/workflows/maps-test.yml"]
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20, cache: npm, cache-dependency-path: android-app/package-lock.json}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: 17, cache: gradle}
+      - name: Build test APK
+        run: |
+          cd android-app && npm ci && mkdir -p www && cp ../index.html www/index.html && cp offline.html www/offline.html && npx cap sync android
+          cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon -q && cp app/build/outputs/apk/debug/app-debug.apk ../../dropline.apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          pip install -q websocket-client==1.8.0
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis_playstore
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: python3 android-app/emulator-test/maps_drive.py dropline.apk maps-results
+      - name: Publish results
+        if: always()
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          mkdir -p maps-results && [ -f maps-results/log.txt ] || echo "no run" > maps-results/log.txt
+          cd maps-results && zip -q -r ../maps-results.zip . && cd ..
+          gh release delete maps-results --yes --cleanup-tag || true
+          gh release create maps-results maps-results.zip maps-results/log.txt --prerelease --title "Maps button test #${{ github.run_number }}" --notes "Emulator check of Open in Google Maps"

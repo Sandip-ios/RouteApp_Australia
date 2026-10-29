@@ -2952,7 +2952,7 @@ async function saveLegs(onProgress){
   const pts = [origin].concat(pend); let saved = 0;
   for (let i = 0; i < pts.length - 1; i += 50){
     const part = pts.slice(i, Math.min(i + 51, pts.length));
-    const j = await fetchJSON(OSRM + "/route/v1/driving/" + part.map(osrmLL).join(";") + "?overview=false&geometries=geojson&steps=true" + tollX(), 40000);
+    const j = await fetchJSON(OSRM + "/route/v1/driving/" + part.map(osrmLL).join(";") + "?overview=false&geometries=geojson&steps=true&continue_straight=false" + tollX(), 40000);
     if (!j || j.code !== "Ok") throw new Error("route");
     for (let k = 0; k < j.routes[0].legs.length; k++){
       const leg = j.routes[0].legs[k], stop = part[k + 1], coords = [];
@@ -3017,6 +3017,14 @@ async function prepareOffline(){
   }catch(e){ toast("Could not save everything. Check your internet connection and try again."); }
   b.disabled = false; bar.hidden = true; updateOffTxt();
 }
+/* The van may turn around at a stop (U-turn, 3-point turn or a driveway) instead of going round the block.
+   The map server still knows divided roads and medians, so on those it goes the legal way round.
+   Routes optimised before this are redrawn once, so their line, times and saved directions match. */
+const redrawn = new Set();
+function redrawOldRoute(){
+  const o = route.opt; if (!o || o.stale || o.method === "estimate" || o.ut === 1 || redrawn.has(route.id) || navigator.onLine === false || busy) return;
+  redrawn.add(route.id); setTimeout(() => { drawRoad().catch(() => {}); }, 1200);
+}
 async function drawRoad(){
   if (!route.opt || route.opt.method === "estimate") return;
   const pend = route.stops.filter(s => s.status === "pending" && has(s));
@@ -3027,14 +3035,14 @@ async function drawRoad(){
     for (let i = 0; i < pts.length - 1; i += 60){
       const part = pts.slice(i, Math.min(i + 61, pts.length));
       const coords = part.map(osrmLL).join(";");
-      const j = await fetchJSON(OSRM+"/route/v1/driving/"+coords+"?overview=full&geometries=geojson&steps=false"+tollX(), 25000);
+      const j = await fetchJSON(OSRM+"/route/v1/driving/"+coords+"?overview=full&geometries=geojson&steps=false&continue_straight=false"+tollX(), 25000);
       if (!j || j.code !== "Ok") throw new Error("route failed");
       const r = j.routes[0]; dur += r.duration; dist += r.distance; r.legs.forEach(l => legs.push(l.duration));
       r.geometry.coordinates.forEach(c => geom.push([+(c[1].toFixed(5)), +(c[0].toFixed(5))]));
       if (i + 60 < pts.length - 1) await sleep(300);
     }
     if (!route.opt || route.opt.stale) return;
-    lineAnim = true; route.opt.geometry = geom; route.opt.legs = {}; pend.forEach((st,i) => { route.opt.legs[st.id] = legs[i]; });
+    lineAnim = true; route.opt.geometry = geom; route.opt.ut = 1; route.opt.legs = {}; pend.forEach((st,i) => { route.opt.legs[st.id] = legs[i]; });
     if (route.opt.method === "road"){ route.opt.duration = dur; route.opt.distance = dist; }
     persist(); render();
     saveLegs().then(() => updateOffTxt()).catch(() => {});      // directions for every stop, kept for when there is no signal
@@ -3271,6 +3279,7 @@ function render(){
   $("startAddrBox").hidden = startMeOn || !!(route.start && !route.start.me);
   showStart();
   if (!$("nextStep").hidden && !/…$/.test($("nsTitle").textContent)) $("nsTitle").textContent = nsTitleText(lastStepPages);   // stays right after adding or removing stops
+  redrawOldRoute();
   $("emptyHint").hidden = st.length > 0; $("stopTools").hidden = st.length <= 4; $("stopsHead").hidden = !st.length;
   if (st.length <= 4 && ($("stopSearch").value || $("stopFilter").value !== "all")){ $("stopSearch").value = ""; $("stopFilter").value = "all"; }
   $("routeTitle").firstChild.nodeValue = route.name || "Route";
@@ -4320,7 +4329,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.19";
+const APP_VERSION = "8.20";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

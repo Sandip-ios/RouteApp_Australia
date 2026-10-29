@@ -1042,6 +1042,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
   </main>
   <div class="planbar" id="planBar">
     <button class="btn cta big grow" id="btnStartRun" hidden><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg>Start delivering</button>
+    <button class="btn cta big grow" id="btnNavGo" hidden><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg>Navigate</button>
     <button class="btn cta big grow" id="btnOpt"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg><span class="optlabel">Optimise route</span></button>
     <button class="btn" id="btnOpt2" hidden><span class="optlabel">Optimise route</span></button>
   </div>
@@ -2936,6 +2937,7 @@ const optUI = (() => {
 })();
 $("optView").addEventListener("click", () => { optUI.close(); setView("map"); fitAll(); });
 $("optStart").addEventListener("click", () => { optUI.close(); startDelivering(); });
+$("btnNavGo").addEventListener("click", () => { const g = $("nextGo"); if (g) g.click(); });
 
 let lastMatrix = null;    // road times from the last optimise: re-optimising the same stops does not ask again
 async function optimise(){
@@ -2983,7 +2985,7 @@ async function optimise(){
   if (new Set(ordered.map(s=>s.id)).size !== pend.length){ optUI.close(); showMsg("Optimisation failed a safety check. Your order was not changed.", true); btn.disabled=false; setOptLabel("Optimise route"); bar.hidden = true; return; }
   route.stops = done.concat(ordered, noLoc);
   let distSum = 0, prev = 0; for (const k of res.order){ distSum += Dist[prev][k]; prev = k; } if (endIdx!=null) distSum += Dist[prev][endIdx];
-  route.opt = {method, duration:res.cost, distance:distSum, before, stops:pend.length, matrix:pts.length, solveMs:res.ms, at:Date.now(), stale:false, geometry:null, legs:null, closed:!!closed, origin:{lat:origin.lat, lon:origin.lon}};
+  route.opt = {method, duration:res.cost, distance:distSum, before, stops:pend.length, matrix:pts.length, solveMs:res.ms, at:Date.now(), stale:false, geometry:null, legs:null, ut:1, closed:!!closed, origin:{lat:origin.lat, lon:origin.lon}};
   persist(); render();
   const saved = before - res.cost;
   const fromTxt = origin.id === "__me" ? " starting from your current location" : (lastDone && origin === lastDone ? " starting from your last finished stop" : "");
@@ -3353,7 +3355,10 @@ function render(){
   { const doneN = cnt.delivered + cnt.failed + cnt.skipped, started = !!route.startedAt || doneN > 0, opted = !!(o && !o.stale);
     $("planBar").hidden = !st.length || !cnt.pending; $("fabAdd").hidden = !st.length; $("addMore").hidden = st.length < 4;
     $("btnStartRun").hidden = !(opted && !started && cnt.pending);
-    $("btnOpt").classList.toggle("second", opted); $("btnOpt").style.flex = $("btnStartRun").hidden ? "1" : "none"; }
+    $("btnNavGo").hidden = !(started && cnt.pending);                       // during the run: back to turn-by-turn for the next stop
+    $("btnOpt").classList.toggle("second", opted || started); $("btnOpt").style.flex = $("btnStartRun").hidden && $("btnNavGo").hidden ? "1" : "none";
+    // the "stops added — optimise next" card is only for planning: gone once optimised or delivering
+    if ((opted || started) && !$("nextStep").hidden && !/…$/.test($("nsTitle").textContent)) $("nextStep").hidden = true; }
   $("startAddrBox").hidden = startMeOn || !!(route.start && !route.start.me);
   showStart();
   if (!$("nextStep").hidden && !/…$/.test($("nsTitle").textContent)) $("nsTitle").textContent = nsTitleText(lastStepPages);   // stays right after adding or removing stops
@@ -4428,7 +4433,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.25";
+const APP_VERSION = "8.26";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

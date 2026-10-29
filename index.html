@@ -1968,10 +1968,13 @@ const TEST_PLACES = {sydney: {name: "Sydney · Parramatta", lat: -33.8150, lon: 
   brisbane: {name: "Brisbane CBD", lat: -27.4698, lon: 153.0251}, adelaide: {name: "Adelaide CBD", lat: -34.9285, lon: 138.6007}, perth: {name: "Perth CBD", lat: -31.9523, lon: 115.8613}};
 const inAU = p => !!p && p.lat < -9 && p.lat > -44.5 && p.lon > 112 && p.lon < 154.5;
 function testPlace(){ try{ return TEST_PLACES[localStorage.getItem("dropline.testloc.v1")] || null; }catch(e){ return null; } }
+function testHere(){ try{ const v = JSON.parse(sessionStorage.getItem("dropline.testHere") || "null"); return v && isFinite(v.lat) ? v : null; }catch(e){ return null; } }
+function setTestHere(p){ try{ if (p) sessionStorage.setItem("dropline.testHere", JSON.stringify({lat: p.lat, lon: p.lon})); else sessionStorage.removeItem("dropline.testHere"); }catch(e){} }
 (function testLocation(){
   const geo = navigator.geolocation; if (!geo) return;
   const rGet = geo.getCurrentPosition.bind(geo), rWatch = geo.watchPosition.bind(geo), rClear = geo.clearWatch.bind(geo);
-  const fake = t => ({coords: {latitude: t.lat, longitude: t.lon, accuracy: 12, speed: null, heading: null, altitude: null, altitudeAccuracy: null}, timestamp: Date.now()});
+  // with a test location, the pretend phone moves to each stop as it is delivered (like a real driver)
+  const fake = t0 => { const t = testHere() || t0; return {coords: {latitude: t.lat, longitude: t.lon, accuracy: 12, speed: null, heading: null, altitude: null, altitudeAccuracy: null}, timestamp: Date.now()}; };
   const note = p => { try{ if (!inAU({lat: p.coords.latitude, lon: p.coords.longitude})) localStorage.setItem("dropline.outsideAU", "1"); else localStorage.removeItem("dropline.outsideAU"); }catch(e){} };
   const ws = {}; let n = 0;
   const api = {
@@ -2467,6 +2470,8 @@ function removeStop(id){ route.stops = route.stops.filter(s=>s.id!==id); if(selI
 function setStatus(id, st, reason){ const s = route.stops.find(x=>x.id===id); if(!s) return;
   const wasLeft = route.stops.some(x => x.status === "pending");
   s.status = st; s.reason = st==="failed" ? (reason||"") : ""; s.doneAt = st==="pending" ? null : Date.now();
+  // testing with a test location: you are now at this stop, so the next stop is navigated from here
+  if (st !== "pending" && has(s) && testPlace()){ setTestHere(s); myLoc = {lat: s.lat, lon: s.lon, acc: 12, at: Date.now()}; }
   if (wasLeft && !route.stops.some(x => x.status === "pending")){
     const c = {delivered:0, failed:0, skipped:0}; route.stops.forEach(x => c[x.status]++);
     const msg = c.delivered + " done, " + c.failed + " failed, " + c.skipped + " skipped.";
@@ -4065,8 +4070,10 @@ async function navStart(stop){
     if (km > 1500){ $("navArrow").innerHTML = turnIcon("warn"); $("navInstr").textContent = "You are about " + Math.round(km).toLocaleString("en-AU") + " km from this stop, so there is no road route. Navigation starts from your location when you are near the stops. (To try it at a desk, tap ⋯ and switch on Simulate driving.)"; return; }
     from = myLoc;
   } else {
-    const near = has(myLoc) && hav(myLoc, stop) < 100000;
-    from = near ? myLoc : (prevPoint(route.stops.indexOf(stop)) || route.start);
+    // demo drive: start where the last demo drive ended (the stop just delivered); the first one starts from the phone
+    // if it is near, otherwise from the stop before this one or the route start
+    const last = nav.simEnd && hav(nav.simEnd, stop) < 100000 ? nav.simEnd : null, near = has(myLoc) && hav(myLoc, stop) < 100000;
+    from = last || (near ? myLoc : (prevPoint(route.stops.indexOf(stop)) || route.start));
     if (!has(from)){ $("navInstr").textContent = "Simulation needs a start address."; return; }
   }
   nav.me.setLatLng([from.lat, from.lon]); nav.map.setView([from.lat, from.lon], 16);
@@ -4124,6 +4131,7 @@ function navStop(){
 }
 function navDone(status, reason){
   const was = nav.stop, pick = isPick(was);
+  if (nav.sim && has(was)) nav.simEnd = {lat: was.lat, lon: was.lon};
   try{ const sb = $("navStamp"); sb.className = "stamp " + status; sb.textContent = doneWord(status, pick); sb.hidden = false; setTimeout(() => sb.hidden = true, 900); navigator.vibrate && navigator.vibrate(25); }catch(e){}
   setStatus(was.id, status, reason);
   const next = route.stops.find(s => s.status === "pending" && has(s));
@@ -4420,7 +4428,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.24";
+const APP_VERSION = "8.25";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -4611,7 +4619,7 @@ $("setTestLoc").addEventListener("click", () => {
     + '<button class="appopt'+(cur ? "" : " on")+'" data-tl=""><span class="badge2" style="background:#526574">'+ico("x")+'</span><span><b>Off</b><small>Use the phone\'s real location</small></span>'+ico("check", "tickmark")+'</button>';
   $("settingsSheet").hidden = true; $("testLocSheet").hidden = false; });
 $("testLocList").addEventListener("click", e => { const b = e.target.closest("[data-tl]"); if (!b) return;
-  try{ if (b.dataset.tl) localStorage.setItem("dropline.testloc.v1", b.dataset.tl); else localStorage.removeItem("dropline.testloc.v1"); }catch(err){}
+  try{ if (b.dataset.tl) localStorage.setItem("dropline.testloc.v1", b.dataset.tl); else localStorage.removeItem("dropline.testloc.v1"); }catch(err){} setTestHere(null);
   try{ localStorage.setItem("dropline.startMe", "1"); sessionStorage.setItem("dropline.splash", "1"); }catch(err){}
   toast(b.dataset.tl ? "Test location on: " + TEST_PLACES[b.dataset.tl].name : "Test location off"); setTimeout(() => location.reload(), 600); });
 $("testLocCancel").addEventListener("click", () => { $("testLocSheet").hidden = true; openSettings(); });

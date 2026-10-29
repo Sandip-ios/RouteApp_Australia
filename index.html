@@ -2663,6 +2663,7 @@ async function locatePending(){
   impStatus("Done. "+located+" of "+todo.length+" located"+(fromCache ? " ("+fromCache+" already found while scanning or remembered)" : "")+"."+
     (refine.length ? " Improving "+refine.length+" approximate pins in the background; you can optimise now." : ""), 1);
   if (refine.length) refineInBackground(refine);
+  setTimeout(() => { prepSnap(route.stops.filter(s => s.status === "pending")).then(n => { if (n) persist(); }).catch(() => {}); }, 800);
 }
 /* Second pass with the backup address service (limited to one lookup per second), without blocking the driver. */
 async function refineInBackground(list){
@@ -2779,6 +2780,11 @@ function stopStreet(s){
 const streetBase = x => x.replace(/ (STREET|ROAD|AVENUE|DRIVE|COURT|CRESCENT|PLACE|CLOSE|GROVE|LANE|PARADE|TERRACE|WAY|CIRCUIT|BOULEVARD|HIGHWAY|SQUARE|WALK|ESPLANADE|RISE|VIEW|PARKWAY|LOOP|TRAIL|MEWS|GARDENS|HEIGHTS|RIDGE|VISTA|END)$/, "");
 const dirFull = x => x.replace(/ (N|S|E|W)$/, m => ({" N": " NORTH", " S": " SOUTH", " E": " EAST", " W": " WEST"})[m]);
 function sameStreet(a, b){ if (!a || !b) return false; a = dirFull(streetNorm(a)); b = dirFull(streetNorm(b)); return a === b || streetBase(a) === streetBase(b); }
+/* The street check runs once per stop; it also starts in the background as soon as the stops are located, so tapping
+   Optimise does not have to wait for it. */
+let snapRun = null;
+function prepSnap(stops){ if (snapRun) return snapRun.then(() => snapStopsToOwnStreet(stops));
+  snapRun = snapStopsToOwnStreet(stops).finally(() => { snapRun = null; }); return snapRun; }
 async function snapStopsToOwnStreet(stops){
   const todo = stops.filter(s => has(s) && s.rpChk !== rpKey(s) && stopStreet(s));
   if (!todo.length || navigator.onLine === false) return 0;
@@ -2791,14 +2797,13 @@ async function snapStopsToOwnStreet(stops){
     part.forEach((s, k) => { const w = j.destinations[k + 1], st = stopStreet(s);
       if (w && sameStreet(w.name, st)){ s.rp = null; s.rpChk = rpKey(s); } else wrong.push(s); });
   }
-  let fixed = 0;
-  for (const s of wrong.slice(0, 40)){
+  let fixed = 0; const q = wrong.slice(0, 60);
+  const worker = async () => { while (q.length){ const s = q.shift();                     // four look-ups at a time
     let j; try{ j = await fetchJSON(OSRM + "/nearest/v1/driving/" + s.lon.toFixed(6) + "," + s.lat.toFixed(6) + "?number=12", 12000); }catch(e){ continue; }
     const st = stopStreet(s), w = j && Array.isArray(j.waypoints) ? j.waypoints.find(x => sameStreet(x.name, st) && (x.distance == null || x.distance < 300)) : null;
     if (w && Array.isArray(w.location)){ s.rp = {lat: w.location[1], lon: w.location[0]}; s.rpKey = rpKey(s); fixed++; }
-    s.rpChk = rpKey(s);
-    await sleep(120);
-  }
+    s.rpChk = rpKey(s); } };
+  await Promise.all([worker(), worker(), worker(), worker()]);
   return fixed;
 }
 
@@ -2818,23 +2823,20 @@ async function travelMatrix(pts, onProgress){
       return {D, Dist, road:n*n, estimated:0}; }
     catch(e){ fillEst(all, all); return {D, Dist, road:0, estimated:n*n}; }
   }
+  // Over 100 points: split into groups of 50 and ask for every pair of groups in one request (100 points gives the
+  // times both ways and within each group). 160 stops = 6 requests instead of 16, three at a time; same numbers.
   const C = Math.floor(TABLE_MAX/2), chunks = [];
   for (let i = 0; i < n; i += C) chunks.push(pts.map((_,k)=>k).slice(i, i+C));
-  let doneB = 0, road = 0, estd = 0; const totalB = chunks.length*chunks.length;
-  for (const I of chunks) for (const J of chunks){
-    const idx = I === J ? I : I.concat(J);
-    const src = I.map((_,k)=>k), dst = I === J ? src : J.map((_,k)=>I.length+k);
-    let ok = false;
-    for (let attempt = 0; attempt < 2 && !ok; attempt++){
-      try{ const j = await req(idx, src, dst);
-        I.forEach((gi,a) => J.forEach((gj,b) => { D[gi][gj] = j.durations[a][b]; Dist[gi][gj] = j.distances ? j.distances[a][b] : est(gi,gj)[1]; }));
-        ok = true; road += I.length*J.length; }
-      catch(e){ await sleep(1500); }
-    }
-    if (!ok){ fillEst(I, J); estd += I.length*J.length; }
-    doneB++; onProgress && onProgress(doneB/totalB);
-    await sleep(300);
-  }
+  const jobs = []; for (let a = 0; a < chunks.length; a++) for (let b = a + 1; b < chunks.length; b++) jobs.push(chunks[a].concat(chunks[b]));
+  let doneB = 0; const q = jobs.slice();
+  const worker = async () => { while (q.length){ const idx = q.shift();
+    for (let attempt = 0; attempt < 2; attempt++){
+      try{ const j = await req(idx); idx.forEach((gi, a) => idx.forEach((gj, b) => { D[gi][gj] = j.durations[a][b]; Dist[gi][gj] = j.distances ? j.distances[a][b] : est(gi,gj)[1]; })); break; }
+      catch(e){ await sleep(1500); } }
+    doneB++; onProgress && onProgress(doneB/jobs.length); } };
+  await Promise.all([worker(), worker(), worker()]);
+  let road = 0, estd = 0;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++){ if (D[i][j] == null){ const [t, d] = est(i, j); D[i][j] = t; Dist[i][j] = d; estd++; } else road++; }
   return {D, Dist, road, estimated:estd};
 }
 
@@ -2874,6 +2876,7 @@ const optUI = (() => {
 $("optView").addEventListener("click", () => { optUI.close(); setView("map"); fitAll(); });
 $("optStart").addEventListener("click", () => { optUI.close(); startDelivering(); });
 
+let lastMatrix = null;    // road times from the last optimise: re-optimising the same stops does not ask again
 async function optimise(){
   if (busy){ toast("Still finding locations. Try again in a moment."); return; }
   const btn = $("btnOpt");
@@ -2892,10 +2895,17 @@ async function optimise(){
   if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
   btn.disabled = true; setOptLabel("Checking addresses…"); document.body.classList.add("optbusy");
   optUI.start(pend.length); await optUI.step(0);
-  try{ if (await snapStopsToOwnStreet(pend)) persist(); }catch(e){}
+  try{ if (await prepSnap(pend)) persist(); }catch(e){}
   await optUI.step(1);
   setOptLabel("Getting road times…"); const bar = $("optBar"); bar.hidden = false; bar.firstElementChild.style.width = "0";
-  const M = await travelMatrix(pts, f => { bar.firstElementChild.style.width = Math.round(f*90)+"%"; optUI.progress(f); });
+  // same points as last time (in any order)? reuse those road times instead of asking the server again
+  const keys = pts.map(p => osrmLL(p) + tollX()); let M = null;
+  if (lastMatrix && Date.now() - lastMatrix.at < 6*3600e3 && keys.length === lastMatrix.keys.length && keys[0] === lastMatrix.keys[0]){
+    const pos = new Map(lastMatrix.keys.map((k, i) => [k, i])), ix = keys.map(k => pos.get(k));
+    if (ix.every(i => i != null) && new Set(ix).size === ix.length){ const L = lastMatrix.M;
+      M = {D: ix.map(a => ix.map(b => L.D[a][b])), Dist: ix.map(a => ix.map(b => L.Dist[a][b])), road: L.road, estimated: 0}; } }
+  if (!M){ M = await travelMatrix(pts, f => { bar.firstElementChild.style.width = Math.round(f*90)+"%"; optUI.progress(f); });
+    if (M.estimated === 0) lastMatrix = {keys, M, at: Date.now()}; }
   await optUI.step(2);
   setOptLabel("Optimising…"); document.body.classList.add("optbusy"); await sleep(30);
   const method = M.estimated === 0 ? "road" : (M.road === 0 ? "estimate" : "partial");
@@ -4310,7 +4320,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.18";
+const APP_VERSION = "8.19";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

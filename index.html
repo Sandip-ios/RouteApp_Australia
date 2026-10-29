@@ -690,6 +690,16 @@ textarea:focus{border-color:var(--teal);outline:none}
 .srow.missing{border-color:rgba(224,70,75,.55);background:var(--fail-soft)}
 .srow.edited{border-color:var(--teal)}
 .sok{margin-top:8px;width:100%}
+.pincheck{width:100%;background:#FFF6E5;border:1px solid #F1D49B;border-radius:12px;padding:10px 12px;margin-bottom:4px}
+.pincheck > b{display:flex;align-items:center;gap:6px;color:#9A5B00;font-size:14.5px}.pincheck > b .ico{width:18px;height:18px}
+.pincheck p{margin:4px 0 10px;font-size:14px;line-height:1.45;color:var(--ink)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pincheck{background:rgba(242,177,52,.12);border-color:rgba(242,177,52,.35)}:root:not([data-theme="light"]) .pincheck > b{color:#F2B134}}
+:root[data-theme="dark"] .pincheck{background:rgba(242,177,52,.12);border-color:rgba(242,177,52,.35)} :root[data-theme="dark"] .pincheck > b{color:#F2B134}
+.sacts{display:flex;gap:8px;margin-top:8px}.sacts .sok{margin-top:0;flex:1}
+.srm{flex:none;margin-left:auto;color:var(--fail);background:var(--surface);border:1.5px solid var(--line2);min-height:44px;padding:0 14px;font-size:14.5px}
+.sacts .srm:only-child{min-height:34px;border:0;background:none;padding:0 4px;font-size:14px}
+.srow.removed{display:flex;align-items:center;gap:10px;padding:10px 14px;color:var(--muted);font-size:14px;background:var(--bg);border-style:dashed}
+.srow.removed span{flex:1}
 .ssug{width:100%;margin-top:8px;text-align:left;white-space:normal;font-weight:500;justify-content:flex-start}
 .smore{margin-top:12px;font-size:14px;color:var(--muted)}
 .smore summary{cursor:pointer;padding:6px 0}
@@ -1021,18 +1031,25 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <div class="ghero"><img class="mk" src="assets/logo-mark.png" alt=""><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine"><button class="gskip" id="gSkip">Skip</button></div>
     <div class="gbody">
     <div class="gslides" id="gSlides">
-      <section><div class="gstep">Welcome</div><h3>Plan, optimise, deliver</h3><p>DropLine puts your delivery stops in the fastest order and guides you with spoken directions. Here's how it works in 30 seconds.</p>
-        <div class="gdemo"><div class="summary"><div class="s-p"><svg class="ico" aria-hidden="true"><use href="#i-pkg"/></svg><b>155</b><span>Pending</span></div><div class="s-d"><svg class="ico" aria-hidden="true"><use href="#i-check-c"/></svg><b>12</b><span>Delivered</span></div><div class="s-f"><svg class="ico" aria-hidden="true"><use href="#i-x-c"/></svg><b>1</b><span>Failed</span></div><div class="s-k"><svg class="ico" aria-hidden="true"><use href="#i-minus-c"/></svg><b>2</b><span>Skipped</span></div></div></div></section>
+      <section><div class="gstep">Welcome</div><h3>Plan, optimise, deliver</h3><p>Add your stops, let DropLine put them in the fastest order, then drive with spoken directions. Here's how it works in 30 seconds.</p>
+        <div class="gdemo"><div class="reptiles" style="margin:4px 0"><div><b>25</b><small>Stops</small></div><div><b style="color:#1B6FE6">1 h 23 m</b><small>Drive</small></div><div><b style="color:#0E8F83">3:45 pm</b><small>Finish</small></div></div></div></section>
       <section><div class="gstep">Step 1</div><h3>Create a route</h3><p>Make one route for each run or day. Tap <b>⋮</b> on a route to rename it, copy it for tomorrow's run, or delete it.</p>
         <div class="gdemo"><div class="create" style="min-height:58px;font-size:22px"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div>
         <div class="rcard" style="margin-top:10px"><div class="ro"><div class="rb"><div class="rtop"><b class="rn">Run Fri, 23 Oct</b><span class="rstate go">In progress</span></div><div class="rm">23 Oct 2026 · 53 stops · 13 delivered</div><div class="rprog"><span class="rbar"><i style="width:24%;background:var(--ok)"></i><i style="width:2%;background:var(--fail)"></i></span><b class="rpc">25%</b></div></div></div></div></div></section>
-      <section><div class="gstep">Step 2</div><h3>Add your stops</h3><p>Tap the round <b>＋ Add stops</b> button: <b>Add stop</b> to type an address, <b>Scan manifest</b> to photograph the paper run sheet, or <b>Import manifest</b> for a CSV file or pasted list.</p>
-        <div class="gdemo panel list"><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg></span><span class="lt"><b>Scan run sheet</b><small>Photo of the paper manifest</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div></div></section>
-      <section><div class="gstep">Step 3</div><h3>Optimise &amp; prepare</h3><p>Tap <b>Optimise route</b> for the fastest order. Each stop then shows its arrival time. Tap <b>Start delivering</b>: directions and the map are saved for no signal automatically (or use <b>⋯ → Prepare for no signal</b> at the depot).</p>
-        <div class="gdemo"><div class="optrow" style="margin-top:0"><span class="btn cta grow big"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg>Optimise route</span><span class="btn outline big"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>Fit map</span></div>
-        <div class="panel list" style="margin-top:10px"><div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Directions and map saved for the whole run</small></span></div></div></div></section>
-      <section><div class="gstep">Step 4</div><h3>Deliver</h3><p>Tap <b>Navigate</b> for turn-by-turn voice directions. Mark each stop <b>Delivered</b>, <b>Failed</b> or <b>Skipped</b> and the next one slides in. Tap a stop to add <b>notes</b> or mark a <b>pickup</b>.</p>
+      <section><div class="gstep">Step 2</div><h3>Add your stops</h3><p>On a new route, choose how to add the addresses: <b>type</b> them, <b>scan</b> the paper run sheet page by page, or <b>import</b> the manifest. Add more later with the round <b>＋ Add stops</b> button.</p>
+        <div class="gdemo panel list emptyadd">
+        
+        <button class="addopt"><span class="oi oi-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z"/><path d="M12 7v5M9.5 9.5h5"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="addopt"><span class="oi oi-s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2"/><path d="M8 9h8M8 12h8M8 15h5"/></svg></span><span class="lt"><b>Scan manifest</b><small>Photo of the paper run sheet, page by page</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+        <button class="addopt"><span class="oi oi-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M12 11v6M9.5 14.5L12 17l2.5-2.5"/></svg></span><span class="lt"><b>Import manifest</b><small>CSV file or a pasted address list</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      </div></section>
+      <section><div class="gstep">Step 3</div><h3>Optimise &amp; start</h3><p>Tap <b>Optimise route</b> for the fastest order. The map shows your route, and every stop gets an <b>arrival time</b> plus a <b>finish time</b> (leaving later? set <b>Leave at</b> in Route details). Tap a pin to jump to that stop. Then tap <b>Start delivering</b>: directions and the map are saved for no signal automatically.</p>
+        <div class="gdemo planbar" style="position:static;box-shadow:none;padding:0;background:none"><span class="btn cta grow" style="min-height:52px;white-space:nowrap"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg>Start delivering</span><span class="btn" style="min-height:52px;flex:none;background:var(--surface);color:var(--ink);border:1.5px solid var(--line2);box-shadow:none;font-size:14.5px;padding:0 14px"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg>Re-optimise</span></div></section>
+      <section><div class="gstep">Step 4</div><h3>Deliver</h3><p><b>Navigate</b> gives turn-by-turn voice directions; tap <b>Hide</b> to see the whole map. Mark each stop <b>Delivered</b>, <b>Failed</b> (pick a reason) or <b>Skipped</b> and the next stop comes up. Tap a stop to add <b>notes</b> or mark a <b>pickup</b>.</p>
         <div class="gdemo acts3" style="margin-top:6px"><span class="btn act-d"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Mark as Delivered</span><span class="btn act-f"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>Mark as Failed</span><span class="btn act-k"><svg class="ico" aria-hidden="true"><use href="#i-minus"/></svg>Mark as Skipped</span></div></section>
+      <section><div class="gstep">Step 5</div><h3>Finish &amp; report</h3><p>When every stop is done you get a <b>run report</b>. Save or send it as a <b>PDF</b>, or <b>share a short summary</b> with your depot. A failed stop can go back on the run with <b>Try again</b>.</p>
+        <div class="gdemo"><div class="reptiles" style="margin:4px 0 10px"><div class="ok"><b>23</b><small>Delivered</small></div><div class="fail"><b>2</b><small>Failed</small></div><div class="skip"><b>0</b><small>Skipped</small></div></div>
+        <div class="row" style="gap:8px;flex-wrap:nowrap"><span class="btn cta" style="flex:1"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>PDF report</span><span class="btn" style="flex:1"><svg class="ico" aria-hidden="true"><use href="#i-share"/></svg>Share summary</span></div></div></section>
       <section><div class="gstep">Last step</div><h3>Allow access</h3><p>DropLine uses your location to start routes from where you are, and can let you know when a download or your run is finished.</p>
         <div class="gperm"><button class="btn cta" id="gLoc"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg><span>Allow location</span></button><button class="btn outline" id="gNot"><svg class="ico" aria-hidden="true"><use href="#i-bell"/></svg><span>Allow notifications</span></button></div></section>
     </div>
@@ -1446,6 +1463,7 @@ function classify(t){
   if (/^[DBO0][S5O0]?\d[\dOolI]{6,}$/.test(compact)) return "code";
   if (/DRNFLY|DRNF|^[\dOolI]{14,}$/.test(compact)) return "track";
   if (/CM/i.test(s) && /\bX\b|X\s*\d|\dX/i.test(s)) return "dims";
+  if (/^[\d.,\s]*\d[\d.,\s]*C\s?M[\s:;.,)\]|X\d]*$/i.test(s)) return "dims";        // a piece of a parcel size on its own ("26.58 CM"), not an address
   if (/^[\dOolI]{1,3}$/.test(compact)) return "seq";
   if (/[A-Za-z]{2,}/.test(s)) return "addr";
   if (/^[5S]\d{3}\s*A\s?U\b/i.test(s)) return "addr";
@@ -1868,6 +1886,15 @@ async function fetchJSON(url, ms){ const c = new AbortController(); const t = se
   try{ const r = await fetch(url,{signal:c.signal}); const j = await r.json().catch(()=>null); if(!r.ok){ const e = new Error("HTTP "+r.status); e.status = r.status; e.body = j; throw e; } return j; } finally{ clearTimeout(t); } }
 function parcels(s){ return s.parcels && s.parcels.length ? s.parcels : [{seq:null, size:"", note:""}]; }
 function isBig(size){ const n = String(size||"").match(/[\d.]+/g); return !!n && Math.max(...n.map(Number)) >= 60; }
+/* Explains a yellow "Check pin": the map pin is on the right street, but maybe not at the right house. */
+function pinCheckBox(s){
+  if (!(s.geo === "street" || s.approx) || !has(s)) return "";
+  const num = (splitLabel(s.label)[0].match(/^\s*(?:unit\s*)?(\d+[a-z]?)/i) || [])[1];
+  const why = num ? "House number " + esc(num) + " was not in the official address list, so the pin is on the street and may be a few houses away."
+                  : "This address has no house number, so the pin is placed on the street, not at a house.";
+  return '<div class="pincheck"><b>'+ico("pin-o")+'Check pin</b><p>' + why + ' Tap <b>Show pin</b> to look. If it is in the right place, tap <b>Pin is right</b>; if not, tap <b>Move pin</b> and tap the right spot on the map.</p>' +
+    '<div class="row" style="gap:8px;flex-wrap:nowrap"><button class="btn act-d grow" data-pinok="'+s.id+'">'+ico("check")+'Pin is right</button><button class="btn outline grow" data-pin="'+s.id+'">Show pin</button></div></div>';
+}
 function chipsFor(s){
   const ps = parcels(s), out = [];
   if (isPick(s)) out.push('<span class="chip pick">Pickup</span>');
@@ -3096,7 +3123,7 @@ function render(){
     $("btnOpt").classList.toggle("second", opted); $("btnOpt").style.flex = $("btnStartRun").hidden ? "1" : "none"; }
   $("startAddrBox").hidden = startMeOn || !!(route.start && !route.start.me);
   showStart();
-  $("emptyHint").hidden = st.length > 0; $("stopTools").hidden = st.length <= 4;
+  $("emptyHint").hidden = st.length > 0; $("stopTools").hidden = st.length <= 4; $("stopsHead").hidden = !st.length; $("stopsHead").querySelector(".m").hidden = st.length < 2;
   if (st.length <= 4 && ($("stopSearch").value || $("stopFilter").value !== "all")){ $("stopSearch").value = ""; $("stopFilter").value = "all"; }
   $("routeTitle").firstChild.nodeValue = route.name || "Route";
   $("routeSub").textContent = st.length ? st.length+" stop"+(st.length===1?"":"s")+" · "+cnt.delivered+" delivered" : "No stops yet";
@@ -3155,7 +3182,7 @@ function render(){
         '<div class="m"><span class="chip '+s.status+'">'+statusWord(s)+'</span>'+(s.reason ? '<span class="eta">'+esc(s.reason)+'</span>' : '')+'<span class="pc">'+ico("pkg")+esc(parcelLine(s))+'</span>'+(eta ? '<span class="eta at">'+eta+'</span>' : '')+'</div>' +
         '<div class="chips">'+chipsFor(s)+'</div>'+(s.notes ? '<span class="snote">'+esc(s.notes)+'</span>' : '')+'</div>' +
       '<div class="sctl"><button class="handle drag" aria-label="Drag to reorder">'+ico("grip")+'</button><button class="ud" aria-label="Move up" data-up="'+s.id+'">'+ico("up")+'</button><button class="ud" aria-label="Move down" data-down="'+s.id+'">'+ico("down")+'</button></div>' +
-      (exp ? '<div class="more">' +
+      (exp ? '<div class="more">' + pinCheckBox(s) +
         '<div class="notebox"><label class="label" for="note-'+s.id+'">Notes for this stop</label><textarea class="stopnote" id="note-'+s.id+'" data-note="'+s.id+'" maxlength="300" placeholder="e.g. Front door, big box, call on arrival">'+esc(s.notes||"")+'</textarea>' +
         '<div class="qnotes">'+QUICK_NOTES.map(q => '<button data-qnote="'+esc(q)+'" data-sid="'+s.id+'" class="'+(hasNote(s,q)?"on":"")+'">'+esc(q)+'</button>').join("")+'</div></div>' +
         '<div class="kindrow"><span class="seg" role="group" aria-label="Stop type"><button data-kind="delivery" data-sid="'+s.id+'" class="'+(isPick(s)?"":"on")+'">Delivery</button><button data-kind="pickup" data-sid="'+s.id+'" class="'+(isPick(s)?"on":"")+'">Pickup</button></span>' +
@@ -3231,6 +3258,7 @@ $("stops").addEventListener("click", e => {
   if (t.dataset.down){ move(t.dataset.down, 1); return; }
   if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
   if (t.dataset.pin){ showPin(t.dataset.pin); return; }
+  if (t.dataset.pinok){ const s = route.stops.find(x => x.id === t.dataset.pinok); if (s){ s.geo = "exact"; delete s.approx; s.pinOk = true; persist(); render(); toast("Pin saved as correct."); } return; }
   if (t.dataset.place){ setView("map"); placingId = t.dataset.place; document.body.classList.add("placing"); window.scrollTo({top:0, behavior:"smooth"}); toast("Tap the map where this stop is."); return; }
   if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
   if (t.dataset.qnote){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ toggleNote(s, t.dataset.qnote); persist(); render(); } return; }
@@ -3396,13 +3424,15 @@ async function scanPhoto(file){
 function scanMsg(t, err){ const m = $("scanMsg"); m.hidden = false; m.textContent = t; m.classList.toggle("err", !!err); }
 const needsLook = r => r.status === "check" || r.status === "missing";
 function rowCard(r, i, compact){
+  if (r.removed) return '<div class="srow removed" data-row="'+i+'"><span>#'+(r.seq != null ? r.seq : "?")+' removed: not a stop</span><button class="linkbtn" data-undo="'+i+'">Undo</button></div>';
   const look = needsLook(r), done = r.status === "confirmed" || r.status === "fixed";
   const tag = r.status === "missing" ? '<span class="chip failed">Not read</span>' : look ? '<span class="chip skipped">Check</span>' : done ? '<span class="chip delivered">✓ Checked</span>' : r.autofixed ? '<span class="chip delivered">Corrected from official list</span>' : '';
   return '<div class="srow '+r.status+'" data-row="'+i+'"><div class="srow-h"><b>#'+(r.seq != null ? r.seq : "?")+'</b>'+tag+(look && r.problem ? '<span class="sprob">'+esc(r.problem)+'</span>' : '')+'</div>' +
     (thumbs[r.seq] && !compact ? '<img class="sthumb" alt="Photo of row '+r.seq+'" src="'+thumbs[r.seq]+'">' : '') +
     '<textarea class="sinput" rows="1" enterkeyhint="done" data-i="'+i+'" placeholder="Type the address shown in the photo" aria-label="Address for row '+r.seq+'">'+esc(r.address)+'</textarea>' +
     (look && r.suggest && r.suggest !== r.address ? '<button class="btn ghost ssug" data-sug="'+i+'">Did you mean <b>'+esc(r.suggest)+'</b>? Tap to use it</button>' : '') +
-    (look ? '<button class="btn act-d sok" data-ok="'+i+'">'+(r.status === "missing" ? "Save this address" : "Looks right ✓")+'</button>' : '') + '</div>';
+    '<div class="sacts">' + (look ? '<button class="btn act-d sok" data-ok="'+i+'">'+(r.status === "missing" ? "Save this address" : "Looks right ✓")+'</button>' : '') +
+    '<button class="btn srm" data-rm="'+i+'">'+ico("trash")+(look ? 'Not a stop' : 'Remove')+'</button></div></div>';
 }
 function renderScan(){
   const n = scan.pages.length + 1, sofar = scanCount(), last = scanLastSeq();
@@ -3413,18 +3443,20 @@ function renderScan(){
   $("scanResult").hidden = !scanPage;
   $("scanFinishIdle").hidden = !!scanPage || !sofar;
   if (!scanPage){ $("scanList").innerHTML = ""; $("scanAllList").innerHTML = ""; return; }
-  const rows = scanPage.rows, look = rows.filter(needsLook).length, total = rows.filter(r => r.status !== "missing").length;
+  const rows = scanPage.rows, look = rows.filter(r => !r.removed && needsLook(r)).length, total = rows.filter(r => !r.removed && r.status !== "missing").length;
   const box = $("scanResultBox"); box.className = "sresult " + (look ? "warn" : "good");
   $("scanResultTitle").textContent = look ? "⚠ "+look+" need"+(look === 1 ? "s" : "")+" your check" : "✓ All "+total+" addresses look right";
   $("scanResultSub").textContent = "Rows #"+scanPage.first+"–#"+scanPage.last+" · read in "+scanPage.secs+" s";
   $("scanHowTo").textContent = look ? "Compare each row below with its photo. Fix the text if it is different, then tap Looks right." : "Tap Next page to photograph page "+(n+1)+", or Done if this was the last page.";
-  $("scanList").innerHTML = rows.map((r,i) => needsLook(r) || r.status === "fixed" || (r.status === "confirmed" && r.wasLook) ? rowCard(r, i) : "").join("");
-  $("scanShowAll").textContent = scanPage.showAll ? "Hide the other addresses" : "Show all "+rows.length+" addresses on this page";
+  $("scanList").innerHTML = rows.map((r,i) => r.wasLook || needsLook(r) || r.status === "fixed" || (r.status === "confirmed" && r.wasLook) ? rowCard(r, i) : "").join("");
+  $("scanShowAll").textContent = scanPage.showAll ? "Hide the other addresses" : "Show all "+total+" addresses on this page";
   $("scanAllList").hidden = !scanPage.showAll;
   $("scanAllList").innerHTML = scanPage.showAll ? rows.map((r,i) => needsLook(r) || r.wasLook ? "" : rowCard(r, i)).join("") : "";
+  $("scanResultSub").textContent += rows.some(r => r.removed) ? " · " + rows.filter(r => r.removed).length + " removed" : "";
 }
 function acceptPage(){
   if (!scanPage) return;
+  scanPage.rows = scanPage.rows.filter(r => !r.removed);
   const empty = scanPage.rows.filter(r => !r.address.trim());
   scanPage.rows.forEach(r => { if (r.address.trim()) prefetch(r.search || r.address.trim()); });
   scan.pages.push({rows: scanPage.rows.filter(r => r.address.trim()).map(r => ({seq:r.seq, address:r.address.trim(), search:r.search || r.address.trim(), size:r.size || ""}))});
@@ -3442,6 +3474,9 @@ function onRowEdit(e){ const i = e.target.dataset.i; if (i == null || !scanPage)
 function onRowOk(e){
   const sb = e.target.closest && e.target.closest("[data-sug]");
   if (sb && scanPage){ const r = scanPage.rows[+sb.dataset.sug]; r.address = r.search = r.suggest; r.autofixed = true; r.wasLook = true; r.status = "fixed"; prefetch(r.search); renderScan(); return; }
+  const rm = e.target.closest && e.target.closest("[data-rm]"), un = e.target.closest && e.target.closest("[data-undo]");
+  if (rm && scanPage){ const r = scanPage.rows[+rm.dataset.rm]; r.removed = true; r.wasLook = r.wasLook || needsLook(r); renderScan(); return; }
+  if (un && scanPage){ scanPage.rows[+un.dataset.undo].removed = false; renderScan(); return; }
   const i = e.target.dataset.ok; if (i == null || !scanPage) return;
   const r = scanPage.rows[+i];
   if (!r.address.trim()){ toast("Type the address from the photo first."); return; }
@@ -3457,7 +3492,7 @@ $("btnScan").addEventListener("click", () => {
   renderScan(); $("scanSheet").hidden = false; });
 $("scanClose").addEventListener("click", () => $("scanSheet").hidden = true);
 ["scanCam","scanGallery","scanRetake"].forEach(id => $(id).addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) scanPhoto(f); }));
-function unchecked(){ return scanPage ? scanPage.rows.filter(needsLook).length : 0; }
+function unchecked(){ return scanPage ? scanPage.rows.filter(r => !r.removed && needsLook(r)).length : 0; }
 $("scanNext").addEventListener("click", () => {
   const u = unchecked();
   if (u && !$("scanNext").dataset.warned){ $("scanNext").dataset.warned = "1"; const w = $("scanNextWarn"); w.hidden = false;
@@ -3987,7 +4022,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.3";
+const APP_VERSION = "8.5";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -4057,7 +4092,7 @@ $("bugCopy").addEventListener("click", async () => {
 $("bugClose").addEventListener("click", () => $("bugSheet").hidden = true);
 
 /* ---------- first-use guide ---------- */
-const STORE_GUIDE = "dropline.guide.v1";
+const STORE_GUIDE = "dropline.guide.v2";    // v2: guide updated for the new route screen, shown once again to everyone
 let gIdx = 0;
 function guideShow(i){
   const ss = [...document.querySelectorAll("#gSlides section")]; gIdx = Math.max(0, Math.min(ss.length - 1, i));

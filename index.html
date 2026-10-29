@@ -1699,7 +1699,10 @@ function readPage(lines, prevMaxSeq){
   }
   rowsOut.sort((a,b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
   const nums = rowsOut.map(r => r.seq).filter(s => s != null);
-  const lo = Math.min(prevMaxSeq + 1, ...(nums.length ? nums : [prevMaxSeq + 1])), hi = nums.length ? Math.max(...nums) : prevMaxSeq;
+  // first page of a scan: the sheet may start part-way (e.g. at #51 when earlier pages were added before), so only
+  // count rows from #1 when the page itself starts near #1; later pages continue from the previous page
+  const first = nums.length ? Math.min(...nums) : prevMaxSeq + 1;
+  const lo = prevMaxSeq ? Math.min(prevMaxSeq + 1, first) : (first <= 3 ? 1 : first), hi = nums.length ? Math.max(...nums) : prevMaxSeq;
   const missing = []; for (let s = lo; s <= hi; s++) if (!seen.has(s)) missing.push(s);
   missing.forEach(s => rowsOut.push({seq: s, address: "", search: "", size: "", status: "missing", problem: "Not read — type the address from the photo"}));
   rowsOut.sort((a,b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
@@ -3542,8 +3545,8 @@ async function finishScan(btn){
   acceptPage();
   const rows = []; scan.pages.forEach(p => p.rows.forEach(r => { if (r.address) rows.push(r); }));
   if (!rows.length){ scanMsg("No addresses saved yet.", true); renderScan(); return; }
-  const have = new Set(rows.map(r => r.seq)), last = Math.max(...rows.map(r => r.seq || 0));
-  const gaps = []; for (let s = 1; s <= (scan.total || last); s++) if (!have.has(s)) gaps.push(s);
+  const have = new Set(rows.map(r => r.seq)), last = Math.max(...rows.map(r => r.seq || 0)), low = Math.min(...rows.map(r => r.seq || 1));
+  const gaps = []; for (let s = low <= 3 ? 1 : low; s <= (scan.total || last); s++) if (!have.has(s)) gaps.push(s);
   if (gaps.length && !$("scanFinishIdle").dataset.confirmed){
     $("scanFinishIdle").dataset.confirmed = "1"; renderScan();
     scanMsg((scan.total && last < scan.total ? "The sheet lists "+scan.total+" parcels but the scanned rows stop at #"+last+". " : "") + gaps.length+" row"+(gaps.length>1?"s are":" is")+" missing (#"+gaps.slice(0,12).join(", #")+(gaps.length>12?"…":"")+"). Photograph the missing page, or tap Done again to continue without "+(gaps.length>1?"them":"it")+".", true);
@@ -4051,7 +4054,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.7";
+const APP_VERSION = "8.8";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

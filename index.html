@@ -3142,7 +3142,8 @@ function fitAll(){ const pts = route.stops.filter(has).map(s=>[s.lat,s.lon]); if
   map.fitBounds(pts, {paddingTopLeft:[60, 56], paddingBottomRight:[60, 40], maxZoom:16, animate:false}); }
 map.on("click", e => {
   if (!placingId) return; const s = route.stops.find(x => x.id === placingId); placingId = null; document.body.classList.remove("placing");
-  if (!s) return; s.lat = e.latlng.lat; s.lon = e.latlng.lng; s.geo = "manual"; s.approx = false; cachePut(s.query || s.label, s); cacheSave(); markStale(); persist(); render(); toast("Pin moved for stop "+(route.stops.indexOf(s)+1));
+  if (!s) return; s.lat = e.latlng.lat; s.lon = e.latlng.lng; s.geo = "manual"; s.approx = false; cachePut(s.query || s.label, s); cacheSave(); markStale(); persist();
+  nextPinCheck(s.id, "Pin moved for stop " + (route.stops.indexOf(s) + 1) + ".");
 });
 
 /* ---------- render ---------- */
@@ -3360,8 +3361,9 @@ function editStop(r){
   const st = route.stops.find(x => x.id === editId); endEdit(); closePickers(); if (!st) return;
   st.label = st.query = r.label; st.lat = r.lat; st.lon = r.lon; st.geo = r.geo === "street" ? "street" : "exact"; delete st.approx; delete st.rp; delete st.rpKey; delete st.rpChk;
   if (st.geo === "exact") cachePut(r.label, r);
-  markStale(); persist(); selId = expandedId = st.id; render(); scrollToStop(st.id);
-  toast("Stop " + (route.stops.indexOf(st) + 1) + " updated" + (route.opt ? ". Tap Re-optimise to update the order." : "."));
+  markStale(); persist();
+  const msg = "Stop " + (route.stops.indexOf(st) + 1) + " updated" + (route.opt ? ". Tap Re-optimise to update the order." : ".");
+  if (st.geo === "exact") nextPinCheck(st.id, msg); else { selId = expandedId = st.id; render(); scrollToStop(st.id); toast(msg); }
 }
 wireSearch($("startIn"), $("startSugg"), setStart);
 $("btnOpt").addEventListener("click", optimise);
@@ -3399,6 +3401,15 @@ $("nsLocOpt").addEventListener("click", () => { $("nsLocOpt").textContent = "Fin
 $("nsStart").addEventListener("click", () => { setStartMode(false, true); openPicker("startPicker"); });
 $("btnLocate").addEventListener("click", locatePending);
 let probIdx = -1;
+/* After a pin is checked (Pin is right, Edit address or Move pin): go straight to the next stop whose pin needs a check. */
+const needsPinCheck = s => s.geo === "missing" || s.geo === "street" || !!s.approx;
+function nextPinCheck(doneId, msg){
+  const st = route.stops, k = st.findIndex(x => x.id === doneId), probs = st.filter(needsPinCheck);
+  if (!probs.length){ selId = expandedId = null; render(); scrollToStop(doneId); toast((msg ? msg + " " : "") + "✓ All pins checked."); return; }
+  const nx = st.slice(k + 1).find(needsPinCheck) || probs[0];
+  selId = expandedId = nx.id; render(); scrollToStop(nx.id); if (has(nx)) map.setView([nx.lat, nx.lon], 17);
+  toast((msg ? msg + " " : "") + "Next pin to check: stop " + (st.indexOf(nx) + 1) + " (" + probs.length + " left).");
+}
 $("btnShowProb").addEventListener("click", () => {
   const probs = route.stops.filter(s => s.geo === "missing" || s.geo === "street" || s.approx); if (!probs.length) return;
   probIdx = (probIdx + 1) % probs.length; const s = probs[probIdx]; selId = expandedId = s.id;
@@ -3416,7 +3427,7 @@ $("stops").addEventListener("click", e => {
   if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
   if (t.dataset.pin){ showPin(t.dataset.pin); return; }
   if (t.dataset.edit){ openEditStop(t.dataset.edit); return; }
-  if (t.dataset.pinok){ const s = route.stops.find(x => x.id === t.dataset.pinok); if (s){ s.geo = "exact"; delete s.approx; s.pinOk = true; persist(); render(); toast("Pin saved as correct."); } return; }
+  if (t.dataset.pinok){ const s = route.stops.find(x => x.id === t.dataset.pinok); if (s){ s.geo = "exact"; delete s.approx; s.pinOk = true; persist(); nextPinCheck(s.id, "Pin saved as correct."); } return; }
   if (t.dataset.place){ placingId = t.dataset.place; document.body.classList.add("placing"); toast("Tap the map where this stop is."); return; }
   if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
   if (t.dataset.qnote){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ toggleNote(s, t.dataset.qnote); persist(); render(); } return; }
@@ -4299,7 +4310,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.17";
+const APP_VERSION = "8.18";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

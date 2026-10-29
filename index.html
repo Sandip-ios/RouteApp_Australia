@@ -1775,10 +1775,13 @@ function readList(lines, prevMaxSeq){
   const re = new RegExp("(\\d+)([A-Za-z]?)(?:\\s*[-–]\\s*\\d+[A-Za-z]?)?\\s+((?:[A-Za-z'’]+\\s+){0,4}?(?:"+STREET_TYPES+"))\\b\\.?", "i");
   const rows = found.map((f, i) => {
     let text = f.parts.join(" ").replace(/\s+/g, " ").trim(), seq = prevMaxSeq + 1 + i, name = "";
+    // a printed row number in front ("76 12 Smith St", "76. 12 Smith St", "#76") is kept to number the parcel
+    const lead = (text.match(/^\s*#?(\d{1,3})\s*[.)]?\s+(?=\d)/) || text.match(/^\s*#?(\d{1,3})\s*[.)]\s*/) || text.match(/^\s*#(\d{1,3})\b/) || [])[1];
+    text = text.replace(/^\s*#?\d{1,3}\s*[.)]?\s+(?=\d)/, "");
     text = text.replace(/^\s*(?:[•*·>-]+|#?\d{1,3}\s*[.)]|#\d{1,3}\b)\s*/, "");          // bullets and list numbers ("1.", "2)", "#3")
     text = text.replace(/\bNone\b/g, " ").replace(/\b([A-Za-z]{3,}(?: [A-Za-z]{3,})?)\s+\1\b/gi, "$1").replace(/\s+/g, " ").trim();   // "FREWVILLE Frewville"
     const m = text.match(STATE_PC);
-    if (!m) return {seq, address: titleCase(text), search: text, status: "check", problem: "No state and postcode read — check it", box: f.box, name: ""};
+    if (!m) return {seq, lead, address: titleCase(text), search: text, status: "check", problem: "No state and postcode read — check it", box: f.box, name: ""};
     const state = m[1].replace(/[^A-Za-z]/g, "").toUpperCase(), pc = digitsOf(m[2]);
     let body = text.slice(0, m.index).replace(/[\s,.]+$/, ""), street, suburb;
     const comma = body.lastIndexOf(",");
@@ -1800,11 +1803,16 @@ function readList(lines, prevMaxSeq){
     const problems = [];
     if (!/^\d{4}$/.test(pc)) problems.push("Postcode unclear");
     if (!hm2) problems.push("No house number");
-    return {seq, address, search: (hm2 ? hm2[1] + hm2[2].toUpperCase() + " " + hm2[3] : street) + ", " + suburb + " " + state + " " + pc, size: "", box: f.box,
+    return {seq, lead, address, search: (hm2 ? hm2[1] + hm2[2].toUpperCase() + " " + hm2[3] : street) + ", " + suburb + " " + state + " " + pc, size: "", box: f.box,
       status: problems.length ? "check" : "ok", problem: problems.join(" · "), name};
   }).filter(r => r.address.replace(/[^A-Za-z]/g, "").length >= 5);
-  rows.forEach((r, i) => r.seq = prevMaxSeq + 1 + i);
-  return {rows, total: null, firstSeq: prevMaxSeq + 1, lastSeq: prevMaxSeq + rows.length, lineCount: L.length};
+  // use the sheet's own row numbers when most rows have one and they go up in order; otherwise continue the numbering
+  const leads = rows.map(r => r.lead != null ? +r.lead : null), have = leads.filter(x => x != null);
+  const rising = have.length >= Math.max(2, 0.6*rows.length) && have.every((x, i) => i === 0 || x > have[i-1]);
+  rows.forEach((r, i) => { r.seq = rising && leads[i] != null ? leads[i] : (rising ? null : prevMaxSeq + 1 + i); delete r.lead; });
+  if (rising) rows.forEach((r, i) => { if (r.seq == null){ const p = rows[i-1]; r.seq = p && p.seq != null ? p.seq + 1 : prevMaxSeq + 1 + i; } });
+  const seqs = rows.map(r => r.seq);
+  return {rows, total: null, firstSeq: seqs.length ? Math.min(...seqs) : prevMaxSeq + 1, lastSeq: seqs.length ? Math.max(...seqs) : prevMaxSeq, lineCount: L.length};
 }
 
 const api = {readPage, readList, cleanAddress, classify};
@@ -3659,7 +3667,8 @@ async function readScanned(canvas){
       if (score(r2) > score(res) + 1){ res = r2; canvas = c; } } }
   const lines = res.lines || [], kinds = lines.map(l => DroplineScan.classify(l.text || ""));
   const isSheet = kinds.filter(k => k === "code" || k === "track").length >= 3;
-  const page = isSheet ? DroplineScan.readPage(lines, scanLastSeq()) : DroplineScan.readList(lines, scanLastSeq());
+  const routeMax = route.stops.reduce((m, x) => Math.max(m, ...parcels(x).map(p => +p.seq || 0)), 0);
+  const page = isSheet ? DroplineScan.readPage(lines, scanLastSeq()) : DroplineScan.readList(lines, Math.max(scanLastSeq(), routeMax));
   if (page.total) scan.total = page.total;
   if (!page.rows.length){ scanMsg("No addresses found. Put the box around the page or just the addresses, with good light, and try again." + (isSheet ? "" : " Each address should end with the state and postcode, e.g. VIC 3023."), true); return; }
   page.rows.forEach(r => { thumbs[r.seq] = cropRow(canvas, r.box); delete r.box; });
@@ -3687,8 +3696,10 @@ function rowCard(r, i, compact){
     '<div class="sacts">' + (look ? '<button class="btn act-d sok" data-ok="'+i+'">'+(r.status === "missing" ? "Save this address" : "Looks right ✓")+'</button>' : '') +
     '<button class="btn srm" data-rm="'+i+'">'+ico("trash")+(look ? 'Not a stop' : 'Remove')+'</button></div></div>';
 }
+/* Page numbers carry on in the same route: after 3 pages are added, the next scan is page 4. */
+function pageNo(){ return (route.scanPages || 0) + scan.pages.length + 1; }
 function renderScan(){
-  const n = scan.pages.length + 1, sofar = scanCount(), last = scanLastSeq();
+  const n = pageNo(), sofar = scanCount(), last = scanLastSeq();
   $("scanTitle").textContent = scanPage ? "Page "+n+" — check" : "Scan page "+n;
   $("scanSummary").textContent = sofar ? sofar+" addresses saved from "+scan.pages.length+" page"+(scan.pages.length>1?"s":"")+(scan.total ? " (sheet has "+scan.total+" parcels)" : "") : "Photograph each page of the run sheet, one at a time.";
   $("scanTake").textContent = "Take photo of page "+n;
@@ -3753,7 +3764,7 @@ $("scanNext").addEventListener("click", () => {
   const u = unchecked();
   if (u && !$("scanNext").dataset.warned){ $("scanNext").dataset.warned = "1"; const w = $("scanNextWarn"); w.hidden = false;
     w.textContent = u+" yellow row"+(u>1?"s are":" is")+" not checked yet. Check "+(u>1?"them":"it")+", or tap Next page again to keep the text as read."; return; }
-  acceptPage(); renderScan(); scanMsg("Page saved. Now photograph page "+(scan.pages.length+1)+", or tap Done if that was the last page.");
+  acceptPage(); renderScan(); scanMsg("Page saved. Now photograph page "+pageNo()+", or tap Done if that was the last page.");
   document.querySelector("#scanSheet .sheet").scrollTop = 0; });
 $("scanRestart").addEventListener("click", async () => {
   if (await askConfirm("Start the scan again?", "The pages you have scanned so far will be thrown away.", "Discard pages")) $("scanRestartYes").click(); });
@@ -3783,7 +3794,7 @@ async function finishScan(btn){
     groups.get(k).parcels.push({seq:r.seq, size:r.size || "", note:""}); });
   $("scanSheet").hidden = true; $("importSheet").hidden = true; $("scanMsg").hidden = true;
   showNextStep(null, "Adding "+groups.size+" stops…");
-  const scanPagesDone = scan.pages.length;
+  const scanPagesDone = scan.pages.length; route.scanPages = (route.scanPages || 0) + scanPagesDone;
   scan = {pages:[], total:null}; scanSave();
   await importGroups([...groups.values()], false);      // scanned stops are added to the route; stops already on it are kept
   showNextStep(scanPagesDone);
@@ -4279,7 +4290,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.14";
+const APP_VERSION = "8.15";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

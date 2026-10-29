@@ -3051,13 +3051,16 @@ async function loadSample(){
 
 /* ---------- my location ---------- */
 let lastStepPages = 0;
+/* Same counts as the Stops box: every stop (scanned, imported or typed) and its parcel count. */
+function nsTitleText(pages){ const st = route.stops, np = st.reduce((a, x) => a + pcount(x), 0);
+  return "✓ " + st.length + " stop" + (st.length === 1 ? "" : "s") + " in this route" + (np !== st.length ? " (" + np + " parcels)" : "") + (pages ? " from " + pages + " page" + (pages > 1 ? "s" : "") : ""); }
 function showNextStep(pages, busyText){
   if (pages != null) lastStepPages = pages;
-  const box = $("nextStep"), st = route.stops, np = st.reduce((a,x) => a + parcels(x).length, 0);
+  const box = $("nextStep"), st = route.stops;
   box.hidden = false; $("app-main").scrollTop = 0;
   if (busyText){ $("nsTitle").textContent = busyText; $("nsText").textContent = "Finding map locations…"; ["nsOpt","nsLocOpt","nsStart"].forEach(id => $(id).hidden = true); return; }
   const miss = st.filter(x => !has(x)).length;
-  $("nsTitle").textContent = "✓ " + st.length + " stops in this route" + (np !== st.length ? " (" + np + " parcels)" : "") + (pages ? " from " + pages + " page" + (pages > 1 ? "s" : "") : "");
+  $("nsTitle").textContent = nsTitleText(pages);
   const hasStart = has(route.start);
   $("nsText").textContent = (miss ? miss + " stop" + (miss > 1 ? "s" : "") + " still need a map location (shown at the end of the list). " : "") +
     (hasStart ? "Next: optimise the delivery order from " + route.start.label + "." : "Next: choose where you start, then the app works out the best delivery order.");
@@ -3256,6 +3259,7 @@ function render(){
     $("btnOpt").classList.toggle("second", opted); $("btnOpt").style.flex = $("btnStartRun").hidden ? "1" : "none"; }
   $("startAddrBox").hidden = startMeOn || !!(route.start && !route.start.me);
   showStart();
+  if (!$("nextStep").hidden && !/…$/.test($("nsTitle").textContent)) $("nsTitle").textContent = nsTitleText(lastStepPages);   // stays right after adding or removing stops
   $("emptyHint").hidden = st.length > 0; $("stopTools").hidden = st.length <= 4; $("stopsHead").hidden = !st.length;
   if (st.length <= 4 && ($("stopSearch").value || $("stopFilter").value !== "all")){ $("stopSearch").value = ""; $("stopFilter").value = "all"; }
   $("routeTitle").firstChild.nodeValue = route.name || "Route";
@@ -4295,7 +4299,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.16";
+const APP_VERSION = "8.17";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

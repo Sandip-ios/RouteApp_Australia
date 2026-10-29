@@ -682,19 +682,16 @@ textarea:focus{border-color:var(--teal);outline:none}
 
 /* scan + import */
 .slist{display:flex;flex-direction:column;gap:10px;margin-top:10px}
-.scanmode{display:flex;width:100%}.scanmode button{flex:1}
 .cropview{position:fixed;inset:0;z-index:2600;background:#0B1622;color:#fff;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
 .cropview .phead{background:#0E2B4B;color:#fff}.cropview .phead .hback{color:#fff}
 .crophint{margin:10px 16px;font-size:14.5px;line-height:1.45;color:#CFE0EE}.crophint b{color:#fff}
 .cropstage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 16px;overflow:hidden}
 .cropwrap{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;max-width:100%;max-height:100%}
 .cropwrap img{display:block;max-width:100%;max-height:calc(100vh - 230px);object-fit:contain;pointer-events:none}
-.cropbox{position:absolute;border:2.5px solid #2BD3C1;box-shadow:0 0 0 9999px rgba(0,0,0,.55);touch-action:none;cursor:move}
-.cropbox i{position:absolute;width:30px;height:30px;border:4px solid #fff;touch-action:none}
-.cropbox i::after{content:"";position:absolute;inset:-14px}
-.cropbox i[data-h=nw]{left:-6px;top:-6px;border-right:0;border-bottom:0}.cropbox i[data-h=ne]{right:-6px;top:-6px;border-left:0;border-bottom:0}
-.cropbox i[data-h=sw]{left:-6px;bottom:-6px;border-right:0;border-top:0}.cropbox i[data-h=se]{right:-6px;bottom:-6px;border-left:0;border-top:0}
-.cropacts{display:flex;gap:8px;padding:10px 16px 14px}.cropacts .btn{min-height:52px}
+.cropsvg{position:absolute;left:0;top:0;pointer-events:none}
+.qh{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:rgba(43,211,193,.35);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);touch-action:none;cursor:grab}
+.qh::after{content:"";position:absolute;inset:-16px;border-radius:50%}
+.cropacts{display:flex;gap:8px;padding:10px 16px 14px}.cropacts .btn{min-height:52px;padding:0 14px}
 .sprogress{margin:0 0 10px;font-size:14px;color:var(--muted)}
 .sresult{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:14px;margin-top:6px}
 .sresult b{font:700 21px/1.2 var(--f-display)}
@@ -1142,11 +1139,12 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
   </div>
 </div>
 
-<div class="cropview" id="cropView" hidden role="dialog" aria-label="Select the addresses">
-  <header class="phead"><button class="hback" id="cropBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Select the addresses</b><span class="pspace"></span></header>
-  <p class="crophint">Drag the corners so the box covers <b>only the addresses</b>. Leave out names, numbers and other columns you don't need.</p>
-  <div class="cropstage" id="cropStage"><div class="cropwrap" id="cropWrap"><img id="cropImg" alt="Photo to crop"><div class="cropbox" id="cropBox"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div></div>
-  <div class="cropacts"><button class="btn" id="cropAll">Whole photo</button><button class="btn cta grow" id="cropGo">Read these addresses</button></div>
+<div class="cropview" id="cropView" hidden role="dialog" aria-label="Crop the page">
+  <header class="phead"><button class="hback" id="cropBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Crop the page</b><span class="pspace"></span></header>
+  <p class="crophint"><span id="cropAuto" hidden>✓ Page edges found. </span>Drag the 4 corners to the edges of the page, or around <b>just the addresses</b>. The page is straightened before it is read.</p>
+  <div class="cropstage" id="cropStage"><div class="cropwrap" id="cropWrap"><img id="cropImg" alt="Photo to crop"><svg class="cropsvg" id="cropSvg" aria-hidden="true"></svg>
+    <i class="qh" data-i="0"></i><i class="qh" data-i="1"></i><i class="qh" data-i="2"></i><i class="qh" data-i="3"></i></div></div>
+  <div class="cropacts"><button class="btn" id="cropRotate" aria-label="Rotate">⟳ Rotate</button><button class="btn" id="cropAll">Whole photo</button><button class="btn cta grow" id="cropGo">Read</button></div>
 </div>
 <div class="sheet-bg" id="scanSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Scan run sheet" style="max-height:94vh">
@@ -1160,11 +1158,9 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <p class="sprogress" id="scanSummary"></p>
       <p class="sprogress" id="scanLocating" hidden></p>
       <div id="scanShoot">
-        <div class="seg scanmode" id="scanMode" role="group" aria-label="What are you scanning?"><button data-mode="sheet" class="on">Run sheet (table)</button><button data-mode="list">Any address list</button></div>
-        <p class="hint" id="scanModeHint" style="margin:6px 0 10px"></p>
         <label class="btn primary" style="display:block;text-align:center"><span id="scanTake">Take photo of page 1</span><input type="file" id="scanCam" accept="image/*" capture="environment" hidden></label>
         <label class="btn ghost" style="display:block;text-align:center;margin-top:8px">Choose a saved photo<input type="file" id="scanGallery" hidden></label>
-        <p class="hint" id="scanShootHint">Hold the phone flat above the page so the whole table fills the screen. Good light, no shadow.</p>
+        <p class="hint" id="scanShootHint">Photograph one page at a time, in good light. Next you crop it: the page is found and straightened for you, like a document scanner. Works for the courier run sheet and for any printed address list.</p>
       </div>
       <p class="msg" id="scanMsg" hidden></p>
       <div id="scanResult" hidden>
@@ -1537,9 +1533,11 @@ function cleanAddress(raw){
   if (m && m.index > 0 && /[\s/]/.test(street[m.index - 1])){      // (a letter glued to the number, "D9", is a misread digit: leave it to be checked)
     // text before the house number: keep a unit / level / "2/" part, move a business or person name to the note, drop stray characters
     const pre = street.slice(0, m.index), keep = (pre.match(/(?:\b(?:unit|u|apt|suite|shop|lot|level|lvl|flat)\s*\d+[A-Za-z]?\s*[,/-]?\s*|\d+[A-Za-z]?\s*\/\s*)$/i) || [""])[0];
-    const rest = pre.slice(0, pre.length - keep.length).replace(/[-–,:;.\s]+$/, "").trim();
+    let rest = pre.slice(0, pre.length - keep.length).replace(/[-–,:;.\s]+$/, "").trim(), lvl = "";
+    const lw = rest.match(/\s*\b(unit|u|apt|suite|shop|lot|level|lvl|flat)$/i);          // "LVL 1213": level word whose number ran into the house number
+    if (lw && !keep){ lvl = lw[1] + " "; rest = rest.slice(0, lw.index).trim(); }
     if (/[A-Za-z]{4,}/.test(rest)) name = rest.replace(/\s+\d+$/, "");
-    street = (keep.replace(/\s+/g, " ").replace(/\s*\/\s*$/, "/") + street.slice(m.index)).trim(); m = street.match(re); }
+    street = (lvl + keep.replace(/\s+/g, " ").replace(/\s*\/\s*$/, "/") + street.slice(m.index)).trim(); m = street.match(re); }
   if (m){ const after = street.slice(m.index + m[0].length).trim();
     if (/[A-Za-z]{4,}/.test(after) && !/^(unit|suite|shop|lot|level|lvl)\b/i.test(after)){ name = [name, after].filter(Boolean).join(" · "); street = street.slice(0, m.index + m[0].length).trim(); }
     else if (/^(unit|suite|shop|lot|level|lvl)\s*\d+[A-Za-z]?$/i.test(after) && m.index === 0){ street = titleCase(after) + " " + street.slice(0, m[0].length); m = street.match(re); } }
@@ -1791,9 +1789,11 @@ function readList(lines, prevMaxSeq){
     const hm = street.match(re);
     if (hm && hm.index > 0 && /[\s/]/.test(street[hm.index - 1])){
       const pre = street.slice(0, hm.index), keep = (pre.match(/(?:\b(?:unit|u|apt|suite|shop|lot|level|lvl|flat)\s*\d+[A-Za-z]?\s*[,/-]?\s*|\d+[A-Za-z]?\s*\/\s*)$/i) || [""])[0];
-      const rest = pre.slice(0, pre.length - keep.length).replace(/[-–,:;.\s]+$/, "").trim();
+      let rest = pre.slice(0, pre.length - keep.length).replace(/[-–,:;.\s]+$/, "").trim(), lvl = "";
+      const lw = rest.match(/\s*\b(unit|u|apt|suite|shop|lot|level|lvl|flat)$/i);
+      if (lw && !keep){ lvl = lw[1] + " "; rest = rest.slice(0, lw.index).trim(); }
       if (/[A-Za-z]{4,}/.test(rest)) name = rest;
-      street = (keep.replace(/\s+/g, " ").replace(/\s*\/\s*$/, "/") + street.slice(hm.index)).trim(); }
+      street = (lvl + keep.replace(/\s+/g, " ").replace(/\s*\/\s*$/, "/") + street.slice(hm.index)).trim(); }
     const fix = w => /[a-z]/.test(w) ? w : titleCase(w.toUpperCase()).replace(/\b([A-Z])([A-Z]+)\b/g, (x, a, b) => a + b.toLowerCase());
     street = fix(street); suburb = fix(suburb);
     const address = street + ", " + suburb + " " + state + " " + pc, hm2 = street.match(re);
@@ -3497,9 +3497,13 @@ function pumpPrefetch(){
   }
   showPrefetch();
 }
+function titleCaseName(t){ t = String(t || "").trim(); return /[a-z]/.test(t) ? t : t.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()); }
 /* The official list has the building's address; keep the unit / level the sheet gave ("5/457 …", "Unit 2 20 …"). */
 function withUnit(read, official){
-  const u = (String(read || "").match(/^\s*((?:unit|u|apt|suite|shop|lot|level|lvl|flat)\s*\d+[A-Za-z]?\s*[,/-]?\s*|\d+[A-Za-z]?\s*\/\s*)(?=\d)/i) || [])[1];
+  // "Lvl 1213 Greenhill Rd" read, "213 Greenhill Road" official: the level was 1 → "Lvl 1, 213 Greenhill Road"
+  const j = String(read || "").match(/^\s*(unit|u|apt|suite|shop|lot|level|lvl|flat)\s*(\d+)\s/i), on = (String(official).match(/^(\d+)/) || [])[1];
+  if (j && on && j[2].length > on.length && j[2].endsWith(on)) return j[1] + " " + j[2].slice(0, j[2].length - on.length) + ", " + official;
+  const u = (String(read || "").match(/^\s*((?:unit|u|apt|suite|shop|lot|level|lvl|flat)\s*\d+[A-Za-z]?(?:\s*[,/-]\s*|\s+)|\d+[A-Za-z]?\s*\/\s*)(?=\d)/i) || [])[1];
   return u && !/^\s*(?:unit|u|apt|suite|shop|lot|level|lvl|flat)\b|\//i.test(official) ? u.replace(/\s*\/\s*$/, "/").replace(/\s+$/, " ").replace(/([^/ ])$/, "$1 ") + official : official;
 }
 function flagFromLookup(q, r){
@@ -3547,78 +3551,126 @@ function showPrefetch(){
   el.textContent = left ? "Finding map locations in the background: "+preDone+" of "+preTotal+" done" : "✓ Map locations found for "+preDone+" addresses";
 }
 
-let scanMode = (() => { try{ return localStorage.getItem("dropline.scanMode") === "list" ? "list" : "sheet"; }catch(e){ return "sheet"; } })();
-function showScanMode(){
-  document.querySelectorAll("#scanMode button").forEach(b => b.classList.toggle("on", b.dataset.mode === scanMode));
-  $("scanModeHint").innerHTML = scanMode === "list" ? "For any other sheet or list, any state. After the photo you <b>drag a box around the addresses</b>; they are read top to bottom and numbered in that order."
-    : "For the courier run sheet: a table with row numbers, tracking IDs and parcel sizes.";
-  $("scanShootHint").textContent = scanMode === "list" ? "Each address should end with the state and postcode, e.g. VIC 3023. Good light, no shadow." : "Hold the phone flat above the page so the whole table fills the screen. Good light, no shadow.";
+/* ---------- photo → crop (like a document scanner) → straighten → read ---------- */
+/* Find the sheet of paper in the photo: the largest bright area; its four corners. */
+function findPage(canvas){
+  try{
+    const k = 360 / Math.max(canvas.width, canvas.height), w = Math.max(8, Math.round(canvas.width*k)), h = Math.max(8, Math.round(canvas.height*k));
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.drawImage(canvas, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h).data, gray = new Uint8Array(w*h), hist = new Array(256).fill(0);
+    for (let i = 0; i < w*h; i++){ const v = (d[i*4]*0.299 + d[i*4+1]*0.587 + d[i*4+2]*0.114) | 0; gray[i] = v; hist[v]++; }
+    let sum = 0; for (let i = 0; i < 256; i++) sum += i*hist[i];
+    let sB = 0, wB = 0, best = 0, t = 128;                                  // Otsu threshold
+    for (let i = 0; i < 256; i++){ wB += hist[i]; if (!wB) continue; const wF = w*h - wB; if (!wF) break; sB += i*hist[i];
+      const mB = sB/wB, mF = (sum - sB)/wF, v = wB*wF*(mB - mF)*(mB - mF); if (v > best){ best = v; t = i; } }
+    // close small dark gaps (text, ruled lines) so the page is one area: 2-pixel dilation of the bright mask
+    const m0 = new Uint8Array(w*h); for (let i = 0; i < w*h; i++) m0[i] = gray[i] > t ? 1 : 0;
+    const mask = new Uint8Array(w*h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){ let on = 0;
+      for (let dy = -2; dy <= 2 && !on; dy++) for (let dx = -2; dx <= 2; dx++){ const yy = y+dy, xx = x+dx; if (yy >= 0 && yy < h && xx >= 0 && xx < w && m0[yy*w+xx]){ on = 1; break; } }
+      mask[y*w+x] = on; }
+    const lab = new Int32Array(w*h).fill(-1); let bestN = 0, bestId = -1; const q = new Int32Array(w*h);
+    for (let i = 0, id = 0; i < w*h; i++){ if (!mask[i] || lab[i] >= 0) continue;
+      let qh = 0, qt = 0, n = 0; q[qt++] = i; lab[i] = id;
+      while (qh < qt){ const p = q[qh++]; n++; const x = p % w, y = (p / w) | 0;
+        if (x > 0 && mask[p-1] && lab[p-1] < 0){ lab[p-1] = id; q[qt++] = p-1; } if (x < w-1 && mask[p+1] && lab[p+1] < 0){ lab[p+1] = id; q[qt++] = p+1; }
+        if (y > 0 && mask[p-w] && lab[p-w] < 0){ lab[p-w] = id; q[qt++] = p-w; } if (y < h-1 && mask[p+w] && lab[p+w] < 0){ lab[p+w] = id; q[qt++] = p+w; } }
+      if (n > bestN){ bestN = n; bestId = id; } id++; }
+    if (bestN < 0.15*w*h || bestN > 0.97*w*h) return null;                 // no clear page edge (page fills the photo, or no contrast)
+    let tl = null, tr = null, bl = null, br = null;
+    for (let i = 0; i < w*h; i++){ if (lab[i] !== bestId) continue; const x = i % w, y = (i / w) | 0;
+      if (!tl || x + y < tl[0] + tl[1]) tl = [x, y]; if (!br || x + y > br[0] + br[1]) br = [x, y];
+      if (!tr || x - y > tr[0] - tr[1]) tr = [x, y]; if (!bl || x - y < bl[0] - bl[1]) bl = [x, y]; }
+    return [tl, tr, br, bl].map(([x, y]) => [x / k, y / k]);
+  }catch(e){ return null; }
 }
-$("scanMode").addEventListener("click", e => { const b = e.target.closest("[data-mode]"); if (!b) return; scanMode = b.dataset.mode;
-  try{ localStorage.setItem("dropline.scanMode", scanMode); }catch(err){} showScanMode(); });
-showScanMode();
-/* ---- crop: drag a box around the addresses ---- */
-let cropCanvas = null, crop = null;
-function openCrop(canvas){
-  cropCanvas = canvas; $("cropImg").src = canvas.toDataURL("image/jpeg", 0.85); $("cropView").hidden = false;
-  $("cropImg").onload = () => { const w = $("cropImg").clientWidth, h = $("cropImg").clientHeight; crop = {x: w*.04, y: h*.04, w: w*.92, h: h*.92}; drawCrop(); };
+/* Straighten: map the four corners onto a flat rectangle (perspective correction). */
+function warpQuad(src, quad){
+  const [tl, tr, br, bl] = quad, dist = (a, b) => Math.hypot(a[0]-b[0], a[1]-b[1]);
+  let W = Math.round(Math.max(dist(tl, tr), dist(bl, br))), H = Math.round(Math.max(dist(tl, bl), dist(tr, br)));
+  const lim = 2200 / Math.max(W, H); if (lim < 1){ W = Math.round(W*lim); H = Math.round(H*lim); }
+  W = Math.max(20, W); H = Math.max(20, H);
+  // homography from the output rectangle to the photo
+  const P = [[0,0,tl],[W,0,tr],[W,H,br],[0,H,bl]], A = [], B = [];
+  for (const [x, y, [u, v]] of P){ A.push([x, y, 1, 0, 0, 0, -u*x, -u*y]); B.push(u); A.push([0, 0, 0, x, y, 1, -v*x, -v*y]); B.push(v); }
+  for (let i = 0; i < 8; i++){ let mx = i; for (let r = i+1; r < 8; r++) if (Math.abs(A[r][i]) > Math.abs(A[mx][i])) mx = r;
+    [A[i], A[mx]] = [A[mx], A[i]]; [B[i], B[mx]] = [B[mx], B[i]];
+    for (let r = 0; r < 8; r++){ if (r === i) continue; const f = A[r][i] / A[i][i]; for (let c = i; c < 8; c++) A[r][c] -= f*A[i][c]; B[r] -= f*B[i]; } }
+  const hh = B.map((b, i) => b / A[i][i]);
+  const sw = src.width, sh = src.height, sd = src.getContext("2d").getImageData(0, 0, sw, sh).data;
+  const out = document.createElement("canvas"); out.width = W; out.height = H; const og = out.getContext("2d"), od = og.createImageData(W, H), o = od.data;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
+    const z = hh[6]*x + hh[7]*y + 1, u = (hh[0]*x + hh[1]*y + hh[2]) / z, v = (hh[3]*x + hh[4]*y + hh[5]) / z;
+    const x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0, j = (y*W + x)*4;
+    if (x0 < 0 || y0 < 0 || x0 >= sw-1 || y0 >= sh-1){ o[j] = o[j+1] = o[j+2] = 255; o[j+3] = 255; continue; }
+    const i00 = (y0*sw + x0)*4, i10 = i00 + 4, i01 = i00 + sw*4, i11 = i01 + 4;
+    for (let c = 0; c < 3; c++) o[j+c] = (sd[i00+c]*(1-fx) + sd[i10+c]*fx)*(1-fy) + (sd[i01+c]*(1-fx) + sd[i11+c]*fx)*fy;
+    o[j+3] = 255; }
+  og.putImageData(od, 0, 0); return out;
 }
-function drawCrop(){ const b = $("cropBox").style; b.left = crop.x + "px"; b.top = crop.y + "px"; b.width = crop.w + "px"; b.height = crop.h + "px"; }
+function rotateCanvas(c){ const r = document.createElement("canvas"); r.width = c.height; r.height = c.width; const g = r.getContext("2d");
+  g.translate(r.width, 0); g.rotate(Math.PI / 2); g.drawImage(c, 0, 0); return r; }
+let cropCanvas = null, quad = null, quadAuto = false;
+function cropScale(){ return $("cropImg").clientWidth / cropCanvas.width; }
+function setCropImage(canvas){
+  cropCanvas = canvas; $("cropImg").src = canvas.toDataURL("image/jpeg", 0.85);
+  $("cropImg").onload = () => { const f = findPage(canvas), W = canvas.width, H = canvas.height, m = 0.03;
+    quadAuto = !!f; quad = f || [[W*m, H*m], [W*(1-m), H*m], [W*(1-m), H*(1-m)], [W*m, H*(1-m)]];
+    $("cropAuto").hidden = !quadAuto; drawQuad(); };
+}
+function openCrop(canvas){ $("cropView").hidden = false; setCropImage(canvas); }
+function drawQuad(){
+  if (!quad || !cropCanvas) return; const k = cropScale(), W = $("cropImg").clientWidth, H = $("cropImg").clientHeight;
+  const pts = quad.map(([x, y]) => [x*k, y*k]), svg = $("cropSvg");
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.style.width = W + "px"; svg.style.height = H + "px";
+  const poly = pts.map(p => p.join(",")).join(" ");
+  svg.innerHTML = '<path fill="rgba(0,0,0,.55)" fill-rule="evenodd" d="M0 0H' + W + 'V' + H + 'H0Z M' + pts.map(p => p.join(" ")).join(" L") + 'Z"/>' +
+    '<polygon points="' + poly + '" fill="none" stroke="#2BD3C1" stroke-width="2.5"/>';
+  document.querySelectorAll("#cropWrap .qh").forEach((el, i) => { el.style.left = pts[i][0] + "px"; el.style.top = pts[i][1] + "px"; });
+}
 { let drag = null;
-  $("cropWrap").addEventListener("pointerdown", e => { if (!crop) return; const h = e.target.dataset && e.target.dataset.h;
-    if (!h && !e.target.closest("#cropBox")) return;
-    drag = {h: h || "move", x0: e.clientX, y0: e.clientY, c: Object.assign({}, crop)}; try{ e.target.setPointerCapture(e.pointerId); }catch(err){} e.preventDefault(); });
-  window.addEventListener("pointermove", e => { if (!drag) return; const W = $("cropImg").clientWidth, H = $("cropImg").clientHeight, M = 40;
-    const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0, c = drag.c; let {x, y, w, h} = c;
-    if (drag.h === "move"){ x = Math.max(0, Math.min(W - w, c.x + dx)); y = Math.max(0, Math.min(H - h, c.y + dy)); }
-    else {
-      if (drag.h.includes("w")){ x = Math.max(0, Math.min(c.x + c.w - M, c.x + dx)); w = c.x + c.w - x; }
-      if (drag.h.includes("e")){ w = Math.max(M, Math.min(W - c.x, c.w + dx)); }
-      if (drag.h.includes("n")){ y = Math.max(0, Math.min(c.y + c.h - M, c.y + dy)); h = c.y + c.h - y; }
-      if (drag.h.includes("s")){ h = Math.max(M, Math.min(H - c.y, c.h + dy)); } }
-    crop = {x, y, w, h}; drawCrop(); });
-  window.addEventListener("pointerup", () => { drag = null; }); window.addEventListener("pointercancel", () => { drag = null; }); }
-function closeCrop(){ $("cropView").hidden = true; cropCanvas = null; crop = null; }
+  $("cropWrap").addEventListener("pointerdown", e => { const el = e.target.closest(".qh"); if (!el || !quad) return;
+    drag = {i: +el.dataset.i, x0: e.clientX, y0: e.clientY, p: quad[+el.dataset.i].slice()}; try{ el.setPointerCapture(e.pointerId); }catch(err){} e.preventDefault(); });
+  window.addEventListener("pointermove", e => { if (!drag) return; const k = cropScale();
+    const x = Math.max(0, Math.min(cropCanvas.width, drag.p[0] + (e.clientX - drag.x0) / k)), y = Math.max(0, Math.min(cropCanvas.height, drag.p[1] + (e.clientY - drag.y0) / k));
+    quad[drag.i] = [x, y]; $("cropAuto").hidden = true; drawQuad(); });
+  const up = () => { drag = null; }; window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
+  window.addEventListener("resize", () => { if (!$("cropView").hidden) requestAnimationFrame(drawQuad); }); }
+function closeCrop(){ $("cropView").hidden = true; cropCanvas = null; quad = null; }
 $("cropBack").addEventListener("click", closeCrop);
-$("cropAll").addEventListener("click", () => { const w = $("cropImg").clientWidth, h = $("cropImg").clientHeight; crop = {x: 0, y: 0, w, h}; drawCrop(); });
+$("cropAll").addEventListener("click", () => { const W = cropCanvas.width, H = cropCanvas.height; quad = [[0, 0], [W, 0], [W, H], [0, H]]; $("cropAuto").hidden = true; drawQuad(); });
+$("cropRotate").addEventListener("click", () => { if (cropCanvas) setCropImage(rotateCanvas(cropCanvas)); });
 $("cropGo").addEventListener("click", () => {
-  if (!cropCanvas || !crop) return; const k = cropCanvas.width / $("cropImg").clientWidth;
-  const sx = Math.round(crop.x * k), sy = Math.round(crop.y * k), sw = Math.round(crop.w * k), sh = Math.round(crop.h * k);
-  const c = document.createElement("canvas"); c.width = Math.max(1, sw); c.height = Math.max(1, sh);
-  c.getContext("2d").drawImage(cropCanvas, sx, sy, sw, sh, 0, 0, c.width, c.height);
-  closeCrop(); readListPhoto(c); });
-async function readListPhoto(canvas){
-  const eng = nativeScanner(), n = scan.pages.length + 1, t0 = performance.now();
-  scanPage = null; renderScan(); scanMsg("Reading the addresses…");
+  if (!cropCanvas || !quad) return; const src = cropCanvas, q = quad.map(p => p.slice());
+  closeCrop(); scanPage = null; renderScan(); scanMsg("Straightening and reading…");
+  setTimeout(() => { let flat; try{ flat = warpQuad(src, q); }catch(e){ flat = src; } readScanned(flat); }, 30);
+});
+/* Read the straightened page. A courier run sheet (table with tracking IDs and row numbers) keeps its row numbers and parcel
+   sizes; anything else is read as a list of addresses, top to bottom, any state. */
+async function readScanned(canvas){
+  const eng = nativeScanner(), t0 = performance.now();
   let res; try{ res = await eng.recognize({image: canvas.toDataURL("image/jpeg", 0.92)}); }
   catch(e){ scanMsg("That photo could not be read. Try again, or choose a different photo.", true); return; }
-  const page = DroplineScan.readList(res.lines || [], scanLastSeq());
-  if (!page.rows.length){ scanMsg("No addresses found in the box. Make sure the box covers the addresses and that each one ends with the state and postcode (e.g. VIC 3023).", true); return; }
+  // photo taken sideways or upside down: few addresses read → try the other ways round and keep the best
+  const score = r => (r.lines || []).filter(l => /\b(?:NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b[\s,.]*\d{4}/i.test(l.text || "")).length;
+  if (score(res) < 3){ let c = canvas;
+    for (let turn = 1; turn <= 3; turn++){ c = rotateCanvas(c); let r2; try{ r2 = await eng.recognize({image: c.toDataURL("image/jpeg", 0.92)}); }catch(e){ continue; }
+      if (score(r2) > score(res) + 1){ res = r2; canvas = c; } } }
+  const lines = res.lines || [], kinds = lines.map(l => DroplineScan.classify(l.text || ""));
+  const isSheet = kinds.filter(k => k === "code" || k === "track").length >= 3;
+  const page = isSheet ? DroplineScan.readPage(lines, scanLastSeq()) : DroplineScan.readList(lines, scanLastSeq());
+  if (page.total) scan.total = page.total;
+  if (!page.rows.length){ scanMsg("No addresses found. Put the box around the page or just the addresses, with good light, and try again." + (isSheet ? "" : " Each address should end with the state and postcode, e.g. VIC 3023."), true); return; }
   page.rows.forEach(r => { thumbs[r.seq] = cropRow(canvas, r.box); delete r.box; });
-  scanPage = {rows: page.rows, lines: res.lines, ms: res.ms, secs: ((performance.now() - t0)/1000).toFixed(1), first: page.firstSeq, last: page.lastSeq, showAll: false, list: true};
+  scanPage = {rows: page.rows, lines, ms: res.ms, secs: ((performance.now() - t0)/1000).toFixed(1), first: page.firstSeq, last: page.lastSeq, showAll: false, list: !isSheet};
   page.rows.forEach(r => { if (r.address) prefetch(r.search || r.address); });
   $("scanMsg").hidden = true; $("scanNextWarn").hidden = true; delete $("scanNext").dataset.warned; delete $("scanFinish").dataset.warned;
   renderScan();
 }
 async function scanPhoto(file){
-  const eng = nativeScanner(); if (!eng){ scanMsg("Photo scanning needs the DropLine Android app.", true); return; }
-  if (scanMode === "list"){ let c; try{ c = await photoToCanvas(file); }catch(e){ scanMsg("That photo could not be opened. Try again, or choose a different photo.", true); return; } openCrop(c); return; }
-  const n = scan.pages.length + 1, t0 = performance.now();
-  scanPage = null; renderScan(); scanMsg("Reading page "+n+"…");
-  let canvas, res;
-  try{
-    canvas = await photoToCanvas(file);
-    res = await eng.recognize({image: canvas.toDataURL("image/jpeg", 0.92)});
-  }catch(e){ scanMsg("That photo could not be read. Try again, or choose a different photo.", true); return; }
-  const page = DroplineScan.readPage(res.lines || [], scanLastSeq());
-  if (page.total) scan.total = page.total;
-  const secs = ((performance.now() - t0)/1000).toFixed(1);
-  if (!page.rows.length){ scanMsg("No addresses found in that photo. Hold the phone flat above the page so the whole table fills the screen, with good light, and try again.", true); return; }
-  page.rows.forEach(r => { thumbs[r.seq] = cropRow(canvas, r.box); delete r.box; });
-  scanPage = {rows: page.rows, lines: res.lines, ms: res.ms, secs, first: page.firstSeq, last: page.lastSeq, showAll: false};
-  page.rows.forEach(r => { if (r.address) prefetch(r.search || r.address); });
-  $("scanMsg").hidden = true; $("scanNextWarn").hidden = true; delete $("scanNext").dataset.warned; delete $("scanFinish").dataset.warned;
-  renderScan();
+  const eng = nativeScanner(); if (!eng){ scanMsg("Photo scanning needs the DropLine app.", true); return; }
+  let c; try{ c = await photoToCanvas(file); }catch(e){ scanMsg("That photo could not be opened. Try again, or choose a different photo.", true); return; }
+  openCrop(c);
 }
 function scanMsg(t, err){ const m = $("scanMsg"); m.hidden = false; m.textContent = t; m.classList.toggle("err", !!err); }
 const needsLook = r => r.status === "check" || r.status === "missing";
@@ -3629,7 +3681,7 @@ function rowCard(r, i, compact){
   return '<div class="srow '+r.status+'" data-row="'+i+'"><div class="srow-h"><b>#'+(r.seq != null ? r.seq : "?")+'</b>'+tag+(look && r.problem ? '<span class="sprob">'+esc(r.problem)+'</span>' : '')+'</div>' +
     (thumbs[r.seq] && !compact ? '<img class="sthumb" alt="Photo of row '+r.seq+'" src="'+thumbs[r.seq]+'">' : '') +
     '<textarea class="sinput" rows="1" enterkeyhint="done" data-i="'+i+'" placeholder="Type the address shown in the photo" aria-label="Address for row '+r.seq+'">'+esc(r.address)+'</textarea>' +
-    (r.name ? '<div class="sname">Name on the sheet: <b>'+esc(r.name)+'</b> · kept as a note</div>' : '') +
+    (r.name ? '<div class="sname">Name on the sheet: <b>'+esc(titleCaseName(r.name))+'</b> · shown with the address</div>' : '') +
     (look && r.suggest && r.suggest !== r.address ? '<button class="btn ghost ssug" data-sug="'+i+'">Did you mean <b>'+esc(r.suggest)+'</b>? Tap to use it</button>' : '') +
     '<div class="sacts">' + (look ? '<button class="btn act-d sok" data-ok="'+i+'">'+(r.status === "missing" ? "Save this address" : "Looks right ✓")+'</button>' : '') +
     '<button class="btn srm" data-rm="'+i+'">'+ico("trash")+(look ? 'Not a stop' : 'Remove')+'</button></div></div>';
@@ -3673,7 +3725,7 @@ function onRowEdit(e){ const i = e.target.dataset.i; if (i == null || !scanPage)
   r.search = c.search || r.address; }
 function onRowOk(e){
   const sb = e.target.closest && e.target.closest("[data-sug]");
-  if (sb && scanPage){ const r = scanPage.rows[+sb.dataset.sug]; r.address = r.search = r.suggest; r.autofixed = true; r.wasLook = true; r.status = "fixed"; prefetch(r.search); renderScan(); return; }
+  if (sb && scanPage){ const r = scanPage.rows[+sb.dataset.sug]; r.address = withUnit(r.address, r.suggest); r.search = r.suggest; r.autofixed = true; r.wasLook = true; r.status = "fixed"; prefetch(r.search); renderScan(); return; }
   const rm = e.target.closest && e.target.closest("[data-rm]"), un = e.target.closest && e.target.closest("[data-undo]");
   if (rm && scanPage){ const r = scanPage.rows[+rm.dataset.rm]; r.removed = true; r.wasLook = r.wasLook || needsLook(r); renderScan(); return; }
   if (un && scanPage){ scanPage.rows[+un.dataset.undo].removed = false; renderScan(); return; }
@@ -3689,8 +3741,11 @@ $("scanShowAll").addEventListener("click", () => { if (scanPage){ scanPage.showA
 $("btnScan").addEventListener("click", () => {
   const native = !!nativeScanner();
   $("scanNoApp").hidden = native; $("scanApp").hidden = !native;
+  // a page that was being checked when the scan screen was closed is thrown away (pages saved with Next page are kept)
+  if (scanPage){ scanPage = null; $("scanMsg").hidden = true; }
   renderScan(); $("scanSheet").hidden = false; });
-$("scanClose").addEventListener("click", () => $("scanSheet").hidden = true);
+$("scanClose").addEventListener("click", () => { $("scanSheet").hidden = true;
+  if (scanPage){ scanPage = null; $("scanMsg").hidden = true; renderScan(); toast("That page was not saved." + (scan.pages.length ? " Pages saved before it are kept." : "")); } });
 ["scanCam","scanGallery","scanRetake"].forEach(id => $(id).addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) scanPhoto(f); }));
 function unchecked(){ return scanPage ? scanPage.rows.filter(r => !r.removed && needsLook(r)).length : 0; }
 $("scanNext").addEventListener("click", () => {
@@ -3723,8 +3778,8 @@ async function finishScan(btn){
   delete $("scanFinishIdle").dataset.confirmed;
   const groups = new Map();
   rows.sort((a,b) => a.seq - b.seq).forEach(r => { const k = r.address.toLowerCase().replace(/\s+/g," ");
-    if (!groups.has(k)) groups.set(k, {address:r.address, search:r.search || r.address, parcels:[]});
-    groups.get(k).parcels.push({seq:r.seq, size:r.size || "", note:r.name || ""}); });
+    if (!groups.has(k)) groups.set(k, {address:(r.name ? titleCaseName(r.name) + ", " : "") + r.address, search:r.search || r.address, parcels:[]});
+    groups.get(k).parcels.push({seq:r.seq, size:r.size || "", note:""}); });
   $("scanSheet").hidden = true; $("importSheet").hidden = true; $("scanMsg").hidden = true;
   showNextStep(null, "Adding "+groups.size+" stops…");
   const scanPagesDone = scan.pages.length;
@@ -4223,7 +4278,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.11";
+const APP_VERSION = "8.12";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

@@ -485,6 +485,11 @@ textarea:focus{border-color:var(--teal);outline:none}
 @media (prefers-color-scheme:dark){.stopsbar{background:linear-gradient(to bottom,rgba(11,23,36,0),var(--bg) 22%)}}
 .dorder{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 2px -2px}
 .dorder .m{font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+.dorder .hl{display:flex;flex-direction:column;gap:2px;min-width:0}
+.addhdr{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px 0 12px;border-radius:999px;border:0;color:#fff;font:600 15px var(--f-body);
+  background:linear-gradient(135deg,#1ED6C3,#17B4D3 55%,#1B6FE6);box-shadow:0 6px 16px rgba(27,111,230,.25);cursor:pointer}
+.addhdr .ico{width:20px;height:20px}
+.addhdr:active{transform:scale(.97)}
 
 /* views */
 .v-map .vs-stops,.v-map .vs-details,.v-stops .vs-map,.v-stops .vs-details,.v-details .vs-map,.v-details .vs-stops,.v-stops .mapwrap,.v-details .mapwrap{display:none!important}
@@ -971,8 +976,8 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 
     <section aria-label="Stops" id="stopsSect">
       <div class="dorder" id="stopsHead">
-        <span class="label" style="font-size:15px">Stops in order</span>
-        <span class="m">Drag <svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg> or ▲▼ to reorder</span>
+        <span class="hl"><span class="label" style="font-size:15px">Stops in order</span></span>
+        <button class="addhdr" id="fabAdd" aria-label="Add stops"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Add stops</span></button>
       </div>
     <div class="row" id="stopTools" style="flex-wrap:nowrap;margin-top:12px">
       <label class="search"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="stopSearch" type="search" placeholder="Search stops or address" autocomplete="off" aria-label="Search stops"></label>
@@ -980,6 +985,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
         <option value="all">All stops</option><option value="pending">Pending</option><option value="delivered">Delivered</option><option value="failed">Failed</option><option value="skipped">Skipped</option><option value="pickup">Pickups</option><option value="check">Check pin</option></select></label>
     </div>
       <ol class="stops" id="stops" style="margin-top:10px"></ol>
+      <button class="btn outline" id="addMore" hidden style="width:100%;margin-top:10px"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Add more stops</button>
       <div class="panel list emptyadd" id="emptyHint">
         <div class="eh"><b>Add your stops</b><small>Choose how to add the delivery addresses for this run.</small></div>
         <button class="addopt" id="emptyManual"><span class="oi oi-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z"/><path d="M12 7v5M9.5 9.5h5"/></svg></span><span class="lt"><b>Add stop</b><small>Type an address</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
@@ -989,7 +995,6 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <p class="hint" id="noMatch" hidden>No stops match your search.</p>
     </section>
   </main>
-  <button class="fab" id="fabAdd" aria-label="Add stops"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Add stops</span></button>
   <div class="planbar" id="planBar">
     <button class="btn cta big grow" id="btnStartRun" hidden><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg>Start delivering</button>
     <button class="btn cta big grow" id="btnOpt"><svg class="ico fill" aria-hidden="true"><use href="#i-spark"/></svg><span class="optlabel">Optimise route</span></button>
@@ -1402,12 +1407,13 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
   </div>
 </div>
 <div class="picker" id="stopPicker" hidden role="dialog" aria-label="Add stops">
-  <header class="phead"><button class="hback" id="stopPickBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Add stops</b><button class="pdone" id="stopPickDone">Done</button></header>
+  <header class="phead"><button class="hback" id="stopPickBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b id="stopPickTitle">Add stops</b><button class="pdone" id="stopPickDone">Done</button></header>
   <div class="pbody">
     <div class="psearch"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="addrIn" type="search" enterkeyhint="search" placeholder="Search address, e.g. 12 John St" autocomplete="off" aria-label="Stop address"></div>
     <div class="addedline" id="addedLine" hidden><svg class="ico" aria-hidden="true"><use href="#i-check-c"/></svg><span id="addedTxt"></span><button id="addedView">View stops</button></div>
     <div class="sugg" id="addrSugg" hidden></div>
-    <p class="hint phint">Type a few letters, then tap the right address to add it. Keep adding stops; tap <b>Done</b> when finished. They all go into your stops list.</p>
+    <p class="hint phint" id="editHint" hidden>Fix the address, for example add the house number, then tap the right match below. The stop keeps its number, notes and parcels.</p>
+    <p class="hint phint" id="addHint">Type a few letters, then tap the right address to add it. Keep adding stops; tap <b>Done</b> when finished. They all go into your stops list.</p>
   </div>
 </div>
 <div class="optov" id="optOv" hidden role="dialog" aria-live="polite" aria-label="Optimising route">
@@ -1892,8 +1898,8 @@ function pinCheckBox(s){
   const num = (splitLabel(s.label)[0].match(/^\s*(?:unit\s*)?(\d+[a-z]?)/i) || [])[1];
   const why = num ? "House number " + esc(num) + " was not in the official address list, so the pin is on the street and may be a few houses away."
                   : "This address has no house number, so the pin is placed on the street, not at a house.";
-  return '<div class="pincheck"><b>'+ico("pin-o")+'Check pin</b><p>' + why + ' Tap <b>Show pin</b> to look. If it is in the right place, tap <b>Pin is right</b>; if not, tap <b>Move pin</b> and tap the right spot on the map.</p>' +
-    '<div class="row" style="gap:8px;flex-wrap:nowrap"><button class="btn act-d grow" data-pinok="'+s.id+'">'+ico("check")+'Pin is right</button><button class="btn outline grow" data-pin="'+s.id+'">Show pin</button></div></div>';
+  return '<div class="pincheck"><b>'+ico("pin-o")+'Check pin</b><p>' + why + ' Tap <b>Show pin</b> to look. If it is in the right place, tap <b>Pin is right</b>. If the house number is missing or wrong, tap <b>Edit address</b>; or tap <b>Move pin</b> and tap the right spot on the map.</p>' +
+    '<div class="row" style="gap:8px;flex-wrap:nowrap"><button class="btn act-d grow" data-pinok="'+s.id+'">'+ico("check")+'Pin is right</button><button class="btn outline grow" data-edit="'+s.id+'">Edit address</button></div></div>';
 }
 function chipsFor(s){
   const ps = parcels(s), out = [];
@@ -2305,7 +2311,9 @@ function setStatus(id, st, reason){ const s = route.stops.find(x=>x.id===id); if
 function showPin(id){
   const s = route.stops.find(x => x.id === id); if (!s) return;
   if (!has(s)){ toast("This stop has no map location yet. Use Move pin to place it."); return; }
-  selId = id; setView("map"); render();
+  // the map is always on screen above the list: keep the list where it is
+  const main = $("app-main"), y = main.scrollTop; if (!$("detailsPage").hidden) closeDetails();
+  selId = id; render(); main.scrollTop = y;
   setTimeout(() => { map.invalidateSize(); map.setView([s.lat, s.lon], 17, {animate:true});
     layer.eachLayer(m => { if (m.options && m.options.title && m.options.title.startsWith((route.stops.indexOf(s)+1) + ". ")) m.bindTooltip(esc(splitLabel(s.label)[0]), {direction:"top", offset:[0,-34]}).openTooltip(); }); }, 80);
 }
@@ -3118,12 +3126,12 @@ function render(){
   if (!busy) setOptLabel(o && !o.stale ? "Re-optimise" : "Optimise route");
   $("btnOpt2").disabled = $("btnOpt").disabled;
   { const doneN = cnt.delivered + cnt.failed + cnt.skipped, started = !!route.startedAt || doneN > 0, opted = !!(o && !o.stale);
-    $("planBar").hidden = !st.length || !cnt.pending; $("fabAdd").hidden = !st.length;
+    $("planBar").hidden = !st.length || !cnt.pending; $("fabAdd").hidden = !st.length; $("addMore").hidden = st.length < 4;
     $("btnStartRun").hidden = !(opted && !started && cnt.pending);
     $("btnOpt").classList.toggle("second", opted); $("btnOpt").style.flex = $("btnStartRun").hidden ? "1" : "none"; }
   $("startAddrBox").hidden = startMeOn || !!(route.start && !route.start.me);
   showStart();
-  $("emptyHint").hidden = st.length > 0; $("stopTools").hidden = st.length <= 4; $("stopsHead").hidden = !st.length; $("stopsHead").querySelector(".m").hidden = st.length < 2;
+  $("emptyHint").hidden = st.length > 0; $("stopTools").hidden = st.length <= 4; $("stopsHead").hidden = !st.length;
   if (st.length <= 4 && ($("stopSearch").value || $("stopFilter").value !== "all")){ $("stopSearch").value = ""; $("stopFilter").value = "all"; }
   $("routeTitle").firstChild.nodeValue = route.name || "Route";
   $("routeSub").textContent = st.length ? st.length+" stop"+(st.length===1?"":"s")+" · "+cnt.delivered+" delivered" : "No stops yet";
@@ -3193,6 +3201,7 @@ function render(){
         (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') +
         '<a class="btn outline" data-ext="'+s.id+'" href="'+extHref(s)+'">'+ico("map")+'<span class="extname">'+esc(extName())+'</span></a>' +
         '<button class="btn outline" data-pin="'+s.id+'">Show pin</button>' +
+        '<button class="btn outline" data-edit="'+s.id+'">'+ico("edit")+'Edit address</button>' +
         '<button class="btn outline" data-place="'+s.id+'">Move pin</button>' +
         '<button class="btn outline" data-rm="'+s.id+'">Remove</button>' +
         (parcels(s).some(p => p.size) ? '<div class="m" style="width:100%">'+parcels(s).map(p => esc((p.seq!=null?"#"+p.seq+": ":"")+(p.size ? p.size+" cm" : "size not listed"))).join(" · ")+'</div>' : '') +
@@ -3206,7 +3215,25 @@ function render(){
 }
 
 /* ---------- events ---------- */
-wireSearch($("addrIn"), $("addrSugg"), addStop);
+wireSearch($("addrIn"), $("addrSugg"), r => editId ? editStop(r) : addStop(r));
+/* Edit a stop's address (e.g. add the house number the scanner missed): same search as Add stop, but it replaces this stop. */
+let editId = null;
+function openEditStop(id){
+  const st = route.stops.find(x => x.id === id); if (!st) return;
+  editId = id; openPicker("stopPicker");
+  $("stopPickTitle").textContent = "Edit stop " + (route.stops.indexOf(st) + 1); $("stopPickDone").hidden = true; $("addedLine").hidden = true;
+  $("editHint").hidden = false; $("addHint").hidden = true;
+  const inp = $("addrIn"); inp.value = st.label || st.query || "";
+  setTimeout(() => { try{ inp.focus(); inp.setSelectionRange(0, 0); }catch(e){} inp.dispatchEvent(new Event("input")); }, 80);
+}
+function endEdit(){ editId = null; $("stopPickTitle").textContent = "Add stops"; $("stopPickDone").hidden = false; $("editHint").hidden = true; $("addHint").hidden = false; }
+function editStop(r){
+  const st = route.stops.find(x => x.id === editId); endEdit(); closePickers(); if (!st) return;
+  st.label = st.query = r.label; st.lat = r.lat; st.lon = r.lon; st.geo = r.geo === "street" ? "street" : "exact"; delete st.approx; delete st.rp; delete st.rpKey; delete st.rpChk;
+  if (st.geo === "exact") cachePut(r.label, r);
+  markStale(); persist(); selId = expandedId = st.id; render(); scrollToStop(st.id);
+  toast("Stop " + (route.stops.indexOf(st) + 1) + " updated" + (route.opt ? ". Tap Re-optimise to update the order." : "."));
+}
 wireSearch($("startIn"), $("startSugg"), setStart);
 $("btnOpt").addEventListener("click", optimise);
 $("btnOpt2").addEventListener("click", () => { setView("map"); optimise(); });
@@ -3258,8 +3285,9 @@ $("stops").addEventListener("click", e => {
   if (t.dataset.down){ move(t.dataset.down, 1); return; }
   if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
   if (t.dataset.pin){ showPin(t.dataset.pin); return; }
+  if (t.dataset.edit){ openEditStop(t.dataset.edit); return; }
   if (t.dataset.pinok){ const s = route.stops.find(x => x.id === t.dataset.pinok); if (s){ s.geo = "exact"; delete s.approx; s.pinOk = true; persist(); render(); toast("Pin saved as correct."); } return; }
-  if (t.dataset.place){ setView("map"); placingId = t.dataset.place; document.body.classList.add("placing"); window.scrollTo({top:0, behavior:"smooth"}); toast("Tap the map where this stop is."); return; }
+  if (t.dataset.place){ placingId = t.dataset.place; document.body.classList.add("placing"); toast("Tap the map where this stop is."); return; }
   if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
   if (t.dataset.qnote){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ toggleNote(s, t.dataset.qnote); persist(); render(); } return; }
   if (t.dataset.kind){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ if (t.dataset.kind === "pickup") s.kind = "pickup"; else delete s.kind; persist(); render(); } return; }
@@ -3872,6 +3900,7 @@ $("detailsBack").addEventListener("click", closeDetails);
 $("leaveAt").addEventListener("change", e => { route.leaveAt = e.target.value || null; persist(); render(); renderDetails(); });
 $("svcMin").addEventListener("change", e => { route.svcMin = +e.target.value; persist(); render(); renderDetails(); });
 $("fabAdd").addEventListener("click", () => { $("addSheet").hidden = false; });
+$("addMore").addEventListener("click", () => { $("addSheet").hidden = false; });
 $("addClose").addEventListener("click", () => { $("addSheet").hidden = true; });
 ["btnManual", "btnScan", "btnImport"].forEach(k => $(k).addEventListener("click", () => { $("addSheet").hidden = true; }, true));
 [["emptyManual", "btnManual"], ["emptyScan", "btnScan"], ["emptyImport", "btnImport"]].forEach(([a, b]) => $(a).addEventListener("click", () => $(b).click()));
@@ -3938,7 +3967,7 @@ $("importIn").addEventListener("change", e => { const f = e.target.files[0]; if(
   rd.onload = () => { try{ openRouteJSON(rd.result); }catch(err){ toast("That file is not a DropLine route."); } };
   rd.readAsText(f); e.target.value = ""; });
 $("btnManual").addEventListener("click", () => { $("addedLine").hidden = true; openPicker("stopPicker"); });
-$("stopPickBack").addEventListener("click", closePickers);
+$("stopPickBack").addEventListener("click", () => { endEdit(); closePickers(); });
 $("stopPickDone").addEventListener("click", () => { const n = route.stops.length; closePickers(); if (!$("addedLine").hidden){ setView("stops"); toast(n + " stop" + (n === 1 ? "" : "s") + " in this route."); } });
 $("startPickBack").addEventListener("click", () => { closePickers(); if (!startMeOn && !route.start && has(myLoc)) setStartMode(true, true); });
 $("startPickMe").addEventListener("click", () => { closePickers(); setStartMode(true, true); });
@@ -4022,7 +4051,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.5";
+const APP_VERSION = "8.7";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

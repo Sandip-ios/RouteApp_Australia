@@ -54,7 +54,9 @@ button svg,a svg,label svg{pointer-events:none}
 #routeTabs{display:none!important}
 header.top{display:flex;align-items:center;gap:10px;padding:12px max(14px,env(safe-area-inset-right)) 12px max(10px,env(safe-area-inset-left));padding-top:max(12px,env(safe-area-inset-top));background:var(--hero);color:#fff}
 .hback{display:flex;align-items:center;gap:2px;background:none;border:0;color:#fff;font-weight:600;font-size:16px;padding:6px 4px;min-height:44px;flex:none}
-.hback .ico{width:24px;height:24px;stroke-width:2.4}
+.hback .ico{width:28px;height:28px;stroke-width:2.4}
+.hback > span{display:none}               /* arrow only: no previous-screen name next to it */
+.hback{min-width:44px;justify-content:flex-start}
 .htitle{flex:1;min-width:0;line-height:1.15}
 .htitle b,.brand{display:block;font:700 22px/1.1 var(--f-display);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:none}
 .htitle small,.brand small{display:block;font:500 13px/1.3 var(--f-body);opacity:.85;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -166,6 +168,28 @@ label.panel{display:block}
 .app.fullmap #map{height:calc(100vh - 70px - env(safe-area-inset-top))}
 .hspace{width:84px}
 .planset{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.dpage .dcard{margin-top:12px}
+.dhero{border-radius:20px;padding:16px 16px 14px;color:#fff;background:linear-gradient(135deg,#0E2B4B 0%,#0F5E78 60%,#12A99B 100%);box-shadow:0 10px 26px rgba(14,43,75,.25)}
+.dh-top{display:flex;align-items:center;gap:10px}.dh-top b{flex:1;min-width:0;font:700 22px/1.15 var(--f-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh-state{flex:none;font:700 11.5px var(--f-display);letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.16)}
+.dh-bar{height:8px;border-radius:6px;background:rgba(255,255,255,.18);margin:14px 0 6px;overflow:hidden}.dh-bar i{display:block;height:100%;width:0;background:#2BD3C1;border-radius:6px;transition:width .4s}
+.dh-prog{color:#CFE6F2;font-size:13px}
+.dh-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.dh-tiles div{background:rgba(255,255,255,.1);border-radius:12px;padding:9px 6px;text-align:center;min-width:0}
+.dh-tiles b{display:block;font:700 18px/1.15 var(--f-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh-tiles small{display:block;color:#CFE6F2;font:600 10.5px/1.3 var(--f-display);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.dc-head{display:flex;gap:12px;align-items:flex-start}.dc-head .lt{flex:1;min-width:0}.dc-head .lt b{display:block;font-size:16px}.dc-head .lt small{display:block;color:var(--muted);font-size:13.5px;line-height:1.4;margin-top:2px}
+.dstat{display:inline-block;vertical-align:2px;margin-left:6px;font:700 10.5px var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:var(--pend-soft,#FFF3D6);color:#9A5B00}
+.dstat.ok{background:var(--ok-soft,#E3F6EA);color:var(--ok)}
+.dexp{margin:6px 0 4px;font-size:14px;line-height:1.45;color:var(--muted)}.dexp b{color:var(--ink)}
+.dset{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0;border-top:1px solid var(--line)}
+.dset:first-of-type{border-top:0}.dset-l{flex:1 1 180px;min-width:0}.dset-l b{display:block;font-size:15px}.dset-l small{display:block;color:var(--muted);font-size:13px;line-height:1.35}
+.dseg{flex:none}.dseg button{min-width:76px}
+.dset input,.dset select{font-size:16px;border:1.5px solid var(--line2);border-radius:10px;padding:9px 10px;background:var(--surface);color:var(--ink);min-height:44px}
+.dset input{flex:1 1 100%}
+.dnow{margin:4px 0 0;padding:10px 12px;border-radius:12px;background:var(--pale);color:#0E6B62;font-size:14px;line-height:1.4;font-weight:600}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dnow{background:rgba(43,211,193,.12);color:#7FE6DA}}
+:root[data-theme="dark"] .dnow{background:rgba(43,211,193,.12);color:#7FE6DA}
 .planset label{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted);font-weight:600}
 .planset input,.planset select{font-size:16px;border:1.5px solid var(--line2);border-radius:10px;padding:9px 10px;background:var(--surface);color:var(--ink);min-height:44px}
 .offpanel .lt small b{color:var(--ink)}
@@ -1150,7 +1174,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 </div>
 
 <div class="cropview" id="cropView" hidden role="dialog" aria-label="Crop the page">
-  <header class="phead"><button class="hback" id="cropBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Crop the page</b><span class="pspace"></span></header>
+  <header class="phead"><button class="hback" id="cropBack" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Crop the page</b><span class="pspace"></span></header>
   <p class="crophint"><span id="cropAuto" hidden>✓ Page edges found. </span>Drag the 4 corners to the edges of the page, or around <b>just the addresses</b>. Then tap <b>Done</b> to load the addresses.</p>
   <div class="cropstage" id="cropStage"><div class="cropwrap" id="cropWrap"><img id="cropImg" alt="Photo to crop"><svg class="cropsvg" id="cropSvg" aria-hidden="true"></svg>
     <i class="qh" data-i="0"></i><i class="qh" data-i="1"></i><i class="qh" data-i="2"></i><i class="qh" data-i="3"></i></div></div>
@@ -1240,7 +1264,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 
 <div class="subpage" id="subPage" hidden role="dialog">
   <header class="top">
-    <button class="hback" id="subBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Settings</span></button>
+    <button class="hback" id="subBack" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Settings</span></button>
     <div class="htitle"><b id="subTitle"></b></div>
   </header>
   <div class="subbody" id="subBody"></div>
@@ -1294,28 +1318,47 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 </div>
 <div class="subpage" id="detailsPage" hidden role="dialog" aria-label="Route details">
   <header class="top">
-    <button class="hback" id="detailsBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button>
+    <button class="hback" id="detailsBack" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button>
     <div class="htitle"><b>Route details</b><small id="detailsSub"></small></div>
     <span class="hspace"></span>
   </header>
-  <div class="subbody">
-    <div class="panel"><div class="label">Route</div><dl class="dl" id="detailsList"></dl></div>
-    <div class="panel" style="margin-top:12px"><div class="label">Plan</div><dl class="dl" id="detailsPlan"></dl>
-      <div class="planset">
-        <label>Leave at<input type="time" id="leaveAt"></label>
-        <label>Time at each stop<select id="svcMin"><option value="0">0 min</option><option value="1">1 min</option><option value="2">2 min</option><option value="3">3 min</option><option value="4">4 min</option><option value="5">5 min</option><option value="8">8 min</option><option value="10">10 min</option></select></label>
+  <div class="subbody dpage">
+    <!-- 1. the run at a glance -->
+    <section class="dhero" aria-label="Summary">
+      <div class="dh-top"><b id="dhName"></b><span class="dh-state" id="dhState"></span></div>
+      <div class="dh-bar"><i id="dhBar"></i></div><small class="dh-prog" id="dhProg"></small>
+      <div class="dh-tiles">
+        <div><b id="dhStops">0</b><small>Stops</small></div><div><b id="dhParcels">0</b><small>Parcels</small></div>
+        <div><b id="dhDrive">–</b><small id="dhDist">Drive</small></div><div><b id="dhFinish">–</b><small id="dhFinishL">Finish</small></div>
       </div>
-      <p class="hint" id="leaveHint" style="margin:6px 0 0"></p>
-    </div>
-    <div class="panel list offpanel" style="margin-top:12px">
-        <div class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span class="lt"><b>Prepare for no signal</b><small>Saves the turn-by-turn directions and map for every stop on this phone, so navigation keeps working where there is no mobile signal. <b>Do this before you leave, while you have good Wi-Fi or mobile data.</b> It also runs automatically when you tap Start delivering.</small></span></div>
-        <div class="lsub">
-          <div class="row" id="offRow" hidden style="flex-wrap:nowrap"><button class="btn cta grow big" id="btnOffline"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Prepare for no signal</button></div>
-          <p class="hint" id="offTxt" hidden></p>
-          <div class="bar" id="offBar" hidden><i id="offBarI"></i></div>
-          <p class="hint" id="offNeedOpt"><b>Step 1:</b> optimise the route first (Optimise route button on the route screen). <b>Step 2:</b> come back here and tap Prepare for no signal.</p>
-        </div>
+    </section>
+    <!-- 2. no signal: the button is on screen straight away -->
+    <section class="panel dcard offpanel" aria-label="Prepare for no signal">
+      <div class="dc-head"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span>
+        <span class="lt"><b>Prepare for no signal <span class="dstat" id="offStat">Not saved</span></b><small>Saves the directions and map for every stop on this phone. Do it at the depot, on Wi-Fi or good mobile data.</small></span></div>
+      <div class="row" id="offRow" hidden style="flex-wrap:nowrap;margin-top:12px"><button class="btn cta grow big" id="btnOffline"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Prepare for no signal</button></div>
+      <p class="hint" id="offTxt" hidden></p>
+      <div class="bar" id="offBar" hidden><i id="offBarI"></i></div>
+      <p class="hint" id="offNeedOpt"></p>
+    </section>
+    <!-- 3. timing: what Leave at does, in plain words -->
+    <section class="panel dcard" aria-label="Arrival times">
+      <div class="label">Arrival times</div>
+      <p class="dexp">Each stop shows when you will get there, and the route shows your finish time. These two settings only change those times. <b>They never change the delivery order</b>, so you can set them before or after optimising.</p>
+      <div class="dset" id="leaveSet">
+        <div class="dset-l"><b>When do you leave?</b><small>Set it when you plan the run ahead, e.g. the night before for a 7:00 am start.</small></div>
+        <div class="seg dseg" role="group" aria-label="Leave time"><button id="leaveNow" type="button">Now</button><button id="leaveLater" type="button">Set time</button></div>
+        <input type="time" id="leaveAt" aria-label="Leave at" hidden>
       </div>
+      <div class="dset">
+        <div class="dset-l"><b>Time at each stop</b><small>Parking, walking to the door and handing over.</small></div>
+        <select id="svcMin" aria-label="Time at each stop"><option value="0">0 min</option><option value="1">1 min</option><option value="2">2 min</option><option value="3">3 min</option><option value="4">4 min</option><option value="5">5 min</option><option value="8">8 min</option><option value="10">10 min</option></select>
+      </div>
+      <p class="dnow" id="leaveHint"></p>
+    </section>
+    <!-- 4. the rest of the details -->
+    <section class="panel dcard"><div class="label">Route</div><dl class="dl" id="detailsList"></dl></section>
+    <section class="panel dcard"><div class="label">Plan</div><dl class="dl" id="detailsPlan"></dl></section>
     <div class="panel list" style="margin-top:12px">
         <button class="lrow" id="dRename"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></span><span class="lt"><b>Rename route</b></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
         <button class="lrow" id="dCopy"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg></span><span class="lt"><b>Copy route</b><small>Same stops, all set back to pending</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
@@ -1426,7 +1469,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
   </div>
 </div>
 <div class="picker" id="startPicker" hidden role="dialog" aria-label="Starting point">
-  <header class="phead"><button class="hback" id="startPickBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Starting point</b><span class="pspace"></span></header>
+  <header class="phead"><button class="hback" id="startPickBack" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Starting point</b><span class="pspace"></span></header>
   <div class="pbody">
     <div class="psearch"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="startIn" type="search" enterkeyhint="search" placeholder="Search depot or start address" autocomplete="off" aria-label="Start address"></div>
     <button class="pickrow me" id="startPickMe"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg><span>Use my current location</span></button>
@@ -1435,7 +1478,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
   </div>
 </div>
 <div class="picker" id="stopPicker" hidden role="dialog" aria-label="Add stops">
-  <header class="phead"><button class="hback" id="stopPickBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b id="stopPickTitle">Add stops</b><button class="pdone" id="stopPickDone">Done</button></header>
+  <header class="phead"><button class="hback" id="stopPickBack" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b id="stopPickTitle">Add stops</b><button class="pdone" id="stopPickDone">Done</button></header>
   <div class="pbody">
     <div class="psearch"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input id="addrIn" type="search" enterkeyhint="search" placeholder="Search address, e.g. 12 John St" autocomplete="off" aria-label="Stop address"></div>
     <div class="addedline" id="addedLine" hidden><svg class="ico" aria-hidden="true"><use href="#i-check-c"/></svg><span id="addedTxt"></span><button id="addedView">View stops</button></div>
@@ -3006,6 +3049,8 @@ async function saveTiles(onProgress){
 }
 function updateOffTxt(){
   const o = route.offlineLegs, t = $("offTxt"), pend = route.stops.filter(s => s.status === "pending" && has(s));
+  { const cur0 = o && o.key && pend.length && pend.every(s => o.key.split(",").includes(s.id)), st = $("offStat");
+    if (st){ st.textContent = cur0 ? (o.tiles ? "✓ Ready" : "✓ Directions saved") : o ? "Needs update" : "Not saved"; st.classList.toggle("ok", !!cur0); } }
   $("offRow").hidden = !(route.opt && !route.opt.stale) || !pend.length;
   $("offNeedOpt").hidden = !$("offRow").hidden; $("offNeedOpt").innerHTML = pend.length ? "<b>Step 1:</b> optimise the route first (Optimise route button on the route screen). <b>Step 2:</b> come back here and tap Prepare for no signal, before you leave, while you have good Wi-Fi or mobile data." : "Add stops and optimise the route first.";
   if (!o){ t.hidden = true; return; }
@@ -3239,6 +3284,7 @@ function planTimes(){
   for (const s of st){ if (s.status !== "pending" || !legs || legs[s.id] == null) continue; t += legs[s.id] * 1000; out[s.id] = {arr: t, leg: legs[s.id]}; last = t; t += svc; }
   return {at: out, finish: last};
 }
+let leavePicking = false;      // "Set time" tapped: show the time box
 function renderDetails(){
   const st = route.stops, o = route.opt, c = {pending:0,delivered:0,failed:0,skipped:0}; st.forEach(x => c[x.status]++);
   const dt = t => new Date(t).toLocaleDateString("en-AU", {weekday:"short", day:"numeric", month:"short"}) + ", " + hm(t);
@@ -3255,11 +3301,25 @@ function renderDetails(){
   $("detailsList").innerHTML = dl(rows); $("detailsPlan").innerHTML = dl(plan);
   $("detailsSub").textContent = route.name || "Route";
   $("leaveAt").value = route.leaveAt || ""; $("svcMin").value = String(route.svcMin != null ? route.svcMin : 2);
-  { const L = leaveInfo(), started = !!route.startedAt || st.some(x => x.status !== "pending");
-    $("leaveHint").textContent = started ? "You have started this run, so arrival and finish times now count from the current time."
-      : !L.set ? "Arrival and finish times count from now. Set a time if you are leaving later."
-      : L.now ? "That time has passed, so times count from now. Change it if you are leaving later."
-      : "Times count from " + hm(L.t) + (L.tomorrow ? " tomorrow" : " today") + ". Clear it to count from now."; }
+  { const L = leaveInfo(), started = !!route.startedAt || st.some(x => x.status !== "pending"), doneN = c.delivered + c.failed + c.skipped;
+    // summary
+    $("dhName").textContent = route.name || "Route";
+    $("dhState").textContent = !st.length ? "No stops" : !c.pending ? "Finished" : started ? "In progress" : o && !o.stale ? "Ready" : "Planning";
+    $("dhBar").style.width = st.length ? Math.round(doneN / st.length * 100) + "%" : "0";
+    $("dhProg").textContent = st.length ? doneN + " of " + st.length + " stops done" + (c.failed ? " · " + c.failed + " failed" : "") : "Add stops to start planning";
+    $("dhStops").textContent = st.length; $("dhParcels").textContent = parcelsN;
+    $("dhDrive").textContent = o && !o.stale ? fmtTime(o.duration) : "–"; $("dhDist").textContent = o && !o.stale ? fmtDist(o.distance) : "Drive";
+    const lastDone = st.map(x => x.doneAt || 0).reduce((a, b) => Math.max(a, b), 0);
+    $("dhFinish").textContent = st.length && !c.pending && lastDone ? hm(lastDone) : T.finish ? hm(T.finish) : "–";
+    $("dhFinishL").textContent = st.length && !c.pending ? "Finished" : "Finish";
+    // leave time
+    $("leaveSet").hidden = started;
+    $("leaveNow").classList.toggle("on", !route.leaveAt); $("leaveLater").classList.toggle("on", !!route.leaveAt);
+    $("leaveAt").hidden = !route.leaveAt && !leavePicking;
+    $("leaveHint").textContent = started ? "You started this run at " + hm(route.startedAt || Date.now()) + ", so arrival and finish times now count from the current time."
+      : !L.set ? "Times count from now: if you leave now, you finish at about " + (T.finish ? hm(T.finish) : "–") + "."
+      : L.now ? "That time has passed, so times count from now. Tap Set time to change it."
+      : "Times count from " + hm(L.t) + (L.tomorrow ? " tomorrow" : " today") + (T.finish ? ": you finish at about " + hm(T.finish) + "." : ".") ; }
 }
 function render(){
   try { if (startMeOn && route.start && route.start.me && route.stops.length && farFromStops(route.start)){ route.start = null; route.opt = null; } } catch(e){}
@@ -4188,7 +4248,11 @@ $("routeList").addEventListener("click", e => { const o = e.target.closest("[dat
   if (m) openMenu(m.dataset.menu); else if (o) openRoute(o.dataset.open); });
 $("btnRoutes").addEventListener("click", () => { if ($("appView").classList.contains("fullmap")){ $("btnFullMap").click(); return; } closeDetails(); showHome(); });
 $("detailsBack").addEventListener("click", closeDetails);
-$("leaveAt").addEventListener("change", e => { route.leaveAt = e.target.value || null; persist(); render(); renderDetails(); });
+$("leaveAt").addEventListener("change", e => { route.leaveAt = e.target.value || null; leavePicking = false; persist(); render(); renderDetails(); });
+$("leaveNow").addEventListener("click", () => { route.leaveAt = null; leavePicking = false; persist(); render(); renderDetails(); });
+$("leaveLater").addEventListener("click", () => { leavePicking = true; renderDetails(); const i = $("leaveAt");
+  if (!i.value){ const d = new Date(Date.now() + 3600e3); i.value = String(d.getHours()).padStart(2, "0") + ":00"; }
+  try{ i.focus(); }catch(e){} });
 $("svcMin").addEventListener("change", e => { route.svcMin = +e.target.value; persist(); render(); renderDetails(); });
 $("fabAdd").addEventListener("click", () => { $("addSheet").hidden = false; });
 $("addMore").addEventListener("click", () => { $("addSheet").hidden = false; });
@@ -4356,7 +4420,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.22";
+const APP_VERSION = "8.24";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

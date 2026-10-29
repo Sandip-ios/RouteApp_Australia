@@ -1257,7 +1257,6 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <button class="setlink" id="setOffline"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-wifi-off"/></svg></span><span><b>Offline addresses</b><small id="setOffTxt">Saved automatically for your area</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setTestLoc" hidden><span class="tile" style="background:#FFF0D6;color:#B26E00"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></span><span><b>Test location</b><small id="setTestLocTxt">Off – using the phone's real location</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
       <button class="setlink" id="setGuide"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg></span><span><b>How-to guide</b><small>The 30-second walkthrough</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-      <button class="setlink" id="setAbout"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg></span><span><b>What works</b><small>Features in this version</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     </div>
     <div class="setfoot">
       <img src="assets/wordmark.png" alt="DropLine" style="height:46px">
@@ -4173,6 +4172,12 @@ function navStep(dir){
 $("navNext").addEventListener("click", () => navStep(1));
 function navSheet(min){ $("navScreen").classList.toggle("sheetmin", min); setTimeout(() => { try{ nav.map && nav.map.invalidateSize(); }catch(e){} }, 260); }
 $("navSheetToggle").addEventListener("click", () => navSheet(true));
+{ const sh = document.querySelector("#navScreen .nsheet"); let y0 = null, sc0 = 0;
+  sh.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; sc0 = sh.scrollTop; }, {passive: true});
+  sh.addEventListener("touchend", e => { if (y0 == null) return; const dy = e.changedTouches[0].clientY - y0; y0 = null;
+    const min = $("navScreen").classList.contains("sheetmin");
+    if (!min && dy > 60 && sc0 <= 0 && sh.scrollTop <= 0) navSheet(true);        // pulled down from the top of the panel: hide it
+    else if (min && dy < -40) navSheet(false); }, {passive: true}); }           // pushed up on the small bar: show it
 $("navMini").addEventListener("click", () => navSheet(false));
 $("navMapBig").addEventListener("click", () => navSheet(!$("navScreen").classList.contains("sheetmin")));
 $("navPrev").addEventListener("click", () => navStep(-1));
@@ -4442,7 +4447,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.27";
+const APP_VERSION = "8.28";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -4483,7 +4488,7 @@ $("setNotifPermBtn").addEventListener("click", async () => { const st = await pe
 let subFrom = null;
 function openSub(title, html){ $("subTitle").textContent = title; $("subBody").innerHTML = html; $("subBody").scrollTop = 0; $("subPage").hidden = false; }
 $("subBack").addEventListener("click", () => { $("subPage").hidden = true; });
-$("setAbout").addEventListener("click", () => openSub("What works", $("aboutContent").innerHTML));
+
 $("setPrivacy").addEventListener("click", async () => {
   openSub("Privacy policy", '<p class="hint">Loading…</p>');
   try{ const r = await fetch("privacy.html", {cache: "no-cache"}); const d = new DOMParser().parseFromString(await r.text(), "text/html");

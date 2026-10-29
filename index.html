@@ -576,6 +576,10 @@ textarea:focus{border-color:var(--teal);outline:none}
 .ninstr .eta span{display:block;color:var(--muted);font-size:13.5px}
 .nctl{position:absolute;right:12px;top:12px;z-index:600;display:flex;flex-direction:column;gap:12px}
 .nctl a.round{display:grid;place-items:center;text-decoration:none}
+.recentre{position:absolute;left:50%;transform:translateX(-50%);bottom:26px;z-index:650;display:flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:10px 16px;font:700 15px var(--f-body);color:#fff;background:#1B6FE6;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.recentre .ico{width:18px;height:18px}
+.nav:not(.sheetmin) .recentre{bottom:auto;top:12px;left:auto;right:76px;transform:none}
+#navCentre.need{background:#1B6FE6!important;color:#fff!important}
 .round.extround{background:#fff!important;color:#1A73E8!important}
 .nav:not(.sheetmin) .nctl .extround{display:none}           /* panel open: the button is on the stop card instead */
 .nsright{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex:none}
@@ -1399,7 +1403,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <div class="top"><div class="nav-arrow" id="navArrow"></div><div class="nav-txt" style="min-width:0"><div class="nav-dist" id="navDist"></div><div class="nav-instr" id="navInstr"></div><div class="nav-then" id="navThen"></div></div></div>
       <div class="eta"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg><div><b id="navRemain">–</b><span id="navArrTxt">Arrive at stop</span><b id="navEta" style="font-size:18px;margin-top:2px"></b></div></div>
     </div>
-    <div class="nctl"><button class="round" id="navMapBig" aria-label="Bigger map"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg></button><button class="round" id="navVoice" aria-label="Voice on"><svg class="ico" aria-hidden="true"><use href="#i-vol"/></svg></button><button class="round" id="navCentre" aria-label="Follow my position"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg></button><a class="round extround" id="navExtBtn" data-ext="" aria-label="Open in Google Maps" title="Open in Google Maps"><svg class="ico" aria-hidden="true"><use href="#i-turnsign"/></svg></a></div>
+    <div class="nctl"><button class="round" id="navMapBig" aria-label="Bigger map"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg></button><button class="round" id="navVoice" aria-label="Voice on"><svg class="ico" aria-hidden="true"><use href="#i-vol"/></svg></button><button class="round" id="navCentre" aria-label="Re-centre on my position"><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg></button><a class="round extround" id="navExtBtn" data-ext="" aria-label="Open in Google Maps" title="Open in Google Maps"><svg class="ico" aria-hidden="true"><use href="#i-turnsign"/></svg></a></div><button class="recentre" id="navCentreTip" hidden><svg class="ico" aria-hidden="true"><use href="#i-nav"/></svg>Re-centre</button>
   </div>
   <div class="nsheet">
     <button class="grab" id="navSheetToggle" aria-label="Hide stop details to see the map"><i></i><span>Hide</span></button>
@@ -4014,7 +4018,7 @@ function navUpdate(pos){
   nav.lastPos = pos;
   const s = snap(pos);
   nav.me.setLatLng([pos.lat, pos.lon]);
-  nav.map.setView([pos.lat, pos.lon], Math.max(nav.map.getZoom(), 16), {animate:false});
+  if (nav.follow !== false) nav.map.setView([pos.lat, pos.lon], nav.map.getZoom(), {animate:false});   // paused while the driver looks around the map
   // off the route? find a new one
   if (s.d > 45 && (pos.acc == null || pos.acc < 60)){ nav.off++; if (nav.off >= 2 && !nav.rerouting) navReroute(pos); }
   else nav.off = 0;
@@ -4052,6 +4056,7 @@ async function navReroute(pos){
 async function navStart(stop){
   if (!has(stop)){ toast("This stop has no map location yet. Open it in the list and tap Move pin."); return; }
   const sim = $("navSim").checked;
+  navFollow(true);
   nav.on = true; nav.stop = stop; nav.sim = sim; nav.coords = []; nav.coordsFor = null; clearInterval(nav.simTimer);
   if (!sim && nav.watch == null) navWatch();
   $("navScreen").hidden = false; $("navArriveBox").hidden = true; renderNavStop(stop);
@@ -4155,7 +4160,11 @@ $("navMore").addEventListener("click", () => { $("navMenu").hidden = false; });
 $("navMenuClose").addEventListener("click", () => { $("navMenu").hidden = true; });
 $("navToStops").addEventListener("click", () => { navStop(); setView("stops"); });
 $("navToMap").addEventListener("click", () => { navStop(); setView("map"); });
-$("navCentre").addEventListener("click", () => { nav.follow = true; if (nav.lastPos) nav.map.setView([nav.lastPos.lat, nav.lastPos.lon], Math.max(nav.map.getZoom(), 16)); });
+function navFollow(on){ nav.follow = on; $("navCentre").classList.toggle("need", !on); $("navCentreTip").hidden = on; }
+$("navCentre").addEventListener("click", () => { navFollow(true); if (nav.lastPos) nav.map.setView([nav.lastPos.lat, nav.lastPos.lon], Math.max(nav.map.getZoom(), 15)); });
+$("navCentreTip").addEventListener("click", () => $("navCentre").click());
+// touching, dragging or zooming the map: stop following the van until the driver taps "Re-centre"
+["pointerdown", "touchstart", "wheel"].forEach(ev => $("navMap").addEventListener(ev, e => { if (nav.on && !(e.target.closest && e.target.closest(".leaflet-control-attribution"))) navFollow(false); }, {passive: true}));
 function navStep(dir){
   const st = route.stops, k = st.indexOf(nav.stop);
   for (let i = k + dir; i >= 0 && i < st.length; i += dir) if (st[i].status === "pending" && has(st[i])) { navStart(st[i]); return; }
@@ -4433,7 +4442,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.26";
+const APP_VERSION = "8.27";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

@@ -3383,9 +3383,10 @@ $("nsStart").addEventListener("click", () => { setStartMode(false, true); openPi
 $("btnLocate").addEventListener("click", locatePending);
 let probIdx = -1;
 $("btnShowProb").addEventListener("click", () => {
-  const probs = route.stops.filter(s => s.geo === "missing" || s.geo === "street"); if (!probs.length) return;
-  probIdx = (probIdx + 1) % probs.length; const s = probs[probIdx]; selId = expandedId = s.id; setView("stops"); render();
-  const el = document.querySelector('[data-id="'+s.id+'"]'); if (el) el.scrollIntoView({block:"center", behavior:"smooth"});
+  const probs = route.stops.filter(s => s.geo === "missing" || s.geo === "street" || s.approx); if (!probs.length) return;
+  probIdx = (probIdx + 1) % probs.length; const s = probs[probIdx]; selId = expandedId = s.id;
+  if (!$("detailsPage").hidden) closeDetails(); $("stopSearch").value = ""; $("stopFilter").value = "all";
+  render(); scrollToStop(s.id);                                                      // the list goes to this stop (not to stop 1)
   if (has(s)) map.setView([s.lat, s.lon], 17); toast("Pin check "+(probIdx+1)+" of "+probs.length+" — stop #"+(route.stops.indexOf(s)+1)+": "+(s.geo === "missing" ? "no map pin yet. Tap Move pin, then tap the map." : "is the pin in the right place? If not, tap Move pin.")); });
 $("btnClear").addEventListener("click", async () => { const n = route.stops.length;
   if (await askConfirm("Remove all stops?", "All " + n + " stop" + (n === 1 ? "" : "s") + " in this route will be removed. The route itself stays. This cannot be undone.", "Remove all stops")) $("clearYes").click(); });
@@ -4278,7 +4279,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.12";
+const APP_VERSION = "8.13";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

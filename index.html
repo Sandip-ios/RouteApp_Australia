@@ -1141,10 +1141,10 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 
 <div class="cropview" id="cropView" hidden role="dialog" aria-label="Crop the page">
   <header class="phead"><button class="hback" id="cropBack"><svg class="ico" aria-hidden="true"><use href="#i-chev-l"/></svg><span>Back</span></button><b>Crop the page</b><span class="pspace"></span></header>
-  <p class="crophint"><span id="cropAuto" hidden>✓ Page edges found. </span>Drag the 4 corners to the edges of the page, or around <b>just the addresses</b>. The page is straightened before it is read.</p>
+  <p class="crophint"><span id="cropAuto" hidden>✓ Page edges found. </span>Drag the 4 corners to the edges of the page, or around <b>just the addresses</b>. Then tap <b>Done</b> to load the addresses.</p>
   <div class="cropstage" id="cropStage"><div class="cropwrap" id="cropWrap"><img id="cropImg" alt="Photo to crop"><svg class="cropsvg" id="cropSvg" aria-hidden="true"></svg>
     <i class="qh" data-i="0"></i><i class="qh" data-i="1"></i><i class="qh" data-i="2"></i><i class="qh" data-i="3"></i></div></div>
-  <div class="cropacts"><button class="btn" id="cropRotate" aria-label="Rotate">⟳ Rotate</button><button class="btn" id="cropAll">Whole photo</button><button class="btn cta grow" id="cropGo">Read</button></div>
+  <div class="cropacts"><button class="btn" id="cropRotate" aria-label="Rotate">⟳ Rotate</button><button class="btn" id="cropAll">Whole photo</button><button class="btn cta grow" id="cropGo">✓ Done</button></div>
 </div>
 <div class="sheet-bg" id="scanSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Scan run sheet" style="max-height:94vh">
@@ -4279,7 +4279,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.13";
+const APP_VERSION = "8.14";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

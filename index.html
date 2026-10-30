@@ -647,20 +647,24 @@ textarea:focus{border-color:var(--teal);outline:none}
 @media (prefers-color-scheme:dark){.sortbtn .ico{color:var(--ink)}}
 #routeList{display:flex;flex-direction:column;gap:12px}
 .rcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow)}
-.rcard .ro{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:none;border:0;padding:16px 14px 14px 16px;color:inherit}
+.rcard .ro{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:none;border:0;padding:13px 14px 13px 16px;color:inherit}
+.rcard{border-left:5px solid var(--line2)}.rcard.go{border-left-color:#F2B134}.rcard.done{border-left-color:var(--ok)}
+.rcard .rm{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}.rcard .rmt{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.openfile{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1.5px dashed var(--line2);border-radius:14px;background:var(--surface);cursor:pointer;color:var(--ink)}
+.openfile .ico{width:24px;height:24px;color:#12A99B;flex:none}.openfile span{flex:1;min-width:0}.openfile b{display:block;font-size:15px}.openfile small{display:block;color:var(--muted);font-size:12.5px}
 .rcard .rb{flex:1;min-width:0}
 .rcard .rtop{display:flex;align-items:center;gap:8px;padding-right:40px}
-.rcard .rn{flex:1;min-width:0;font:700 22px/1.15 var(--f-display);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcard .rn{flex:1;min-width:0;font:700 20px/1.15 var(--f-display);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rcard .rm{font-size:14.5px;color:var(--muted);margin-top:4px}
-.rcard .rprog{display:flex;align-items:center;gap:10px;margin-top:10px;padding-right:2px}
-.rcard .rbar{flex:1;height:8px;border-radius:5px;background:var(--pend-soft);overflow:hidden;display:flex}
+.rcard .rprog{display:flex;align-items:center;gap:10px;margin-top:8px;padding-right:2px}
+.rcard .rbar{flex:1;height:6px;border-radius:5px;background:var(--pend-soft);overflow:hidden;display:flex}
 .rcard .rbar i{display:block;height:100%}
 .rcard .rpc{font:600 15px/1 var(--f-body);min-width:38px;text-align:right;font-variant-numeric:tabular-nums}
 .rcard .ro > .ico:last-child{color:var(--slate);width:22px;height:22px;align-self:flex-end;margin-bottom:-2px}
 .rcard .more{position:absolute;right:6px;top:10px;border:0;background:none;width:40px;height:40px;color:var(--navy);display:grid;place-items:center;padding:0}
 .rcard .more .ico{width:22px;height:22px}
 @media (prefers-color-scheme:dark){.rcard .more{color:var(--ink)}}
-.rstate{display:inline-flex;align-items:center;font:600 13px/1 var(--f-display);letter-spacing:.07em;text-transform:uppercase;padding:7px 11px;border-radius:999px;white-space:nowrap}
+.rstate{display:inline-flex;align-items:center;font:600 11.5px/1 var(--f-display);letter-spacing:.07em;text-transform:uppercase;padding:5px 9px;border-radius:999px;white-space:nowrap}
 .rstate.new{background:var(--pend-soft);color:var(--slate)} .rstate.go{background:var(--skip-soft);color:#B26E00} .rstate.done{background:var(--ok-soft);color:var(--ok)}
 .icard{display:flex;gap:14px;align-items:flex-start}
 .icard .lt{flex:1;min-width:0}
@@ -1073,6 +1077,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
   </header>
   <div class="hlist">
     <button class="create" id="homeCreate"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+    <label class="openfile" id="openFileBtn"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg><span><b>Open a route file</b><small>Shared from another phone</small></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
     <div class="sect"><span class="label">Your routes</span><button class="sortbtn" id="routeSort"><span id="routeSortTxt">Latest first</span><svg class="ico" aria-hidden="true"><use href="#i-sort"/></svg></button></div>
     <div id="routeList"></div>
     <p class="hint" id="homeEmpty" style="text-align:center;margin:6px 0">No routes yet. Create one for today's run, then add stops by typing, scanning the paper run sheet, or importing the manifest.</p>
@@ -1082,7 +1087,6 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <div class="permrow"><span id="permLocTxt">Location…</span><button class="btn outline" id="permLocBtn" hidden>Allow</button></div>
       <div class="permrow" id="permNotRow"><span id="permNotTxt">Notifications…</span><button class="btn outline" id="permNotBtn" hidden>Allow</button></div></div>
     </section>
-    <label class="panel list" style="cursor:pointer"><span class="lrow"><span class="tile"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="lt"><b>Open a route file</b><small>A route shared from another phone with “Share route file”</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
     <p class="madeby">DropLine <span class="appver"></span> · Made with <span class="heart" aria-label="love">♥</span> by <b>Enterprise Analytic</b></p>
     <svg class="homeill" viewBox="0 0 400 120" aria-hidden="true">
       <defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#D9ECF8"/><stop offset="1" stop-color="#E4F6F3"/></linearGradient></defs>
@@ -2494,7 +2498,7 @@ function setStatus(id, st, reason){ const s = route.stops.find(x=>x.id===id); if
     const c = {delivered:0, failed:0, skipped:0}; route.stops.forEach(x => c[x.status]++);
     const msg = c.delivered + " done, " + c.failed + " failed, " + c.skipped + " skipped.";
     route.finishedAt = Date.now(); phoneNotify(5, "Run finished", (route.name || "Route") + ": " + msg);
-    if (!nav.on) setTimeout(showReport, 450);
+    if (!nav.on){ const rid = route.id; setTimeout(() => { if (route.id === rid && $("home").hidden) showReport(); }, 450); }   // not if the driver has already left the route
   }
   if (st === "pending") route.finishedAt = null;
   failPickId = null; if (st !== "pending"){ flashId = id; flashSt = st; setTimeout(() => { if (flashId === id) flashId = null; }, 1200); }
@@ -4292,10 +4296,12 @@ function renderHome(){
   $("homeEmpty").hidden = items.length > 0;
   $("routeList").innerHTML = items.map(r => { const t = routeStats(r), w = x => t.n ? (100*x/t.n).toFixed(1)+"%" : "0";
     const lbl = {new:"Not started", go:"In progress", done:"Finished"}[t.state], p = t.n ? Math.round(100 * t.done / t.n) : 0;
-    return '<div class="rcard" style="--i:'+(items.indexOf(r))+'" data-rid="'+esc(r.id)+'"><button class="ro" data-open="'+esc(r.id)+'"><span class="tile blue">'+ico("cal")+'</span><span class="rb">'
-      + '<span class="rtop"><b class="rn">'+esc(r.name||"Untitled route")+'</b><span class="rstate '+t.state+'">'+lbl+'</span></span>'
-      + '<span class="rm" style="display:block">'+new Date(r.createdAt||r.updatedAt||Date.now()).toLocaleDateString("en-AU",{day:"numeric",month:"short",year:"numeric"})+' · '+t.n+' stop'+(t.n===1?"":"s")+(t.done ? ' · '+t.c.delivered+' delivered' : '')+'</span>'
-      + '<span class="rprog"><span class="rbar"><i style="width:'+w(t.c.delivered)+';background:var(--ok)"></i><i style="width:'+w(t.c.failed)+';background:var(--fail)"></i><i style="width:'+w(t.c.skipped)+';background:var(--skip)"></i></span><b class="rpc">'+p+'%</b></span></span>'+ico("chev-r")+'</button>'
+    const when = new Date(r.createdAt||r.updatedAt||Date.now()).toLocaleDateString("en-AU",{weekday:"short", day:"numeric",month:"short"});
+    return '<div class="rcard '+t.state+'" style="--i:'+(items.indexOf(r))+'" data-rid="'+esc(r.id)+'"><button class="ro" data-open="'+esc(r.id)+'"><span class="rb">'
+      + '<span class="rtop"><b class="rn">'+esc(r.name||"Untitled route")+'</b></span>'
+      + '<span class="rm"><span class="rstate '+t.state+'">'+lbl+'</span><span class="rmt">'+when+' · '+(t.done ? t.done+' of '+t.n+' done' : t.n+' stop'+(t.n===1?"":"s"))+'</span></span>'
+      + (t.done ? '<span class="rprog"><span class="rbar"><i style="width:'+w(t.c.delivered)+';background:var(--ok)"></i><i style="width:'+w(t.c.failed)+';background:var(--fail)"></i><i style="width:'+w(t.c.skipped)+';background:var(--skip)"></i></span><b class="rpc">'+p+'%</b></span>' : '')
+      + '</span></button>'
       + '<button class="more" data-menu="'+esc(r.id)+'" aria-label="Options for '+esc(r.name||"route")+'">'+ico("dots-v")+'</button></div>'; }).join("");
 }
 function showHome(){ if (nav.on) try{ navStop(); }catch(e){} closePickers(); closeDetails(); $("appView").classList.remove("fullmap");
@@ -4508,7 +4514,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.32";
+const APP_VERSION = "8.33";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

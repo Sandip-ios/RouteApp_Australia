@@ -344,6 +344,7 @@ label.panel{display:block}
 .appopt b{display:block} .appopt small{color:var(--muted)}
 .appopt .tickmark{margin-left:auto;color:#12A99B;visibility:hidden} .appopt.on .tickmark{visibility:visible}
 .picker{position:fixed;left:0;right:0;top:0;height:100%;z-index:1500;background:var(--bg);display:flex;flex-direction:column}
+.picker::after{content:"";position:absolute;left:0;right:0;top:100%;height:120vh;background:var(--bg)}    /* fills the space behind the keyboard */
 .phead{display:flex;align-items:center;gap:8px;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 10px max(6px,env(safe-area-inset-left));background:linear-gradient(160deg,#0E2B4B 0%,#0F3A63 55%,#0F5A7A 100%);color:#fff}
 .phead b{flex:1;text-align:center;font:700 20px/1.1 var(--f-display);letter-spacing:.02em}
 .phead .hback{color:#fff;min-width:84px}
@@ -2539,7 +2540,7 @@ function showReport(){
     '<details class="repall"><summary>All stops (' + route.stops.length + ')</summary><ol>' + route.stops.map((x, i) => { const [a1, a2] = splitLabel(x.label);
       return '<li class="' + x.status + '"><span class="n">' + (i + 1) + '</span><span class="a"><b>' + esc(a1) + '</b><small>' + esc(a2) + '</small></span><span class="r"><b>' + esc(stLabel(x)) + '</b><small>' +
         (x.doneAt ? R.hm(x.doneAt) : '') + (x.status === "failed" && x.reason ? ' · ' + esc(x.reason) : '') + '</small></span></li>'; }).join("") + '</ol></details>';
-  $("repSheet").hidden = false;
+  $("repSheet").hidden = false; prepReportPDF();
   if (!left){ const sh = $("repSheet").querySelector(".sheet"); sh.style.position = "relative"; setTimeout(() => confetti(sh), 250); try{ navigator.vibrate && navigator.vibrate([30, 60, 30]); }catch(e){} }
 }
 $("repBody").addEventListener("click", e => { const b = e.target.closest("[data-retry]"); if (!b) return;
@@ -2612,19 +2613,35 @@ function buildReportPDF(jsPDF){
     T("Made with DropLine · " + made, M, H - 8); T("Page " + i + " of " + pages, W - M, H - 8, {align: "right"}); }
   return doc;
 }
+/* The PDF is made as soon as the report opens, so tapping "PDF report" can open the phone's Share sheet straight away
+   (iPhone only allows the Share sheet right after a tap; making the PDF first took too long and nothing appeared). */
+let repPdf = null;
+async function makeReportPDF(){
+  const jsPDF = await loadJsPDF(), doc = buildReportPDF(jsPDF), d = new Date(route.startedAt || Date.now()).toISOString().slice(0, 10);
+  const name = "DropLine-report-" + ((route.name || "route").replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "") || "route") + "-" + d + ".pdf";
+  const blob = doc.output("blob");
+  return {routeId: route.id, name, title: "DropLine run report: " + (route.name || "route"), blob, file: new File([blob], name, {type: "application/pdf"}), b64: () => doc.output("datauristring").split(",").pop()};
+}
+function prepReportPDF(){ repPdf = null; const id = route.id; makeReportPDF().then(r => { if (route.id === id) repPdf = r; }).catch(() => {}); }
+const hasNative = (plugin, method) => { try{ const h = (window.Capacitor && window.Capacitor.PluginHeaders) || []; const p = h.find(x => x.name === plugin);
+  return !!(p && (p.methods || []).some(m => m.name === method)); }catch(e){ return false; } };
 async function shareReportPDF(){
-  const b = $("repPdf"); if (b.disabled) return; b.disabled = true;
+  const b = $("repPdf"); if (b.disabled) return;
+  let r = repPdf && repPdf.routeId === route.id ? repPdf : null;
+  // 1. a phone Share sheet that allows files, while the tap still counts (no waiting before this)
+  if (r && !hasNative("DroplineDevice", "shareData") && navigator.canShare && navigator.share){
+    try{ if (navigator.canShare({files: [r.file]})){ await navigator.share({files: [r.file], title: r.title}); return; } }
+    catch(e){ if (e && e.name === "AbortError") return; } }
+  b.disabled = true;
   try{
-    let jsPDF; try{ jsPDF = await loadJsPDF(); }catch(e){ toast("Could not make the PDF right now. Connect to the internet once and try again."); return; }
-    const doc = buildReportPDF(jsPDF), d = new Date(route.startedAt || Date.now()).toISOString().slice(0, 10);
-    const name = "DropLine-report-" + ((route.name || "route").replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "") || "route") + "-" + d + ".pdf", title = "DropLine run report: " + (route.name || "route");
-    window.__lastPdf = {name, size: doc.output("arraybuffer").byteLength};
-    const D = devicePlugin(), unimpl = e => /not implemented|unimplemented/i.test(String((e && e.code) || "") + " " + String((e && e.message) || ""));
-    if (D) try{ await D.shareData({name, base64: doc.output("datauristring").split(",").pop(), mime: "application/pdf", title}); return; }catch(e){ if (!unimpl(e)) return; }
-    const blob = doc.output("blob");
-    try{ const f = new File([blob], name, {type: "application/pdf"});
-      if (navigator.canShare && navigator.canShare({files: [f]})){ await navigator.share({files: [f], title}); return; } }catch(e){ if (e && e.name === "AbortError") return; }
-    if (!isNativeApp()){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); toast("PDF report downloaded."); return; }
+    if (!r){ toast("Making the PDF…"); try{ r = await makeReportPDF(); repPdf = r; }catch(e){ toast("Could not make the PDF right now. Connect to the internet once and try again."); return; } }
+    window.__lastPdf = {name: r.name, size: r.blob.size};
+    const D = devicePlugin();
+    // 2. the app's own Share (newer app builds)
+    if (D && hasNative("DroplineDevice", "shareData")){ try{ await D.shareData({name: r.name, base64: r.b64(), mime: "application/pdf", title: r.title}); }catch(e){ toast("Could not open sharing. Please try again."); } return; }
+    // 3. website: download the file
+    if (!isNativeApp()){ const a = document.createElement("a"); a.href = URL.createObjectURL(r.blob); a.download = r.name; document.body.appendChild(a); a.click(); a.remove(); toast("PDF report downloaded."); return; }
+    try{ if (navigator.canShare && navigator.canShare({files: [r.file]})){ await navigator.share({files: [r.file], title: r.title}); return; } }catch(e){ if (e && e.name === "AbortError") return; }
     toast("This app version cannot share PDF files yet. Please update the app. You can use Share summary for now.");
   } finally { b.disabled = false; }
 }
@@ -4471,7 +4488,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.30";
+const APP_VERSION = "8.31";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

@@ -4201,7 +4201,13 @@ $("nextGo").addEventListener("click", () => { const id = $("nextCard").dataset.i
 $("btnImport").addEventListener("click", () => { $("importSheet").hidden = false; });
 $("closeImport").addEventListener("click", () => $("importSheet").hidden = true);
 function openRouteJSON(txt){ const r = JSON.parse(txt); if (!r || !Array.isArray(r.stops) || r.stops.length > MAX_STOPS) throw 0;
-  r.id = uid(); r.createdAt = r.createdAt || Date.now(); const a = lib(); a[r.id] = r; saveLib(a); openRoute(r.id); toast("Opened “"+(r.name||"route")+"” with "+r.stops.length+" stops"); }
+  const a = lib(), sig = x => (x.stops || []).map(s => s.label + "|" + s.status).join("\n");
+  // the same file opened again: open the copy already on this phone instead of adding it twice
+  const same = Object.values(a).find(x => x && x.name === r.name && sig(x) === sig(r));
+  if (same){ openRoute(same.id); toast("“" + (r.name || "route") + "” is already on this phone, so it was opened."); return; }
+  // another route with this name: keep both, numbered
+  if (r.name && Object.values(a).some(x => x && x.name === r.name)){ let k = 2; while (Object.values(a).some(x => x && x.name === r.name + " (" + k + ")")) k++; r.name = r.name + " (" + k + ")"; }
+  r.id = uid(); r.createdAt = r.createdAt || Date.now(); a[r.id] = r; saveLib(a); openRoute(r.id); toast("Opened “"+(r.name||"route")+"” with "+r.stops.length+" stops"); }
 $("impGo").addEventListener("click", () => { const t = $("impText").value; if (!t.trim()){ impStatus("Paste at least one address first.", 0, true); return; }
   if (/^\s*\{/.test(t)) try{ openRouteJSON(t.trim()); $("importSheet").hidden = true; $("impText").value = ""; return; }catch(e){}        // a route sent from another phone
   importText(t); });
@@ -4447,7 +4453,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.28";
+const APP_VERSION = "8.29";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

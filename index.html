@@ -480,7 +480,8 @@ textarea:focus{border-color:var(--teal);outline:none}
 .more .btn{padding:8px 12px;min-height:42px;font-size:14px}
 .xsec{background:var(--bg);border-radius:14px;padding:12px}
 .xlab{display:block;font:700 12px var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-.xstat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.xstat .btn{min-height:50px;font-size:15px;font-weight:700;gap:6px}.xstat .btn .ico{width:18px;height:18px}
+.xstat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.xstat .btn{min-height:64px;padding:8px 4px;font-size:14px;font-weight:700;gap:4px;flex-direction:column;line-height:1.15;text-align:center}.xstat .btn .ico{width:20px;height:20px}
+.xstat .btn.act-u{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
 .xstat .btn:only-child{grid-column:1/-1}
 .xhint{font-size:13px;color:var(--muted);margin:10px 0 0}
 .xgrid2{display:grid;grid-template-columns:auto auto;justify-content:space-between;gap:10px 12px;align-items:end}
@@ -706,7 +707,12 @@ textarea:focus{border-color:var(--teal);outline:none}
 .ask p{margin:0 0 18px;color:var(--muted);font-size:15px;line-height:1.45}
 .ask .btn{width:100%;min-height:50px;font-size:16px}
 .ask #askOk{background:var(--fail);color:#fff;border-color:var(--fail)}
-.ask #askNo{margin-top:8px}
+.ask #askNo,.ask #failNo{margin-top:8px}
+.failask p{margin-bottom:14px}
+.frs{display:flex;flex-direction:column;gap:8px}
+.frs button{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:10px 14px;border:1.5px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:600 16px/1.2 var(--f-body,inherit);text-align:left;cursor:pointer}
+.frs button .ico{width:20px;height:20px;color:var(--fail);flex:none}
+.frs button:active{background:var(--fail-soft);border-color:var(--fail)}
 @media (prefers-reduced-motion:no-preference){.ask-bg:not([hidden]) .ask{animation:askin .22s cubic-bezier(.2,.9,.25,1)}}
 @keyframes askin{from{transform:scale(.92);opacity:0}to{transform:none;opacity:1}}
 .madeby b{color:var(--ink);font-weight:600}
@@ -933,6 +939,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
 <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
 <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="currentColor" stroke="none"/><path d="M18 13l.9 2.5 2.6.9-2.6.9L18 19.9l-.9-2.6-2.6-.9 2.6-.9z" fill="currentColor" stroke="none"/><path d="M17.5 3l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-turnsign" viewBox="0 0 24 24"><path d="M12 2.8l9.2 9.2-9.2 9.2L2.8 12z"/><path d="M9 14.5v-2.2a1.5 1.5 0 011.5-1.5H15M13 8.8l2 2-2 2"/></symbol>
 <symbol id="i-map" viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></symbol>
@@ -1519,6 +1526,14 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
     <div class="qnotes" id="noteQuick"></div>
     <button class="btn cta" id="noteSave" style="width:100%;margin-top:12px">Save note</button>
     <button class="btn" id="noteCancel" style="width:100%;margin-top:8px">Cancel</button>
+  </div>
+</div>
+<div class="ask-bg" id="failBox" hidden>
+  <div class="ask failask" role="dialog" aria-modal="true" aria-labelledby="failTitle">
+    <div class="ai"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></div>
+    <h3 id="failTitle">Why did it fail?</h3><p id="failWhere"></p>
+    <div class="frs" id="failList"></div>
+    <button class="btn" id="failNo">Cancel</button>
   </div>
 </div>
 <div class="ask-bg" id="askBox" hidden>
@@ -2132,21 +2147,28 @@ function extUrl(s, app){
   // Google Maps: driving directions from where the driver is now
   return "https://www.google.com/maps/dir/?api=1&destination=" + (d || q) + "&travelmode=driving&dir_action=navigate";
 }
-function extHref(s){ const a = navApp(); return a ? extUrl(s, a) : "#"; }
+/* "View in …": just show where the stop is (the maps app has its own Directions button) */
+function viewUrl(s, app){
+  const q = encodeURIComponent(s.query || s.label), d = has(s) ? s.lat.toFixed(6) + "," + s.lon.toFixed(6) : null;
+  if (app === "waze") return d ? "https://waze.com/ul?ll=" + d + "&z=17" : "https://waze.com/ul?q=" + q;
+  if (app === "apple") return d ? "https://maps.apple.com/?ll=" + d + "&q=" + encodeURIComponent(splitLabel(s.label)[0]) : "https://maps.apple.com/?q=" + q;
+  return "https://www.google.com/maps/search/?api=1&query=" + (d || q);
+}
+function extHref(s, view){ const a = navApp(); return a ? (view ? viewUrl(s, a) : extUrl(s, a)) : "#"; }
 let navAppFor = null;
 function openNavAppSheet(stopId){
   navAppFor = stopId; const cur = navApp();
   $("navAppList").innerHTML = navAppList().map(a => '<button class="appopt'+(a.id === cur ? " on" : "")+'" data-app="'+a.id+'"><span class="badge2" style="background:'+a.color+'">'+a.letter+'</span><span><b>'+a.name+'</b><small>'+a.note+'</small></span>'+ico("check", "tickmark")+'</button>').join("");
   $("navAppRemember").parentElement.hidden = !stopId; $("navAppSheet").hidden = false;
 }
-function showNavAppName(){ document.querySelectorAll(".extname").forEach(x => x.textContent = extName()); ["navExtBtn", "navExtCard"].forEach(id => { const b = document.getElementById(id); if (b){ b.setAttribute("aria-label", "Open in " + extName()); b.title = "Open in " + extName(); } }); const t = $("setNavAppTxt"); if (t) t.textContent = navApp() ? extName() : "Ask each time"; }
+function showNavAppName(){ document.querySelectorAll(".extname").forEach(x => x.textContent = extName()); document.querySelectorAll(".viewname").forEach(x => x.textContent = "View in " + extName()); ["navExtBtn", "navExtCard"].forEach(id => { const b = document.getElementById(id); if (b){ b.setAttribute("aria-label", "Open in " + extName()); b.title = "Open in " + extName(); } }); const t = $("setNavAppTxt"); if (t) t.textContent = navApp() ? extName() : "Ask each time"; }
 /* any "open in maps app" link: with no app chosen yet, ask first (then open it) */
 document.addEventListener("click", e => {
   const a = e.target.closest && e.target.closest("a[data-ext]"); if (!a) return;
   if (a.id === "navExt" || a.id === "navExtBtn" || a.id === "navExtCard") a.dataset.ext = nav.stop ? nav.stop.id : "";
   const s = route.stops.find(x => x.id === a.dataset.ext); if (!s){ e.preventDefault(); return; }
   if (!navApp()){ e.preventDefault(); openNavAppSheet(s.id); return; }
-  a.href = extUrl(s, navApp());
+  a.href = a.dataset.view ? viewUrl(s, navApp()) : extUrl(s, navApp());
   // leaving for the maps app: close the navigation menu, so DropLine is ready to use when the driver comes back
   setTimeout(() => { const m = $("navMenu"); if (m) m.hidden = true; }, 300);
 }, true);
@@ -3558,11 +3580,11 @@ function render(){
       '<div class="sctl"><button class="handle drag" aria-label="Drag to reorder">'+ico("grip")+'</button><button class="ud" aria-label="Move up" data-up="'+s.id+'">'+ico("up")+'</button><button class="ud" aria-label="Move down" data-down="'+s.id+'">'+ico("down")+'</button></div>' +
       (exp ? '<div class="more">' + pinCheckBox(s) +
         // 1. what happened at this stop
-        '<div class="xsec"><div class="xlab">Mark this stop</div><div class="xstat">' +
+        '<div class="xsec"><div class="xlab">'+(s.status==="pending" ? "Mark this stop" : "Change to")+'</div><div class="xstat">' +
           (s.status!=="delivered" ? '<button class="btn act-d" data-st="delivered" data-sid="'+s.id+'">'+ico("check")+(isPick(s)?"Picked up":"Delivered")+'</button>' : '') +
           (s.status!=="failed" ? '<button class="btn act-f" data-st="failed" data-sid="'+s.id+'">'+ico("x")+'Failed</button>' : '') +
           (s.status!=="skipped" ? '<button class="btn act-k" data-st="skipped" data-sid="'+s.id+'">'+ico("minus")+'Skip</button>' : '') +
-          (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') + '</div>' +
+          (s.status!=="pending" ? '<button class="btn act-u" data-st="pending" data-sid="'+s.id+'">'+ico("undo")+'Undo</button>' : '') + '</div>' +
           (failPickId===s.id ? '<div class="reasons"><span class="label" style="width:100%">Why did it fail?</span>'+REASONS.map(r=>'<button class="btn" data-reason="'+esc(r)+'" data-sid="'+s.id+'">'+esc(r)+'</button>').join("")+'</div>' : '') + '</div>' +
         // 2. the note: a box to type in, and quick words to add with a tap
         '<div class="xsec notebox"><label class="xlab" for="note-'+s.id+'">Delivery note</label><textarea class="stopnote" id="note-'+s.id+'" data-note="'+s.id+'" maxlength="300" placeholder="Type a note, e.g. gate code 1234">'+esc(s.notes||"")+'</textarea>' +
@@ -3573,7 +3595,7 @@ function render(){
           (parcels(s).some(p => p.size) ? '<div class="m" style="grid-column:1/-1">'+parcels(s).map(p => esc((p.seq!=null?"#"+p.seq+": ":"")+(p.size ? p.size+" cm" : "size not listed"))).join(" · ")+'</div>' : '') + '</div>' +
         // 4. tools
         '<div class="xsec"><div class="xlab">More</div><div class="xtools">' +
-          '<a class="xt" data-ext="'+s.id+'" href="'+extHref(s)+'">'+ico("nav")+'<span class="extname">'+esc(extName())+'</span></a>' +
+          '<a class="xt" data-ext="'+s.id+'" data-view="1" href="'+extHref(s, true)+'">'+ico("map")+'<span class="viewname">View in '+esc(extName())+'</span></a>' +
           '<button class="xt" data-pin="'+s.id+'">'+ico("pin-o")+'<span>Show pin</span></button>' +
           '<button class="xt" data-edit="'+s.id+'">'+ico("edit")+'<span>Edit address</span></button>' +
           '<button class="xt" data-place="'+s.id+'">'+ico("target")+'<span>Move pin</span></button>' +
@@ -3676,7 +3698,7 @@ $("stops").addEventListener("click", e => {
   if (t.dataset.qnote){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ toggleNote(s, t.dataset.qnote); persist(); render(); } return; }
   if (t.dataset.kind){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ if (t.dataset.kind === "pickup") s.kind = "pickup"; else delete s.kind; persist(); render(); } return; }
   if (t.dataset.qty){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ s.qty = Math.max(1, Math.min(99, pcount(s) + Number(t.dataset.qty))); persist(); render(); } return; }
-  if (t.dataset.st){ if (t.dataset.st === "failed"){ failPickId = t.dataset.sid; render(); return; } setStatus(t.dataset.sid, t.dataset.st); return; }
+  if (t.dataset.st){ if (t.dataset.st === "failed"){ const sid = t.dataset.sid; askFailReason(route.stops.find(x => x.id === sid)).then(r => { if (r) setStatus(sid, "failed", r); }); return; } setStatus(t.dataset.sid, t.dataset.st); return; }
   const tap = t.closest("[data-tap]"); if (tap){ const id = tap.dataset.tap; expandedId = expandedId === id ? null : id; selId = id; failPickId = null; render();
     const s = route.stops.find(x=>x.id===id); if (has(s)) map.panTo([s.lat, s.lon]); }
 });
@@ -3702,7 +3724,7 @@ function finishNext(id, st, reason){
   slideSwap($("nextBody"), $("nextStamp"), st, doneWord(st, pick), () => { animNext = true; setStatus(id, st, reason); animNext = false; });
 }
 document.querySelector("#nextCard .acts").addEventListener("click", e => { const b = e.target.closest("[data-next]"), st = b && b.dataset.next; if(!st || swapping) return; const id = $("nextCard").dataset.id;
-  if (st === "failed"){ failPickId = failPickId === id ? null : id; render(); return; } finishNext(id, st); });
+  if (st === "failed"){ askFailReason(route.stops.find(x => x.id === id)).then(r => { if (r && $("nextCard").dataset.id === id) finishNext(id, "failed", r); }); return; } finishNext(id, st); });
 $("nextReasons").addEventListener("click", e => { const b = e.target.closest("[data-nreason]"), r = b && b.dataset.nreason; if(!r) return; failPickId = null; $("nextReasons").hidden = true; finishNext($("nextCard").dataset.id, "failed", r); });
 let noteT;
 $("stops").addEventListener("input", e => { const id = e.target.dataset.note; if (!id) return; const s = route.stops.find(x => x.id === id); if (!s) return;
@@ -4331,8 +4353,7 @@ $("navSim").addEventListener("change", e => { nav.sim = e.target.checked; if (!n
   if (!nav.coords.length || nav.coordsFor !== nav.stop){ navStart(nav.stop); return; } if (nav.sim){ if (nav.watch != null){ navigator.geolocation.clearWatch(nav.watch); nav.watch = null; } navSimulate(); } else { clearInterval(nav.simTimer); navWatch(); } });
 $("navDelivered").addEventListener("click", () => navDone("delivered"));
 $("navSkip").addEventListener("click", () => navDone("skipped"));
-$("navFailed").addEventListener("click", () => { const h = !$("navReasons").hidden; $("navReasons").hidden = h; $("navFailed").classList.toggle("on", !h);
-  if (!h) setTimeout(() => $("navReasons").scrollIntoView({block: "nearest", behavior: "smooth"}), 30); });
+$("navFailed").addEventListener("click", () => { const st = nav.stop; askFailReason(st).then(r => { if (r && nav.stop === st) navDone("failed", r); }); });
 $("navReasons").addEventListener("click", e => { const b = e.target.closest("[data-nr]"), r = b && b.dataset.nr; if (r){ $("navReasons").hidden = true; $("navFailed").classList.remove("on"); navDone("failed", r); } });
 $("nextGo").addEventListener("click", () => { const id = $("nextCard").dataset.id; const s = route.stops.find(x => x.id === id); if (s) navStart(s); });
 
@@ -4475,6 +4496,18 @@ async function shareRouteFile(r){ track("route_file_shared", {stops: bucket((r.s
 $("menuExport").addEventListener("click", () => { const r = lib()[menuId]; if (r) shareRouteFile(r); });
 /* A clear yes/no question in the middle of the screen (used before deleting anything). */
 let askDone = null;
+/* "Why did it fail?" as a popup, so it cannot be missed or close by itself; resolves to the reason, or null for Cancel */
+const REASON_ICONS = {"No one home": "user", "Address not found": "pin-o", "Refused": "x-c", "Unsafe access": "warn", "Other": "note"};
+let failDone = null;
+function askFailReason(st){
+  $("failWhere").textContent = st ? splitLabel(st.label)[0] : "";
+  $("failList").innerHTML = REASONS.map(r => '<button data-fr="'+esc(r)+'">'+ico(REASON_ICONS[r] || "x-c")+esc(r)+'</button>').join("");
+  $("failBox").hidden = false;
+  return new Promise(res => { failDone = v => { $("failBox").hidden = true; failDone = null; res(v); }; });
+}
+$("failList").addEventListener("click", e => { const b = e.target.closest("[data-fr]"); if (b && failDone) failDone(b.dataset.fr); });
+$("failNo").addEventListener("click", () => failDone && failDone(null));
+$("failBox").addEventListener("click", e => { if (e.target === $("failBox") && failDone) failDone(null); });
 function askConfirm(title, text, ok){
   $("askTitle").textContent = title; $("askText").textContent = text; $("askOk").textContent = ok; $("askBox").hidden = false;
   setTimeout(() => $("askNo").focus(), 30);
@@ -4602,7 +4635,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.34";
+const APP_VERSION = "8.35";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

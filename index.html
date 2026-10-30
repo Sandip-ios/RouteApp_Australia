@@ -476,8 +476,19 @@ textarea:focus{border-color:var(--teal);outline:none}
 .handle .ico{width:22px;height:22px}
 .ud{width:40px;height:40px;border-radius:10px;border:0;background:var(--pend-soft);color:var(--navy);display:grid;place-items:center;padding:0}
 .ud .ico{width:16px;height:16px;fill:currentColor;stroke:none}
-.more{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px dashed var(--line2)}
+.more{grid-column:1/-1;display:flex;flex-direction:column;gap:10px;padding-top:12px;border-top:1px dashed var(--line2)}
 .more .btn{padding:8px 12px;min-height:42px;font-size:14px}
+.xsec{background:var(--bg);border-radius:14px;padding:12px}
+.xlab{display:block;font:700 12px var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.xstat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.xstat .btn{min-height:50px;font-size:15px;font-weight:700;gap:6px}.xstat .btn .ico{width:18px;height:18px}
+.xstat .btn:only-child{grid-column:1/-1}
+.xhint{font-size:13px;color:var(--muted);margin:10px 0 0}
+.xgrid2{display:grid;grid-template-columns:auto auto;justify-content:space-between;gap:10px 12px;align-items:end}
+.xgrid2 .qty button{width:42px}.xgrid2 .qty b{min-width:40px}
+.xtools{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.xt{display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:var(--surface);border-radius:12px;padding:10px 2px 8px;color:var(--ink);font:600 12px/1.15 var(--f-body);text-align:center;text-decoration:none;min-height:64px;box-shadow:0 1px 3px rgba(9,23,38,.08)}
+.xt .ico{width:22px;height:22px;color:#12A99B}.xt.danger{color:var(--fail)}.xt.danger .ico{color:var(--fail)}
+@media (max-width:360px){.xtools{grid-template-columns:repeat(3,1fr)}}
 .sortable-ghost{opacity:.35}
 .chip,.pill{display:inline-flex;align-items:center;font:600 12.5px/1 var(--f-display);text-transform:uppercase;letter-spacing:.07em;padding:6px 9px;border-radius:7px}
 .chip.pending,.pill.pending{background:var(--pend-soft);color:var(--navy)}.chip.delivered,.pill.delivered{background:var(--ok-soft);color:var(--ok)}
@@ -499,11 +510,13 @@ textarea:focus{border-color:var(--teal);outline:none}
 .qty b{min-width:70px;text-align:center;font-variant-numeric:tabular-nums}
 .snote{display:block;margin-top:8px;padding:8px 11px;border-radius:10px;background:#FFF6D9;color:#5A4300;font-size:13.5px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}
 @media (prefers-color-scheme:dark){.snote{background:#3A3110;color:#F3DD8C}}
-.notebox{width:100%;margin:2px 0 4px}
-.notebox textarea{display:block;width:100%;min-height:66px;margin-top:6px;font-size:16px}
+.notebox{width:100%}
+.notebox textarea{display:block;width:100%;min-height:66px;margin-top:0;font-size:16px;background:var(--surface);border:1.5px solid var(--line2);border-radius:12px;padding:10px 12px}
+.notebox textarea:focus{border-color:var(--teal);outline:none;box-shadow:0 0 0 3px rgba(32,199,183,.18)}
 .qnotes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.qnotes button{border:1.5px solid var(--line2);background:var(--surface);border-radius:99px;padding:7px 12px;font-size:13.5px;font-weight:600}
-.qnotes button.on{background:var(--pale);border-color:var(--teal);color:#0D6F66}
+.qnotes button{border:1.5px dashed var(--line2);background:transparent;border-radius:99px;padding:6px 11px;font-size:13.5px;font-weight:600;color:var(--ink)}
+.qnotes button::before{content:"+ ";color:#12A99B;font-weight:800}
+.qnotes button.on{background:var(--pale);border-style:solid;border-color:var(--teal);color:#0D6F66}.qnotes button.on::before{content:"✓ "}
 .stopsbar{position:sticky;bottom:calc(-1 * max(28px,env(safe-area-inset-bottom)));margin:4px -14px calc(-1 * max(28px,env(safe-area-inset-bottom)));padding:12px 14px max(14px,env(safe-area-inset-bottom));background:linear-gradient(to bottom,rgba(244,247,249,0),var(--bg) 22%);display:flex;flex-direction:column;gap:8px;z-index:5}
 .stopsbar .row{flex-wrap:nowrap}
 .stopsbar .btn{min-height:54px;font-size:16px;border-radius:14px}
@@ -3461,21 +3474,28 @@ function render(){
         '<div class="chips">'+chipsFor(s)+'</div>'+(s.notes ? '<span class="snote">'+esc(s.notes)+'</span>' : '')+'</div>' +
       '<div class="sctl"><button class="handle drag" aria-label="Drag to reorder">'+ico("grip")+'</button><button class="ud" aria-label="Move up" data-up="'+s.id+'">'+ico("up")+'</button><button class="ud" aria-label="Move down" data-down="'+s.id+'">'+ico("down")+'</button></div>' +
       (exp ? '<div class="more">' + pinCheckBox(s) +
-        '<div class="notebox"><label class="label" for="note-'+s.id+'">Notes for this stop</label><textarea class="stopnote" id="note-'+s.id+'" data-note="'+s.id+'" maxlength="300" placeholder="e.g. Front door, big box, call on arrival">'+esc(s.notes||"")+'</textarea>' +
-        '<div class="qnotes">'+QUICK_NOTES.map(q => '<button data-qnote="'+esc(q)+'" data-sid="'+s.id+'" class="'+(hasNote(s,q)?"on":"")+'">'+esc(q)+'</button>').join("")+'</div></div>' +
-        '<div class="kindrow"><span class="seg" role="group" aria-label="Stop type"><button data-kind="delivery" data-sid="'+s.id+'" class="'+(isPick(s)?"":"on")+'">Delivery</button><button data-kind="pickup" data-sid="'+s.id+'" class="'+(isPick(s)?"on":"")+'">Pickup</button></span>' +
-        '<span class="qty" aria-label="Number of parcels"><button data-qty="-1" data-sid="'+s.id+'" aria-label="One parcel fewer">−</button><b>'+pcount(s)+' parcel'+(pcount(s)===1?"":"s")+'</b><button data-qty="1" data-sid="'+s.id+'" aria-label="One more parcel">+</button></span></div>' +
-        (s.status!=="delivered" ? '<button class="btn act-d" data-st="delivered" data-sid="'+s.id+'">'+(isPick(s)?"Picked up":"Delivered")+'</button>' : '') +
-        (s.status!=="failed" ? '<button class="btn act-f" data-st="failed" data-sid="'+s.id+'">Failed</button>' : '') +
-        (s.status!=="skipped" ? '<button class="btn act-k" data-st="skipped" data-sid="'+s.id+'">Skip</button>' : '') +
-        (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') +
-        '<a class="btn outline" data-ext="'+s.id+'" href="'+extHref(s)+'">'+ico("map")+'<span class="extname">'+esc(extName())+'</span></a>' +
-        '<button class="btn outline" data-pin="'+s.id+'">Show pin</button>' +
-        '<button class="btn outline" data-edit="'+s.id+'">'+ico("edit")+'Edit address</button>' +
-        '<button class="btn outline" data-place="'+s.id+'">Move pin</button>' +
-        '<button class="btn outline" data-rm="'+s.id+'">Remove</button>' +
-        (parcels(s).some(p => p.size) ? '<div class="m" style="width:100%">'+parcels(s).map(p => esc((p.seq!=null?"#"+p.seq+": ":"")+(p.size ? p.size+" cm" : "size not listed"))).join(" · ")+'</div>' : '') +
-        (failPickId===s.id ? '<div class="reasons"><span class="label" style="width:100%">Why did it fail?</span>'+REASONS.map(r=>'<button class="btn" data-reason="'+esc(r)+'" data-sid="'+s.id+'">'+esc(r)+'</button>').join("")+'</div>' : '') +
+        // 1. what happened at this stop
+        '<div class="xsec"><div class="xlab">Mark this stop</div><div class="xstat">' +
+          (s.status!=="delivered" ? '<button class="btn act-d" data-st="delivered" data-sid="'+s.id+'">'+ico("check")+(isPick(s)?"Picked up":"Delivered")+'</button>' : '') +
+          (s.status!=="failed" ? '<button class="btn act-f" data-st="failed" data-sid="'+s.id+'">'+ico("x")+'Failed</button>' : '') +
+          (s.status!=="skipped" ? '<button class="btn act-k" data-st="skipped" data-sid="'+s.id+'">'+ico("minus")+'Skip</button>' : '') +
+          (s.status!=="pending" ? '<button class="btn" data-st="pending" data-sid="'+s.id+'">Back to pending</button>' : '') + '</div>' +
+          (failPickId===s.id ? '<div class="reasons"><span class="label" style="width:100%">Why did it fail?</span>'+REASONS.map(r=>'<button class="btn" data-reason="'+esc(r)+'" data-sid="'+s.id+'">'+esc(r)+'</button>').join("")+'</div>' : '') + '</div>' +
+        // 2. the note: a box to type in, and quick words to add with a tap
+        '<div class="xsec notebox"><label class="xlab" for="note-'+s.id+'">Delivery note</label><textarea class="stopnote" id="note-'+s.id+'" data-note="'+s.id+'" maxlength="300" placeholder="Type a note, e.g. gate code 1234">'+esc(s.notes||"")+'</textarea>' +
+          '<div class="xhint">Or tap to add:</div><div class="qnotes">'+QUICK_NOTES.map(q => '<button data-qnote="'+esc(q)+'" data-sid="'+s.id+'" class="'+(hasNote(s,q)?"on":"")+'">'+esc(q)+'</button>').join("")+'</div></div>' +
+        // 3. what it is
+        '<div class="xsec xgrid2"><div><div class="xlab">Type</div><span class="seg" role="group" aria-label="Stop type"><button data-kind="delivery" data-sid="'+s.id+'" class="'+(isPick(s)?"":"on")+'">Delivery</button><button data-kind="pickup" data-sid="'+s.id+'" class="'+(isPick(s)?"on":"")+'">Pickup</button></span></div>' +
+          '<div><div class="xlab">Parcels</div><span class="qty" aria-label="Number of parcels"><button data-qty="-1" data-sid="'+s.id+'" aria-label="One parcel fewer">−</button><b>'+pcount(s)+'</b><button data-qty="1" data-sid="'+s.id+'" aria-label="One more parcel">+</button></span></div>' +
+          (parcels(s).some(p => p.size) ? '<div class="m" style="grid-column:1/-1">'+parcels(s).map(p => esc((p.seq!=null?"#"+p.seq+": ":"")+(p.size ? p.size+" cm" : "size not listed"))).join(" · ")+'</div>' : '') + '</div>' +
+        // 4. tools
+        '<div class="xsec"><div class="xlab">More</div><div class="xtools">' +
+          '<a class="xt" data-ext="'+s.id+'" href="'+extHref(s)+'">'+ico("nav")+'<span class="extname">'+esc(extName())+'</span></a>' +
+          '<button class="xt" data-pin="'+s.id+'">'+ico("pin-o")+'<span>Show pin</span></button>' +
+          '<button class="xt" data-edit="'+s.id+'">'+ico("edit")+'<span>Edit address</span></button>' +
+          '<button class="xt" data-place="'+s.id+'">'+ico("target")+'<span>Move pin</span></button>' +
+          '<button class="xt danger" data-rm="'+s.id+'">'+ico("trash")+'<span>Remove</span></button>' +
+        '</div></div>' +
         '</div>' : '') +
       '</li>';
   }).join("");
@@ -4488,7 +4508,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.31";
+const APP_VERSION = "8.32";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

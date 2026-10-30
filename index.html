@@ -631,6 +631,27 @@ textarea:focus{border-color:var(--teal);outline:none}
 .hero{background:var(--hero);color:#fff;padding:max(16px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) 46px max(18px,env(safe-area-inset-left));display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
 .hero::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 85% -10%,rgba(32,199,183,.25),transparent 60%);pointer-events:none}
 .logo{display:flex;align-items:center;gap:10px;flex:1;min-width:0;position:relative;z-index:1}
+.logo .lw{display:flex;flex-direction:column;gap:6px;min-width:0}
+.tagline{font:600 10.5px/1 var(--f-body);letter-spacing:.16em;text-transform:uppercase;color:#A9C7E6;white-space:nowrap}.tagline b{color:#fff;font-weight:700}
+.heroart{position:absolute;right:14px;top:0;width:118px;height:100%;z-index:0;opacity:.55;pointer-events:none}
+.create{flex-direction:row}
+.create .cplus{width:50px;height:50px;border-radius:50%;background:#fff;color:#12A99B;display:grid;place-items:center;flex:none;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.create .cplus .ico{width:28px;height:28px;stroke-width:3}
+.create .ctx{flex:1;text-align:left;margin:0;display:flex;flex-direction:column;gap:4px}
+.create .ctx b{font:700 24px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
+.create .ctx small{font:500 13.5px/1.2 var(--f-body);letter-spacing:0;text-transform:none;opacity:.92}
+.create .cchev{width:26px;height:26px}
+.hfoot{flex:none;position:relative;background:var(--bg);padding:0 0 max(8px,env(safe-area-inset-bottom));z-index:3}
+.footart{display:block;width:100%;height:84px}
+.fa-city rect{fill:var(--fa-city)}.fa-tree circle{fill:var(--fa-tree)}.fa-hill2{fill:var(--fa-hill2)}.fa-hill1{fill:var(--fa-hill1)}
+.fa-road{fill:none;stroke:var(--fa-road);stroke-width:14;stroke-linecap:round}.fa-dash{fill:none;stroke:#8FC7EE;stroke-width:2;stroke-dasharray:9 8}
+.fline{display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;gap:5px;padding:2px 10px 0;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.fline .fsep{opacity:.5;margin:0 2px}
+.fline .ea{display:inline-flex;align-items:center;gap:5px;margin-left:2px}.fline .ea img{width:26px;height:26px}
+.fline .ea b{display:block;font:700 13px/1.05 var(--f-body);color:#0E3F8A}.fline .ea small{display:block;font:700 7.5px/1.25 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:#3FB8DF}
+:root{--fa-city:#DCE9F4;--fa-tree:#BFE3D5;--fa-hill2:#E1F0F8;--fa-hill1:#D5EDF0;--fa-road:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--fa-city:#15263A;--fa-tree:#163A35;--fa-hill2:#122236;--fa-hill1:#14293E;--fa-road:#1D3550}:root:not([data-theme="light"]) .fline .ea b{color:#CFE0F5}}
+:root[data-theme="dark"]{--fa-city:#15263A;--fa-tree:#163A35;--fa-hill2:#122236;--fa-hill1:#14293E;--fa-road:#1D3550}:root[data-theme="dark"] .fline .ea b{color:#CFE0F5}
 .logo .mk{height:64px;width:auto;flex:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
 .logo .wm{height:52px;width:auto;max-width:100%;object-fit:contain;object-position:left}
 .avatar{position:relative;z-index:1;width:54px;height:54px;border-radius:50%;border:1.5px solid rgba(255,255,255,.7);background:rgba(255,255,255,.06);color:#fff;display:grid;place-items:center;flex:none}
@@ -647,24 +668,31 @@ textarea:focus{border-color:var(--teal);outline:none}
 @media (prefers-color-scheme:dark){.sortbtn .ico{color:var(--ink)}}
 #routeList{display:flex;flex-direction:column;gap:12px}
 .rcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow)}
-.rcard .ro{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:none;border:0;padding:13px 14px 13px 16px;color:inherit}
-.rcard{border-left:5px solid var(--line2)}.rcard.go{border-left-color:#F2B134}.rcard.done{border-left-color:var(--ok)}
-.rcard .rm{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}.rcard .rmt{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.openfile{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1.5px dashed var(--line2);border-radius:14px;background:var(--surface);cursor:pointer;color:var(--ink)}
-.openfile .ico{width:24px;height:24px;color:#12A99B;flex:none}.openfile span{flex:1;min-width:0}.openfile b{display:block;font-size:15px}.openfile small{display:block;color:var(--muted);font-size:12.5px}
+.rcard .ro{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;padding:14px 8px 14px 12px;color:inherit}
+.rcard .rtile{width:48px;height:48px;border-radius:14px;background:#E6F0FF;color:#1B6FE6;flex:none}.rcard .rtile .ico{width:24px;height:24px}
+.rcard.done .rtile{background:var(--ok-soft);color:var(--ok)}.rcard.go .rtile{background:#FFF1DC;color:#E8930C}
+.rcard .rm{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0}.rcard .rm .ico{width:15px;height:15px;flex:none}.rcard .rmt{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard .rdone{background:var(--ok)}.rcard.go .rdone{background:#F2A21A}
+.rstate .ico{width:14px;height:14px;margin-right:5px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .rcard .rtile{background:rgba(27,111,230,.18);color:#7FB0FF}:root:not([data-theme="light"]) .rcard.done .rtile{background:rgba(46,160,90,.18);color:#6FD39A}:root:not([data-theme="light"]) .rcard.go .rtile{background:rgba(242,162,26,.16);color:#F5B648}}
+.openfile{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px dashed #9CC3EA;border-radius:var(--r-card);background:var(--surface);cursor:pointer;color:var(--ink)}
+.openfile .oft{width:52px;height:52px;border-radius:14px;background:#E6F0FF;color:#1B6FE6;display:grid;place-items:center;flex:none}.openfile .oft .ico{width:28px;height:28px}
+.openfile .oftx{flex:1;min-width:0}.openfile b{display:block;font:700 18px/1.15 var(--f-display)}.openfile small{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.openfile > .ico{width:22px;height:22px;color:var(--slate);flex:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .openfile .oft{background:rgba(27,111,230,.18);color:#7FB0FF}}
 .rcard .rb{flex:1;min-width:0}
 .rcard .rtop{display:flex;align-items:center;gap:8px;padding-right:40px}
-.rcard .rn{flex:1;min-width:0;font:700 20px/1.15 var(--f-display);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rcard .rm{font-size:14.5px;color:var(--muted);margin-top:4px}
+.rcard .rn{flex:1;min-width:0;font:700 19px/1.15 var(--f-display);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcard .rm{font-size:13.5px;color:var(--muted);margin-top:4px}
 .rcard .rprog{display:flex;align-items:center;gap:10px;margin-top:8px;padding-right:2px}
-.rcard .rbar{flex:1;height:6px;border-radius:5px;background:var(--pend-soft);overflow:hidden;display:flex}
+.rcard .rbar{flex:1;height:8px;border-radius:5px;background:var(--pend-soft);overflow:hidden;display:flex}
 .rcard .rbar i{display:block;height:100%}
 .rcard .rpc{font:600 15px/1 var(--f-body);min-width:38px;text-align:right;font-variant-numeric:tabular-nums}
 .rcard .ro > .ico:last-child{color:var(--slate);width:22px;height:22px;align-self:flex-end;margin-bottom:-2px}
 .rcard .more{position:absolute;right:6px;top:10px;border:0;background:none;width:40px;height:40px;color:var(--navy);display:grid;place-items:center;padding:0}
 .rcard .more .ico{width:22px;height:22px}
 @media (prefers-color-scheme:dark){.rcard .more{color:var(--ink)}}
-.rstate{display:inline-flex;align-items:center;font:600 11.5px/1 var(--f-display);letter-spacing:.07em;text-transform:uppercase;padding:5px 9px;border-radius:999px;white-space:nowrap}
+.rstate{display:inline-flex;align-items:center;font:600 11px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:999px;white-space:nowrap}
 .rstate.new{background:var(--pend-soft);color:var(--slate)} .rstate.go{background:var(--skip-soft);color:#B26E00} .rstate.done{background:var(--ok-soft);color:var(--ok)}
 .icard{display:flex;gap:14px;align-items:flex-start}
 .icard .lt{flex:1;min-width:0}
@@ -675,7 +703,7 @@ textarea:focus{border-color:var(--teal);outline:none}
 .updbar{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2900;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 16px;border-radius:16px;background:#0E2B4B;color:#fff;font-size:14.5px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .updbar span{flex:1}.updbar button{border:0;border-radius:12px;padding:10px 14px;font:700 14.5px var(--f-body);color:#0E2B4B;background:#2BD3C1}
 .madeby{text-align:center;color:var(--muted);font-size:12.5px;margin:6px 0 0}
-.home .hlist > .madeby{margin-top:auto;padding-top:10px}   /* footer + road picture sit at the bottom of the screen when there are few routes */
+
 .ask-bg{position:fixed;inset:0;z-index:3000;background:rgba(10,24,40,.55);display:grid;place-items:center;padding:24px}
 .ask{width:100%;max-width:360px;background:var(--surface);color:var(--ink);border-radius:22px;padding:24px 20px 18px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.3)}
 .ask .ai{width:58px;height:58px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:var(--fail-soft,#FDECEC);color:var(--fail)}
@@ -1072,31 +1100,43 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 
 <div class="home" id="home" hidden>
   <header class="hero">
-    <div class="logo"><img class="mk" src="assets/logo-mark.png" alt=""><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine — Multi-Stop Route Planner"></div>
+    <svg class="heroart" viewBox="0 0 200 120" aria-hidden="true">
+      <path d="M30 128 C60 100 150 104 120 80 S70 52 120 38 196 20 210 10" fill="none" stroke="#1B4F8C" stroke-width="22" stroke-linecap="round" opacity=".55"/>
+      <path d="M30 128 C60 100 150 104 120 80 S70 52 120 38 196 20 210 10" fill="none" stroke="#2A6FD6" stroke-width="14" stroke-linecap="round" opacity=".75"/>
+      <path d="M30 128 C60 100 150 104 120 80 S70 52 120 38 196 20 210 10" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="6 6" opacity=".8"/>
+      <g transform="translate(78 54)"><path d="M10 30S0 21 0 11a10 10 0 0120 0c0 10-10 19-10 19z" fill="#20C7B7"/><circle cx="10" cy="11" r="4" fill="#fff"/></g>
+      <g transform="translate(138 6)"><path d="M9 26S0 18 0 9a9 9 0 0118 0c0 9-9 17-9 17z" fill="#1B6FE6"/><circle cx="9" cy="9" r="3.6" fill="#fff"/></g>
+    </svg>
+    <div class="logo"><img class="mk" src="assets/logo-mark.png" alt=""><span class="lw"><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine — Multi-Stop Route Planner"><span class="tagline">Plan · Optimise · Deliver <b>faster</b></span></span></div>
     <button class="avatar" id="btnSettings" aria-label="Settings"><svg class="ico" aria-hidden="true"><use href="#i-gear"/></svg></button>
   </header>
   <div class="hlist">
-    <button class="create" id="homeCreate"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
-    <label class="openfile" id="openFileBtn"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg><span><b>Open a route file</b><small>Shared from another phone</small></span><input type="file" id="importIn" accept=".json,application/json" hidden></label>
+    <button class="create" id="homeCreate"><span class="cplus"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="ctx"><b>Create route</b><small>Plan and optimise your delivery route</small></span><svg class="ico cchev" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     <div class="sect"><span class="label">Your routes</span><button class="sortbtn" id="routeSort"><span id="routeSortTxt">Latest first</span><svg class="ico" aria-hidden="true"><use href="#i-sort"/></svg></button></div>
     <div id="routeList"></div>
     <p class="hint" id="homeEmpty" style="text-align:center;margin:6px 0">No routes yet. Create one for today's run, then add stops by typing, scanning the paper run sheet, or importing the manifest.</p>
+    <label class="openfile" id="openFileBtn"><span class="oft"><svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="oftx"><b>Open a route file</b><small>A route shared from another phone with “Share route file”</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg><input type="file" id="importIn" accept=".json,application/json" hidden></label>
     <section class="panel icard" id="permPanel" aria-label="Phone permissions" hidden>
       <span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
       <div class="lt"><div class="label">Phone permissions</div>
       <div class="permrow"><span id="permLocTxt">Location…</span><button class="btn outline" id="permLocBtn" hidden>Allow</button></div>
       <div class="permrow" id="permNotRow"><span id="permNotTxt">Notifications…</span><button class="btn outline" id="permNotBtn" hidden>Allow</button></div></div>
     </section>
-    <p class="madeby">DropLine <span class="appver"></span> · Made with <span class="heart" aria-label="love">♥</span> by <b>Enterprise Analytic</b></p>
-    <svg class="homeill" viewBox="0 0 400 120" aria-hidden="true">
-      <defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#D9ECF8"/><stop offset="1" stop-color="#E4F6F3"/></linearGradient></defs>
-      <path d="M0 70 C80 40 160 95 240 70 S360 40 400 55 V120 H0z" fill="url(#hg)"/>
-      <path d="M-10 112 C70 100 120 92 170 80 S280 50 330 58 400 70 420 66" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
-      <path d="M-10 112 C70 100 120 92 170 80 S280 50 330 58 400 70 420 66" fill="none" stroke="#8FC7EE" stroke-width="2.5" stroke-dasharray="10 9"/>
-      <g transform="translate(60 52)"><path d="M14 46S0 32 0 18a14 14 0 0128 0c0 14-14 28-14 28z" fill="#1B6FE6"/><circle cx="14" cy="18" r="6" fill="#fff"/><ellipse cx="14" cy="50" rx="11" ry="3.5" fill="#20C7B7" opacity=".55"/></g>
-      <g transform="translate(330 16)"><path d="M12 38S0 27 0 15a12 12 0 0124 0c0 12-12 23-12 23z" fill="#20C7B7"/><circle cx="12" cy="15" r="5" fill="#fff"/><ellipse cx="12" cy="42" rx="9" ry="3" fill="#20C7B7" opacity=".45"/></g>
-    </svg>
   </div>
+  <footer class="hfoot">
+    <svg class="footart" viewBox="0 0 400 96" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <g class="fa-city"><rect x="150" y="22" width="16" height="44"/><rect x="170" y="10" width="20" height="56"/><rect x="194" y="28" width="14" height="38"/><rect x="212" y="16" width="18" height="50"/><rect x="234" y="32" width="12" height="34"/><rect x="250" y="20" width="16" height="46"/></g>
+      <g class="fa-tree"><circle cx="22" cy="44" r="12"/><circle cx="36" cy="50" r="9"/><circle cx="360" cy="42" r="12"/><circle cx="378" cy="50" r="10"/><circle cx="300" cy="48" r="8"/></g>
+      <path class="fa-hill2" d="M0 58 C70 40 130 64 210 52 S330 36 400 50 V96 H0z"/>
+      <path class="fa-hill1" d="M0 70 C80 56 150 82 230 70 S350 56 400 66 V96 H0z"/>
+      <path class="fa-road" d="M-10 92 C70 84 120 78 180 74 S300 64 410 70"/>
+      <path class="fa-dash" d="M-10 92 C70 84 120 78 180 74 S300 64 410 70"/>
+      <g transform="translate(52 44)"><path d="M12 38S0 27 0 15a12 12 0 0124 0c0 12-12 23-12 23z" fill="#1B6FE6"/><circle cx="12" cy="15" r="5" fill="#fff"/><ellipse cx="12" cy="42" rx="9" ry="3" fill="#20C7B7" opacity=".5"/></g>
+      <g transform="translate(236 30)"><path d="M11 34S0 24 0 13a11 11 0 0122 0c0 11-11 21-11 21z" fill="#20C7B7"/><circle cx="11" cy="13" r="4.5" fill="#fff"/><ellipse cx="11" cy="38" rx="8" ry="2.6" fill="#20C7B7" opacity=".45"/></g>
+      <g transform="translate(316 46)"><rect x="0" y="4" width="30" height="16" rx="3" fill="#2A6FD6"/><path d="M30 8h9l6 7v5H30z" fill="#1B5FC7"/><path d="M32 10h6l4 5h-10z" fill="#CFE6FF"/><rect x="3" y="7" width="10" height="5" rx="1" fill="#CFE6FF" opacity=".8"/><circle cx="9" cy="21" r="4" fill="#0E2B4B"/><circle cx="37" cy="21" r="4" fill="#0E2B4B"/><circle cx="9" cy="21" r="1.6" fill="#fff"/><circle cx="37" cy="21" r="1.6" fill="#fff"/></g>
+    </svg>
+    <div class="fline">DropLine <span class="appver"></span><span class="fsep">|</span>Made with <span class="heart" aria-label="love">♥</span> by <span class="ea"><img src="assets/ea-mark-96.png" alt=""><span><b>Enterprise Analytic</b><small>Business Solutions</small></span></span></div>
+  </footer>
 </div>
 
 <div class="guide" id="guide" hidden role="dialog" aria-label="How DropLine works">
@@ -1107,7 +1147,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <section><div class="gstep">Welcome</div><h3>Plan, optimise, deliver</h3><p>Add your stops, let DropLine put them in the fastest order, then drive with spoken directions. Here's how it works in 30 seconds.</p>
         <div class="gdemo"><div class="reptiles" style="margin:4px 0"><div><b>25</b><small>Stops</small></div><div><b style="color:#1B6FE6">1 h 23 m</b><small>Drive</small></div><div><b style="color:#0E8F83">3:45 pm</b><small>Finish</small></div></div></div></section>
       <section><div class="gstep">Step 1</div><h3>Create a route</h3><p>Make one route for each run or day. Tap <b>⋮</b> on a route to rename it, copy it for tomorrow's run, or delete it.</p>
-        <div class="gdemo"><div class="create" style="min-height:58px;font-size:22px"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div>
+        <div class="gdemo"><div class="create"><span class="cplus"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="ctx"><b>Create route</b><small>Plan and optimise your delivery route</small></span><svg class="ico cchev" aria-hidden="true"><use href="#i-chev-r"/></svg></div>
         <div class="rcard" style="margin-top:10px"><div class="ro"><div class="rb"><div class="rtop"><b class="rn">Run Fri, 23 Oct</b><span class="rstate go">In progress</span></div><div class="rm">23 Oct 2026 · 53 stops · 13 delivered</div><div class="rprog"><span class="rbar"><i style="width:24%;background:var(--ok)"></i><i style="width:2%;background:var(--fail)"></i></span><b class="rpc">25%</b></div></div></div></div></div></section>
       <section><div class="gstep">Step 2</div><h3>Add your stops</h3><p>On a new route, choose how to add the addresses: <b>type</b> them, <b>scan</b> the paper run sheet page by page, or <b>import</b> the manifest. Add more later with the round <b>＋ Add stops</b> button.</p>
         <div class="gdemo panel list emptyadd">
@@ -1264,6 +1304,10 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <label class="switchrow" for="setNotif"><span class="tile blue"><svg class="ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span style="flex:1"><b>Notifications</b><small id="setNotifTxt">Run finished, downloads done, arrival when the app is in the background</small></span>
         <span class="switch"><input type="checkbox" id="setNotif" role="switch"><span class="knob"></span></span></label>
       <div class="setrow" id="setNotifPerm" hidden><span style="flex:1"><small>Notifications are blocked in the phone's Settings, so they cannot appear until you allow them there.</small></span><button class="btn outline" id="setNotifPermBtn" style="min-height:40px;padding:6px 12px">Phone settings</button></div>
+    </div>
+    <div class="setgroup">
+      <label class="switchrow" for="setStats"><span class="tile" style="background:#E6F0FF;color:#1B6FE6"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg></span><span style="flex:1"><b>Share anonymous usage stats</b><small>Which features are used and for how long, to improve DropLine. Never addresses, names or locations.</small></span>
+        <span class="switch"><input type="checkbox" id="setStats" role="switch"><span class="knob"></span></span></label>
     </div>
     <div class="setgroup">
       <button class="setlink" id="setContact"><span class="tile" style="background:#E3F8EA;color:#1C9C4A"><svg class="ico" aria-hidden="true"><use href="#i-chat"/></svg></span><span><b>Contact the developer</b><small>Opens WhatsApp (or Messages if WhatsApp is not installed)</small></span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
@@ -2038,6 +2082,30 @@ function hav(a,b){ const R=6371000, r=Math.PI/180; const dLa=(b.lat-a.lat)*r, dL
   const x=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
 let toastT; function toast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 3500); }
 function ll(p){ return p.lat.toFixed(6)+","+p.lon.toFixed(6); }
+/* ---------- anonymous usage statistics (PostHog, US) ----------
+   A random ID per phone, the app version and which features are used, with counts and timings.
+   Never addresses, names, notes, coordinates or anything typed. Users can turn it off in Settings. */
+const PH_KEY = "phc_noPj7zBuBu5LXhEGJm4pKMcouu8Hca76RyaevLt3PkA5", PH_HOST = "https://us.i.posthog.com", STORE_STATS = "dropline.stats.v1";
+function statsOn(){ try{ return localStorage.getItem(STORE_STATS) !== "off"; }catch(e){ return true; } }
+const statsAllowed = () => statsOn() && (window.__statsTest || (location.protocol === "https:" && !navigator.webdriver && !window.__allowWeb && !window.__noStats));   // (__statsTest: automated check only)
+let phReady = false, phLoading = false; const phQueue = [];
+function statsPlatform(){ const C = window.Capacitor; try{ if (C && C.getPlatform && C.isNativePlatform && C.isNativePlatform()) return C.getPlatform(); }catch(e){} return "web"; }
+function loadStats(){
+  if (phReady || phLoading || !statsAllowed()) return; phLoading = true;
+  const sc = document.createElement("script"); sc.src = "assets/vendor/posthog-1.200.0.no-external.js"; sc.async = true;
+  sc.onload = () => { try{ const ph = window.posthog;
+    ph.init(PH_KEY, {api_host: PH_HOST, autocapture: false, capture_pageview: false, capture_pageleave: false, disable_session_recording: true,
+      disable_surveys: true, advanced_disable_decide: true, ip: false, debug: !!window.__statsDebug, opt_out_useragent_filter: !!window.__statsTest, persistence: "localStorage", person_profiles: "identified_only", save_referrer: false, sanitize_properties: p => { ["$current_url", "$pathname", "$host", "$referrer", "$referring_domain", "$initial_referrer", "$initial_referring_domain", "$initial_person_info", "$initial_current_url", "$initial_pathname", "$initial_host"].forEach(k => delete p[k]); return p; }});
+    ph.register({app_version: APP_VERSION, platform: statsPlatform(), test_location: !!(typeof testPlace === "function" && testPlace())});
+    phReady = true; while (phQueue.length){ const [n, pr] = phQueue.shift(); ph.capture(n, pr); } }catch(e){ phLoading = false; } };
+  sc.onerror = () => { phLoading = false; };
+  document.head.appendChild(sc);
+}
+function track(name, props){
+  if (!statsAllowed()) return;
+  try{ if (phReady) window.posthog.capture(name, props || {}); else { if (phQueue.length < 60) phQueue.push([name, props || {}]); loadStats(); } }catch(e){}
+}
+const bucket = n => n <= 10 ? String(n) : n <= 25 ? "11-25" : n <= 50 ? "26-50" : n <= 100 ? "51-100" : n <= 150 ? "101-150" : "151+";
 function gmaps(s, from){
   if (!has(s)) return "https://www.google.com/maps/search/"+encodeURIComponent(s.query || s.label);
   return "https://www.google.com/maps/dir/"+(has(from) ? ll(from) : "")+"/"+ll(s)+"/data=!4m2!4m1!3e0"; }
@@ -2465,7 +2533,7 @@ function addStop(r){
   if (route.stops.length >= MAX_STOPS){ toast("The prototype plans up to "+MAX_STOPS+" stops."); return; }
   if (route.stops.some(s => has(s) && Math.abs(s.lat-r.lat)<1e-5 && Math.abs(s.lon-r.lon)<1e-5)){ toast("That address is already on the list."); return; }
   route.stops.push({id:uid(), label:r.label, query:r.label, lat:r.lat, lon:r.lon, geo:r.geo === "street" ? "street" : "exact", status:"pending", reason:"", parcels:[]});
-  markStale(); persist(); render();
+  markStale(); persist(); render(); track("stop_added", {how: "typed"});
   $("addedTxt").textContent = "Stop " + route.stops.length + " added: " + splitLabel(r.label)[0] + ". It is in your stops list.";
   $("addedLine").hidden = false; if (!$("stopPicker").hidden) setTimeout(() => { try{ $("addrIn").focus(); }catch(e){} }, 50);
   const tc = $("tabCnt"); tc.classList.remove("bump"); void tc.offsetWidth; tc.classList.add("bump");
@@ -2492,9 +2560,11 @@ function removeStop(id){ route.stops = route.stops.filter(s=>s.id!==id); if(selI
 function setStatus(id, st, reason){ const s = route.stops.find(x=>x.id===id); if(!s) return;
   const wasLeft = route.stops.some(x => x.status === "pending");
   s.status = st; s.reason = st==="failed" ? (reason||"") : ""; s.doneAt = st==="pending" ? null : Date.now();
+  if (st !== "pending") track("stop_marked", {status: st, pickup: isPick(s), from: nav.on ? "navigation" : "route_screen"});
   // testing with a test location: you are now at this stop, so the next stop is navigated from here
   if (st !== "pending" && has(s) && testPlace()){ setTestHere(s); myLoc = {lat: s.lat, lon: s.lon, acc: 12, at: Date.now()}; }
-  if (wasLeft && !route.stops.some(x => x.status === "pending")){
+  if (wasLeft && !route.stops.some(x => x.status === "pending")){ { const c = {delivered: 0, failed: 0, skipped: 0}; route.stops.forEach(x => c[x.status] = (c[x.status] || 0) + 1);
+    track("run_finished", {stops: route.stops.length, delivered: c.delivered, failed: c.failed, skipped: c.skipped, hours: route.startedAt ? Math.round((Date.now() - route.startedAt) / 360000) / 10 : null}); }
     const c = {delivered:0, failed:0, skipped:0}; route.stops.forEach(x => c[x.status]++);
     const msg = c.delivered + " done, " + c.failed + " failed, " + c.skipped + " skipped.";
     route.finishedAt = Date.now(); phoneNotify(5, "Run finished", (route.name || "Route") + ": " + msg);
@@ -2557,14 +2627,14 @@ function showReport(){
     '<details class="repall"><summary>All stops (' + route.stops.length + ')</summary><ol>' + route.stops.map((x, i) => { const [a1, a2] = splitLabel(x.label);
       return '<li class="' + x.status + '"><span class="n">' + (i + 1) + '</span><span class="a"><b>' + esc(a1) + '</b><small>' + esc(a2) + '</small></span><span class="r"><b>' + esc(stLabel(x)) + '</b><small>' +
         (x.doneAt ? R.hm(x.doneAt) : '') + (x.status === "failed" && x.reason ? ' · ' + esc(x.reason) : '') + '</small></span></li>'; }).join("") + '</ol></details>';
-  $("repSheet").hidden = false; prepReportPDF();
+  $("repSheet").hidden = false; prepReportPDF(); track("report_viewed", {finished: !left});
   if (!left){ const sh = $("repSheet").querySelector(".sheet"); sh.style.position = "relative"; setTimeout(() => confetti(sh), 250); try{ navigator.vibrate && navigator.vibrate([30, 60, 30]); }catch(e){} }
 }
 $("repBody").addEventListener("click", e => { const b = e.target.closest("[data-retry]"); if (!b) return;
   setStatus(b.dataset.retry, "pending"); $("repSheet").hidden = true; setView("map"); toast("Back on the run. It is now your next stop."); });
 $("repClose").addEventListener("click", () => { $("repSheet").hidden = true; });
 $("repRoutes").addEventListener("click", () => { $("repSheet").hidden = true; setView("map"); showHome(); });
-$("repShare").addEventListener("click", async () => {
+$("repShare").addEventListener("click", async () => { track("report_summary_shared");
   const text = reportText();
   try{ if (navigator.share){ await navigator.share({title: "DropLine run report", text}); return; } }catch(e){ if (e && e.name === "AbortError") return; }
   try{ await navigator.clipboard.writeText(text); toast("Report copied. Paste it into a message or email."); }catch(e){ toast("Sharing is not available on this phone."); }
@@ -2643,7 +2713,7 @@ function prepReportPDF(){ repPdf = null; const id = route.id; makeReportPDF().th
 const hasNative = (plugin, method) => { try{ const h = (window.Capacitor && window.Capacitor.PluginHeaders) || []; const p = h.find(x => x.name === plugin);
   return !!(p && (p.methods || []).some(m => m.name === method)); }catch(e){ return false; } };
 async function shareReportPDF(){
-  const b = $("repPdf"); if (b.disabled) return;
+  const b = $("repPdf"); if (b.disabled) return; track("report_pdf");
   let r = repPdf && repPdf.routeId === route.id ? repPdf : null;
   // 1. a phone Share sheet that allows files, while the tap still counts (no waiting before this)
   if (r && !hasNative("DroplineDevice", "shareData") && navigator.canShare && navigator.share){
@@ -2702,7 +2772,8 @@ async function importText(text){
   await importGroups(list, $("impReplace").checked);
   $("importSheet").hidden = true; showNextStep(0);
 }
-async function importGroups(list, replace){
+let importHow = "import";
+async function importGroups(list, replace){ track("stops_added", {how: importHow, stops: bucket(list.length), replace: !!replace}); importHow = "import";
   const room = MAX_STOPS - (replace ? 0 : route.stops.length);
   if (list.length > room){ impStatus("That list has "+list.length+" addresses. The planner takes up to "+MAX_STOPS+" stops"+(replace ? "" : " in total")+". Remove some addresses and try again.", 0, true); return; }
   if (replace){ route = emptiedRoute(); selId = expandedId = null; $("optMsg").hidden = true; }
@@ -2993,17 +3064,17 @@ async function optimise(){
   const closed = false;   // runs end at the last stop; the driver knows where to go after
   const pts = [origin].concat(pend); let endIdx = null;
   if (closed){ if (origin === startPt) endIdx = 0; else { pts.push(startPt); endIdx = pts.length-1; } }
-  btn.disabled = true; setOptLabel("Checking addresses…"); document.body.classList.add("optbusy");
+  btn.disabled = true; setOptLabel("Checking addresses…"); document.body.classList.add("optbusy"); const optT0 = Date.now();
   optUI.start(pend.length); await optUI.step(0);
   try{ if (await prepSnap(pend)) persist(); }catch(e){}
   await optUI.step(1);
   setOptLabel("Getting road times…"); const bar = $("optBar"); bar.hidden = false; bar.firstElementChild.style.width = "0";
   // same points as last time (in any order)? reuse those road times instead of asking the server again
-  const keys = pts.map(p => osrmLL(p) + tollX()); let M = null;
+  const keys = pts.map(p => osrmLL(p) + tollX()); let M = null, fromCache = false;
   if (lastMatrix && Date.now() - lastMatrix.at < 6*3600e3 && keys.length === lastMatrix.keys.length && keys[0] === lastMatrix.keys[0]){
     const pos = new Map(lastMatrix.keys.map((k, i) => [k, i])), ix = keys.map(k => pos.get(k));
     if (ix.every(i => i != null) && new Set(ix).size === ix.length){ const L = lastMatrix.M;
-      M = {D: ix.map(a => ix.map(b => L.D[a][b])), Dist: ix.map(a => ix.map(b => L.Dist[a][b])), road: L.road, estimated: 0}; } }
+      M = {D: ix.map(a => ix.map(b => L.D[a][b])), Dist: ix.map(a => ix.map(b => L.Dist[a][b])), road: L.road, estimated: 0}; fromCache = true; } }
   if (!M){ M = await travelMatrix(pts, f => { bar.firstElementChild.style.width = Math.round(f*90)+"%"; optUI.progress(f); });
     if (M.estimated === 0) lastMatrix = {keys, M, at: Date.now()}; }
   await optUI.step(2);
@@ -3015,6 +3086,7 @@ async function optimise(){
   const KM_WEIGHT = 0.04, C = D.map((r, i) => r.map((v, j) => v + KM_WEIGHT * (Dist[i] && Dist[i][j] != null ? Dist[i][j] : 0)));
   const before = tourCost(D, pend.map((_,i)=>i+1), endIdx);
   const res = solve(C, endIdx); res.cost = tourCost(D, res.order, endIdx);
+  track("route_optimised", {stops: pend.length, stops_group: bucket(pend.length), method, reused_times: fromCache, seconds: Math.round((Date.now() - optT0) / 100) / 10});
   await optUI.count(pend.length); await optUI.step(3);
   let distBefore = 0; { let pv = 0; pend.forEach((_, i) => { distBefore += (Dist[pv] && Dist[pv][i+1]) || 0; pv = i + 1; }); }
   bar.firstElementChild.style.width = "100%";
@@ -3123,7 +3195,7 @@ function updateOffTxt(){
 async function prepareOffline(){
   const b = $("btnOffline"), bar = $("offBar"), t = $("offTxt");
   if (!route.opt || route.opt.stale){ toast("Optimise the route first."); return; }
-  b.disabled = true; bar.hidden = false; t.hidden = false;
+  b.disabled = true; bar.hidden = false; t.hidden = false; const offT0 = Date.now();
   try{
     const ol = route.offlineLegs, pendNow = route.stops.filter(s => s.status === "pending" && has(s));
     const legsReady = ol && ol.key && pendNow.length && pendNow.every(s => ol.key.split(",").includes(s.id));
@@ -3131,6 +3203,7 @@ async function prepareOffline(){
     t.textContent = "Saving the map along the route…";
     const tiles = await saveTiles((d, n) => { $("offBarI").style.width = (40 + 60 * d / n).toFixed(0) + "%"; t.textContent = "Saving the map along the route: " + d + " of " + n + "…"; });
     route.offlineLegs.tiles = tiles.skipped ? null : {n: tiles.n, kb: tiles.kb}; persist();
+    track("offline_prepared", {map_pieces: tiles.n || 0, failed: tiles.failed || 0, seconds: Math.round((Date.now() - offT0) / 1000)});
     const sts = await activeStates().catch(() => []); if (sts.length) downloadStates().catch(() => {});   // and this state's addresses
     toast(tiles.failed ? "Directions saved. Some map pieces could not be saved." : "Ready for no signal.");
     phoneNotify(2, "Ready for no signal", (route.name || "Your route") + ": directions and map saved for " + (route.offlineLegs ? route.offlineLegs.n : "all") + " stops.");
@@ -3281,7 +3354,7 @@ function fitAll(){ const pts = route.stops.filter(has).map(s=>[s.lat,s.lon]); if
 map.on("click", e => {
   if (!placingId) return; const s = route.stops.find(x => x.id === placingId); placingId = null; document.body.classList.remove("placing");
   if (!s) return; s.lat = e.latlng.lat; s.lon = e.latlng.lng; s.geo = "manual"; s.approx = false; cachePut(s.query || s.label, s); cacheSave(); markStale(); persist();
-  nextPinCheck(s.id, "Pin moved for stop " + (route.stops.indexOf(s) + 1) + ".");
+  track("pin_moved"); nextPinCheck(s.id, "Pin moved for stop " + (route.stops.indexOf(s) + 1) + ".");
 });
 
 /* ---------- render ---------- */
@@ -3521,7 +3594,7 @@ function openEditStop(id){
   setTimeout(() => { try{ inp.focus(); inp.setSelectionRange(0, 0); }catch(e){} inp.dispatchEvent(new Event("input")); }, 80);
 }
 function endEdit(){ editId = null; $("stopPickTitle").textContent = "Add stops"; $("stopPickDone").hidden = false; $("editHint").hidden = true; $("addHint").hidden = false; }
-function editStop(r){
+function editStop(r){ track("address_edited");
   const st = route.stops.find(x => x.id === editId); endEdit(); closePickers(); if (!st) return;
   st.label = st.query = r.label; st.lat = r.lat; st.lon = r.lon; st.geo = r.geo === "street" ? "street" : "exact"; delete st.approx; delete st.rp; delete st.rpKey; delete st.rpChk;
   if (st.geo === "exact") cachePut(r.label, r);
@@ -3591,7 +3664,7 @@ $("stops").addEventListener("click", e => {
   if (t.dataset.rm){ removeStop(t.dataset.rm); return; }
   if (t.dataset.pin){ showPin(t.dataset.pin); return; }
   if (t.dataset.edit){ openEditStop(t.dataset.edit); return; }
-  if (t.dataset.pinok){ const s = route.stops.find(x => x.id === t.dataset.pinok); if (s){ s.geo = "exact"; delete s.approx; s.pinOk = true; persist(); nextPinCheck(s.id, "Pin saved as correct."); } return; }
+  if (t.dataset.pinok){ const s = route.stops.find(x => x.id === t.dataset.pinok); if (s){ s.geo = "exact"; delete s.approx; s.pinOk = true; persist(); track("pin_confirmed"); nextPinCheck(s.id, "Pin saved as correct."); } return; }
   if (t.dataset.place){ placingId = t.dataset.place; document.body.classList.add("placing"); toast("Tap the map where this stop is."); return; }
   if (t.dataset.reason){ setStatus(t.dataset.sid, "failed", t.dataset.reason); return; }
   if (t.dataset.qnote){ const s = route.stops.find(x => x.id === t.dataset.sid); if (s){ toggleNote(s, t.dataset.qnote); persist(); render(); } return; }
@@ -3853,6 +3926,7 @@ async function readScanned(canvas){
   const isSheet = kinds.filter(k => k === "code" || k === "track").length >= 3;
   const routeMax = route.stops.reduce((m, x) => Math.max(m, ...parcels(x).map(p => +p.seq || 0)), 0);
   const page = isSheet ? DroplineScan.readPage(lines, scanLastSeq()) : DroplineScan.readList(lines, Math.max(scanLastSeq(), routeMax));
+  track("scan_page", {kind: isSheet ? "run_sheet" : "list", rows: page.rows.length, to_check: page.rows.filter(r => r.status !== "ok").length, seconds: Math.round((performance.now() - t0) / 100) / 10});
   if (page.total) scan.total = page.total;
   if (!page.rows.length){ scanMsg("No addresses found. Put the box around the page or just the addresses, with good light, and try again." + (isSheet ? "" : " Each address should end with the state and postcode, e.g. VIC 3023."), true); return; }
   page.rows.forEach(r => { thumbs[r.seq] = cropRow(canvas, r.box); delete r.box; });
@@ -3980,7 +4054,7 @@ async function finishScan(btn){
   showNextStep(null, "Adding "+groups.size+" stops…");
   const scanPagesDone = scan.pages.length; route.scanPages = (route.scanPages || 0) + scanPagesDone;
   scan = {pages:[], total:null}; scanSave();
-  await importGroups([...groups.values()], false);      // scanned stops are added to the route; stops already on it are kept
+  importHow = "scan"; await importGroups([...groups.values()], false);      // scanned stops are added to the route; stops already on it are kept
   showNextStep(route.scanPages || scanPagesDone);
 }
 $("scanFinish").addEventListener("click", e => finishScan(e.currentTarget));
@@ -4114,7 +4188,7 @@ async function navReroute(pos){
 async function navStart(stop){
   if (!has(stop)){ toast("This stop has no map location yet. Open it in the list and tap Move pin."); return; }
   const sim = $("navSim").checked;
-  navFollow(true);
+  navFollow(true); track("navigation_started", {demo: !!(document.getElementById("navSim") && document.getElementById("navSim").checked)});
   nav.on = true; nav.stop = stop; nav.sim = sim; nav.coords = []; nav.coordsFor = null; clearInterval(nav.simTimer);
   if (!sim && nav.watch == null) navWatch();
   $("navScreen").hidden = false; $("navArriveBox").hidden = true; renderNavStop(stop);
@@ -4263,6 +4337,7 @@ function openRouteJSON(txt){ const r = JSON.parse(txt); if (!r || !Array.isArray
   const a = lib(), sig = x => (x.stops || []).map(s => s.label + "|" + s.status).join("\n");
   // the same file opened again: open the copy already on this phone instead of adding it twice
   const same = Object.values(a).find(x => x && x.name === r.name && sig(x) === sig(r));
+  track("route_file_opened", {stops: bucket(r.stops.length), again: !!same});
   if (same){ openRoute(same.id); toast("“" + (r.name || "route") + "” is already on this phone, so it was opened."); return; }
   // another route with this name: keep both, numbered
   if (r.name && Object.values(a).some(x => x && x.name === r.name)){ let k = 2; while (Object.values(a).some(x => x && x.name === r.name + " (" + k + ")")) k++; r.name = r.name + " (" + k + ")"; }
@@ -4296,12 +4371,13 @@ function renderHome(){
   $("homeEmpty").hidden = items.length > 0;
   $("routeList").innerHTML = items.map(r => { const t = routeStats(r), w = x => t.n ? (100*x/t.n).toFixed(1)+"%" : "0";
     const lbl = {new:"Not started", go:"In progress", done:"Finished"}[t.state], p = t.n ? Math.round(100 * t.done / t.n) : 0;
-    const when = new Date(r.createdAt||r.updatedAt||Date.now()).toLocaleDateString("en-AU",{weekday:"short", day:"numeric",month:"short"});
-    return '<div class="rcard '+t.state+'" style="--i:'+(items.indexOf(r))+'" data-rid="'+esc(r.id)+'"><button class="ro" data-open="'+esc(r.id)+'"><span class="rb">'
-      + '<span class="rtop"><b class="rn">'+esc(r.name||"Untitled route")+'</b></span>'
-      + '<span class="rm"><span class="rstate '+t.state+'">'+lbl+'</span><span class="rmt">'+when+' · '+(t.done ? t.done+' of '+t.n+' done' : t.n+' stop'+(t.n===1?"":"s"))+'</span></span>'
-      + (t.done ? '<span class="rprog"><span class="rbar"><i style="width:'+w(t.c.delivered)+';background:var(--ok)"></i><i style="width:'+w(t.c.failed)+';background:var(--fail)"></i><i style="width:'+w(t.c.skipped)+';background:var(--skip)"></i></span><b class="rpc">'+p+'%</b></span>' : '')
-      + '</span></button>'
+    const dd = new Date(r.createdAt||r.updatedAt||Date.now()), when = dd.toLocaleDateString("en-AU", dd.getFullYear() === new Date().getFullYear() ? {day:"numeric",month:"short"} : {day:"numeric",month:"short",year:"numeric"});
+    const badgeIco = t.state === "done" ? ico("check-c") : t.state === "go" ? ico("clock") : "";
+    return '<div class="rcard '+t.state+'" style="--i:'+(items.indexOf(r))+'" data-rid="'+esc(r.id)+'"><button class="ro" data-open="'+esc(r.id)+'"><span class="tile rtile">'+ico("cal")+'</span><span class="rb">'
+      + '<span class="rtop"><b class="rn">'+esc(r.name||"Untitled route")+'</b><span class="rstate '+t.state+'">'+badgeIco+lbl+'</span></span>'
+      + '<span class="rm">'+ico("cal")+'<span class="rmt">'+when+' · '+t.n+' stop'+(t.n===1?"":"s")+(t.done ? ' · '+t.c.delivered+' delivered' : '')+'</span></span>'
+      + '<span class="rprog"><span class="rbar"><i style="width:'+w(t.c.delivered + t.c.skipped)+'" class="rdone"></i><i style="width:'+w(t.c.failed)+';background:var(--fail)"></i></span><b class="rpc">'+p+'%</b></span>'
+      + '</span>'+ico("chev-r")+'</button>'
       + '<button class="more" data-menu="'+esc(r.id)+'" aria-label="Options for '+esc(r.name||"route")+'">'+ico("dots-v")+'</button></div>'; }).join("");
 }
 function showHome(){ if (nav.on) try{ navStop(); }catch(e){} closePickers(); closeDetails(); $("appView").classList.remove("fullmap");
@@ -4333,7 +4409,7 @@ let menuId = null;
 function openMenu(id){ const r = lib()[id]; if (!r) return; menuId = id;
   $("menuTitle").textContent = r.name || "Untitled route"; $("menuName").value = r.name || ""; $("menuDelConfirm").hidden = true; $("menuSheet").hidden = false; }
 $("homeCreate").addEventListener("click", () => { $("createName").value = defaultName(); $("createSheet").hidden = false; setTimeout(() => { $("createName").focus(); $("createName").select(); }, 50); });
-$("createGo").addEventListener("click", () => { $("createSheet").hidden = true; createRoute($("createName").value.trim()); });
+$("createGo").addEventListener("click", () => { $("createSheet").hidden = true; createRoute($("createName").value.trim()); track("route_created"); });
 $("createName").addEventListener("keydown", e => { if (e.key === "Enter") $("createGo").click(); });
 $("createCancel").addEventListener("click", () => $("createSheet").hidden = true);
 $("routeSort").addEventListener("click", () => { const mode = (loadJSON(STORE_SORT) || {m: "latest"}).m, k = SORTS.findIndex(x => x[0] === mode);
@@ -4355,7 +4431,7 @@ $("addClose").addEventListener("click", () => { $("addSheet").hidden = true; });
 [["emptyManual", "btnManual"], ["emptyScan", "btnScan"], ["emptyImport", "btnImport"]].forEach(([a, b]) => $(a).addEventListener("click", () => $(b).click()));
 $("btnFullMap").addEventListener("click", () => { $("appView").classList.toggle("fullmap"); showFullMapBtn(); setTimeout(() => { map.invalidateSize(); if ($("appView").classList.contains("fullmap")) fitAll(); }, 60); });
 /* Start delivering: save directions for no signal (in the background) and open turn-by-turn to the first stop. */
-async function startDelivering(){
+async function startDelivering(){ track("delivering_started", {stops: bucket(route.stops.filter(s => s.status === "pending").length)});
   route.startedAt = route.startedAt || Date.now(); persist(); render();
   try{ const o = route.offlineLegs, pend = route.stops.filter(s => s.status === "pending" && has(s));
     const ready = o && o.key && pend.every(s => o.key.split(",").includes(s.id));
@@ -4374,10 +4450,10 @@ $("dDelete").addEventListener("click", () => { persist(); openMenu(route.id); as
 $("btnRouteMenu").addEventListener("click", () => { persist(); openDetails(); });
 $("menuRename").addEventListener("click", () => { const a = lib(), r = a[menuId]; if (!r) return; r.name = $("menuName").value.trim() || r.name;
   if (route.id === menuId) route.name = r.name; saveLib(a); $("menuTitle").textContent = r.name; renderHome(); render(); toast("Renamed to “"+r.name+"”"); $("menuSheet").hidden = true; });
-$("menuCopy").addEventListener("click", () => { const r = copyRoute(menuId); $("menuSheet").hidden = true; if (!r) return;
+$("menuCopy").addEventListener("click", () => { const r = copyRoute(menuId); $("menuSheet").hidden = true; if (!r) return; track("route_copied", {stops: bucket(r.stops.length)});
   if ($("home").hidden) openRoute(r.id); else renderHome(); toast("Copied as “"+r.name+"”"); });
 /* Save / send a route as a file: the phone's Share sheet (Save to Files, WhatsApp, email…). Browser downloads do not work in the apps. */
-async function shareRouteFile(r){
+async function shareRouteFile(r){ track("route_file_shared", {stops: bucket((r.stops || []).length)});
   const name = (r.name || "dropline-route").replace(/[^\w-]+/g, "-") + ".json", text = JSON.stringify(r), title = "DropLine route: " + (r.name || "route");
   $("menuSheet").hidden = true;
   const D = devicePlugin(), unimpl = e => /not implemented|unimplemented/i.test(String((e && e.code) || "") + " " + String((e && e.message) || ""));
@@ -4407,7 +4483,7 @@ async function askDeleteRoute(id){
 }
 $("menuDelete").addEventListener("click", () => askDeleteRoute(menuId));
 $("menuDelNo").addEventListener("click", () => $("menuDelConfirm").hidden = true);
-$("menuDelYes").addEventListener("click", () => { const a = lib(), r = a[menuId]; delete a[menuId]; saveLib(a); $("menuSheet").hidden = true;
+$("menuDelYes").addEventListener("click", () => { const a = lib(), r = a[menuId]; track("route_deleted"); delete a[menuId]; saveLib(a); $("menuSheet").hidden = true;
   if (route.id === menuId){ route = blankRoute(); saveJSON(STORE_CUR, route); showHome(); } else renderHome();
   toast("Deleted “"+((r && r.name) || "route")+"”"); });
 $("menuClose").addEventListener("click", () => $("menuSheet").hidden = true);
@@ -4490,6 +4566,12 @@ async function checkUpdate(){
 }
 $("updGo").addEventListener("click", () => { try{ persist(); }catch(e){} location.reload(); });
 setTimeout(checkUpdate, 6000);
+let openedAt = Date.now();
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden){ track("app_closed", {seconds: Math.round((Date.now() - openedAt) / 1000)}); try{ window.posthog && phReady && window.posthog.flush && window.posthog.flush(); }catch(e){} }
+  else { openedAt = Date.now(); track("app_opened", {resume: true}); } });
+setTimeout(() => track("app_opened", {resume: false, routes: Object.keys(lib()).length}), 1500);
+window.addEventListener("error", e => track("app_error", {message: String(e.message || "").slice(0, 120), line: e.lineno || 0}));
 async function onResume(){
   checkUpdate();
   if (Date.now() - resumeT < 300){ clearTimeout(resumeLater); resumeLater = setTimeout(onResume, 350); return; }   // several signals at once: check again just after
@@ -4514,7 +4596,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.33";
+const APP_VERSION = "8.34";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -4556,6 +4638,11 @@ let subFrom = null;
 function openSub(title, html){ $("subTitle").textContent = title; $("subBody").innerHTML = html; $("subBody").scrollTop = 0; $("subPage").hidden = false; }
 $("subBack").addEventListener("click", () => { $("subPage").hidden = true; });
 
+$("setStats").checked = statsOn();
+$("setStats").addEventListener("change", e => { if (!e.target.checked){ track("stats_turned_off"); try{ window.posthog && phReady && window.posthog.opt_out_capturing(); }catch(err){} }
+  try{ localStorage.setItem(STORE_STATS, e.target.checked ? "on" : "off"); }catch(err){}
+  if (e.target.checked){ try{ window.posthog && phReady && window.posthog.opt_in_capturing(); }catch(err){} track("stats_turned_on"); }
+  toast(e.target.checked ? "Thanks! Anonymous usage stats are on." : "Usage stats are off."); });
 $("setPrivacy").addEventListener("click", async () => {
   openSub("Privacy policy", '<p class="hint">Loading…</p>');
   try{ const r = await fetch("privacy.html", {cache: "no-cache"}); const d = new DOMParser().parseFromString(await r.text(), "text/html");
@@ -4704,13 +4791,13 @@ $("setTestLoc").addEventListener("click", () => {
   $("testLocList").innerHTML = Object.entries(TEST_PLACES).map(([k, v]) => '<button class="appopt'+(k === cur ? " on" : "")+'" data-tl="'+k+'"><span class="badge2" style="background:#0F5A7A">'+v.name[0]+'</span><span><b>'+v.name+'</b></span>'+ico("check", "tickmark")+'</button>').join("")
     + '<button class="appopt'+(cur ? "" : " on")+'" data-tl=""><span class="badge2" style="background:#526574">'+ico("x")+'</span><span><b>Off</b><small>Use the phone\'s real location</small></span>'+ico("check", "tickmark")+'</button>';
   $("settingsSheet").hidden = true; $("testLocSheet").hidden = false; });
-$("testLocList").addEventListener("click", e => { const b = e.target.closest("[data-tl]"); if (!b) return;
+$("testLocList").addEventListener("click", e => { const b = e.target.closest("[data-tl]"); if (!b) return; track("test_location", {on: !!b.dataset.tl, city: b.dataset.tl || null});
   try{ if (b.dataset.tl) localStorage.setItem("dropline.testloc.v1", b.dataset.tl); else localStorage.removeItem("dropline.testloc.v1"); }catch(err){} setTestHere(null);
   try{ localStorage.setItem("dropline.startMe", "1"); sessionStorage.setItem("dropline.splash", "1"); }catch(err){}
   toast(b.dataset.tl ? "Test location on: " + TEST_PLACES[b.dataset.tl].name : "Test location off"); setTimeout(() => location.reload(), 600); });
 $("testLocCancel").addEventListener("click", () => { $("testLocSheet").hidden = true; openSettings(); });
 $("setNavApp").addEventListener("click", () => { $("settingsSheet").hidden = true; openNavAppSheet(null); });
-$("navAppList").addEventListener("click", e => {
+$("navAppList").addEventListener("click", e => { { const b0 = e.target.closest("[data-app]"); if (b0) track("navigation_app_chosen", {app: b0.dataset.app}); }
   const b = e.target.closest("[data-app]"); if (!b) return;
   const app = b.dataset.app, s = navAppFor && route.stops.find(x => x.id === navAppFor);
   if (!s || $("navAppRemember").checked) try{ localStorage.setItem(STORE_NAVAPP, app); }catch(e){}
@@ -4912,7 +4999,7 @@ setTimeout(() => {
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 /* keep a copy of the app on the phone so it opens with no signal (website only; not in local tests) */
 try{ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {}); }catch(e){}
-window.RP = {setView, planTimes, leaveInfo, splitLabel, gnafFile, handleBack, syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {statsState: () => ({phReady, phLoading, q: phQueue.length, allowed: statsAllowed()}), setView, planTimes, leaveInfo, splitLabel, gnafFile, handleBack, syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

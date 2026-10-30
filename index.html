@@ -3035,28 +3035,45 @@ async function saveLegs(onProgress){
 }
 function tileXY(lat, lon, z){ const n = 2 ** z, x = Math.floor((lon + 180) / 360 * n), r = lat * Math.PI / 180;
   return [x, Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)]; }
-function routeTiles(maxTiles){
+/* Map pieces saved for no signal. OpenStreetMap's free map server allows saving at most 250 pieces at zoom 13 and
+   closer for later use, so the budget goes where a driver needs it: the whole area, then the roads driven. With no signal,
+   closer zooms are drawn by enlarging these saved pieces (see FallbackTiles). */
+const TILE_BUDGET = 240;
+function routeTiles(){
   const pts = (route.opt && route.opt.geometry && route.opt.geometry.length ? route.opt.geometry : route.stops.filter(has).map(s => [s.lat, s.lon]));
   if (!pts.length) return [];
-  const set = new Set(), add = (z, x, y) => set.add(z + "/" + x + "/" + y);
+  const out = [], seen = new Set(); let close = 0;
+  const add = (z, x, y) => { const k = z + "/" + x + "/" + y; if (seen.has(k)) return true; if (z >= 13 && close >= TILE_BUDGET) return false; seen.add(k); out.push(k); if (z >= 13) close++; return true; };
   let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180; pts.forEach(([la, lo]) => { la0 = Math.min(la0, la); la1 = Math.max(la1, la); lo0 = Math.min(lo0, lo); lo1 = Math.max(lo1, lo); });
-  for (const z of [11, 12, 13]){ const [x0, y0] = tileXY(la1, lo0, z), [x1, y1] = tileXY(la0, lo1, z);   // the whole area, overview zooms
-    if ((x1 - x0 + 3) * (y1 - y0 + 3) > 400) continue; for (let x = x0 - 1; x <= x1 + 1; x++) for (let y = y0 - 1; y <= y1 + 1; y++) add(z, x, y); }
-  for (const z of [14, 15, 16]){ const ring = z === 16 ? 0 : 1;                                            // along the roads driven
-    pts.forEach(([la, lo]) => { const [x, y] = tileXY(la, lo, z); for (let dx = -ring; dx <= ring; dx++) for (let dy = -ring; dy <= ring; dy++) add(z, x + dx, y + dy); }); }
-  route.stops.filter(has).forEach(s => { const [x, y] = tileXY(s.lat, s.lon, 17); add(17, x, y); });           // close-up at each stop
-  return [...set].slice(0, maxTiles || 3000);
+  for (const z of [10, 11, 12, 13]){ const [x0, y0] = tileXY(la1, lo0, z), [x1, y1] = tileXY(la0, lo1, z);      // the whole area
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) > (z >= 13 ? 60 : 40)) continue;
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) add(z, x, y); }
+  for (const z of [14, 15]) for (const [la, lo] of pts){ const [x, y] = tileXY(la, lo, z); if (!add(z, x, y)) break; }   // along the roads driven
+  for (const s of route.stops.filter(x => x.status === "pending" && has(x))){ const [x, y] = tileXY(s.lat, s.lon, 16); if (!add(16, x, y)) break; }   // close-ups while budget lasts
+  return out;
 }
 async function saveTiles(onProgress){
   if (!window.caches) return {n: 0, kb: 0, skipped: true};
-  const C = await caches.open("dropline-tiles-v1"), list = routeTiles(3000); let done = 0, kb = 0, failed = 0; const q = list.slice();
+  const C = await caches.open("dropline-tiles-v1"), list = routeTiles(); let done = 0, kb = 0, failed = 0; const q = list.slice();
   const worker = async () => { while (q.length){ const t = q.shift(), url = "https://tile.openstreetmap.org/" + t + ".png";
     try{ let r = await C.match(url); if (!r){ r = await fetch(url, {mode: "cors"}); if (r.ok) await C.put(url, r.clone()); else failed++; }
       const b = r && r.headers.get("content-length"); kb += b ? +b / 1024 : 15; }catch(e){ failed++; }
-    done++; if (onProgress && done % 10 === 0) onProgress(done, list.length); } };
-  await Promise.all([1, 2, 3].map(worker));
+    done++; if (onProgress && done % 5 === 0) onProgress(done, list.length); } };
+  await Promise.all([1, 2].map(worker));                       // two at a time, as the map server asks
   return {n: done - failed, kb, failed};
 }
+/* Map pieces: when one can't be loaded (no signal and not saved), show the saved piece from a wider zoom, enlarged. */
+const FallbackTiles = L.TileLayer.extend({
+  createTile(c, done){
+    const tile = document.createElement("div"), img = document.createElement("img"), sz = this.getTileSize().x; let dz = 0;
+    tile.style.overflow = "hidden"; img.alt = ""; img.setAttribute("role", "presentation"); img.style.position = "absolute"; img.style.maxWidth = "none"; tile.appendChild(img);
+    const load = () => { const k = 2 ** dz, x = Math.floor(c.x / k), y = Math.floor(c.y / k);
+      img.style.width = img.style.height = (sz * k) + "px"; img.style.left = -((c.x - x * k) * sz) + "px"; img.style.top = -((c.y - y * k) * sz) + "px";
+      img.src = L.Util.template(this._url, L.extend({s: this._getSubdomain(c), x, y, z: c.z - dz}, this.options)); };
+    img.onload = () => done(null, tile);
+    img.onerror = () => { if (dz < 5 && c.z - dz > 9){ dz++; load(); } else done(null, tile); };
+    load(); return tile; }
+});
 function updateOffTxt(){
   const o = route.offlineLegs, t = $("offTxt"), pend = route.stops.filter(s => s.status === "pending" && has(s));
   { const cur0 = o && o.key && pend.length && pend.every(s => o.key.split(",").includes(s.id)), st = $("offStat");
@@ -3074,8 +3091,9 @@ async function prepareOffline(){
   if (!route.opt || route.opt.stale){ toast("Optimise the route first."); return; }
   b.disabled = true; bar.hidden = false; t.hidden = false;
   try{
-    t.textContent = "Saving directions for every stop…";
-    await saveLegs((d, n) => { $("offBarI").style.width = (40 * d / n).toFixed(0) + "%"; });
+    const ol = route.offlineLegs, pendNow = route.stops.filter(s => s.status === "pending" && has(s));
+    const legsReady = ol && ol.key && pendNow.length && pendNow.every(s => ol.key.split(",").includes(s.id));
+    if (!legsReady){ t.textContent = "Saving directions for every stop…"; await saveLegs((d, n) => { $("offBarI").style.width = (40 * d / n).toFixed(0) + "%"; }); }
     t.textContent = "Saving the map along the route…";
     const tiles = await saveTiles((d, n) => { $("offBarI").style.width = (40 + 60 * d / n).toFixed(0) + "%"; t.textContent = "Saving the map along the route: " + d + " of " + n + "…"; });
     route.offlineLegs.tiles = tiles.skipped ? null : {n: tiles.n, kb: tiles.kb}; persist();
@@ -3190,7 +3208,7 @@ function startLocation(then){
 
 /* ---------- map ---------- */
 const map = L.map("map", {zoomControl:true, attributionControl:true}).setView([-34.9285, 138.6007], 12);
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+new FallbackTiles("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
 const layer = L.layerGroup().addTo(map), meLayer = L.layerGroup().addTo(map);
 function pin(cls, txt){ return L.divIcon({className:"", html:'<div class="pinw'+(/\bsel\b/.test(cls) ? " sel" : "")+(/\bstart\b/.test(cls) ? " start" : "")+'" style="--n:'+(parseInt(txt) || 0)+'"><div class="pin '+cls+'"><span>'+txt+'</span></div></div>', iconSize:[34,34], iconAnchor:[17,36]}); }
 function drawMe(){ meLayer.clearLayers(); if (!has(myLoc)) return;
@@ -4062,7 +4080,7 @@ async function navStart(stop){
 
   if (!nav.map){
     nav.map = L.map("navMap", {zoomControl:false, attributionControl:true}).setView([stop.lat, stop.lon], 16);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:"© OpenStreetMap"}).addTo(nav.map);
+    new FallbackTiles("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:"© OpenStreetMap"}).addTo(nav.map);
     nav.me = L.marker([stop.lat, stop.lon], {icon: L.divIcon({className: "", html: '<div class="navme">' + ico("navup") + '</div>', iconSize: [46, 46], iconAnchor: [23, 23]}), zIndexOffset: 3000, interactive: false}).addTo(nav.map);
     L.control.zoom({position: "bottomright"}).addTo(nav.map);
   }
@@ -4453,7 +4471,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.29";
+const APP_VERSION = "8.30";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

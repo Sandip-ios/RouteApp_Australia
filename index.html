@@ -628,19 +628,12 @@ textarea:focus{border-color:var(--teal);outline:none}
 
 /* ---------- routes home ---------- */
 .home{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column}
-.hero{background:var(--hero);color:#fff;padding:max(16px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) 46px max(18px,env(safe-area-inset-left));display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
+.hero{background:var(--hero);color:#fff;padding:max(16px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) 70px max(18px,env(safe-area-inset-left));display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
 .hero::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 85% -10%,rgba(32,199,183,.25),transparent 60%);pointer-events:none}
 .logo{display:flex;align-items:center;gap:10px;flex:1;min-width:0;position:relative;z-index:1}
 .logo .lw{display:flex;flex-direction:column;gap:6px;min-width:0}
 .tagline{font:600 10.5px/1 var(--f-body);letter-spacing:.16em;text-transform:uppercase;color:#A9C7E6;white-space:nowrap}.tagline b{color:#fff;font-weight:700}
-.heroart{position:absolute;right:14px;top:0;width:118px;height:100%;z-index:0;opacity:.55;pointer-events:none}
-.create{flex-direction:row}
-.create .cplus{width:50px;height:50px;border-radius:50%;background:#fff;color:#12A99B;display:grid;place-items:center;flex:none;box-shadow:0 4px 12px rgba(0,0,0,.12)}
-.create .cplus .ico{width:28px;height:28px;stroke-width:3}
-.create .ctx{flex:1;text-align:left;margin:0;display:flex;flex-direction:column;gap:4px}
-.create .ctx b{font:700 24px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
-.create .ctx small{font:500 13.5px/1.2 var(--f-body);letter-spacing:0;text-transform:none;opacity:.92}
-.create .cchev{width:26px;height:26px}
+.heroart{position:absolute;left:0;right:0;bottom:30px;width:100%;height:46px;z-index:0;pointer-events:none}
 .hfoot{flex:none;position:relative;background:var(--bg);padding:0 0 max(8px,env(safe-area-inset-bottom));z-index:3}
 .footart{display:block;width:100%;height:84px}
 .fa-city rect{fill:var(--fa-city)}.fa-tree circle{fill:var(--fa-tree)}.fa-hill2{fill:var(--fa-hill2)}.fa-hill1{fill:var(--fa-hill1)}
@@ -1100,18 +1093,19 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
 
 <div class="home" id="home" hidden>
   <header class="hero">
-    <svg class="heroart" viewBox="0 0 200 120" aria-hidden="true">
-      <path d="M30 128 C60 100 150 104 120 80 S70 52 120 38 196 20 210 10" fill="none" stroke="#1B4F8C" stroke-width="22" stroke-linecap="round" opacity=".55"/>
-      <path d="M30 128 C60 100 150 104 120 80 S70 52 120 38 196 20 210 10" fill="none" stroke="#2A6FD6" stroke-width="14" stroke-linecap="round" opacity=".75"/>
-      <path d="M30 128 C60 100 150 104 120 80 S70 52 120 38 196 20 210 10" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="6 6" opacity=".8"/>
-      <g transform="translate(78 54)"><path d="M10 30S0 21 0 11a10 10 0 0120 0c0 10-10 19-10 19z" fill="#20C7B7"/><circle cx="10" cy="11" r="4" fill="#fff"/></g>
-      <g transform="translate(138 6)"><path d="M9 26S0 18 0 9a9 9 0 0118 0c0 9-9 17-9 17z" fill="#1B6FE6"/><circle cx="9" cy="9" r="3.6" fill="#fff"/></g>
+    <svg class="heroart" viewBox="0 0 400 60" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <defs><linearGradient id="hrg" x1="0" x2="1"><stop offset="0" stop-color="#20C7B7"/><stop offset="1" stop-color="#3B82F6"/></linearGradient></defs>
+      <path d="M-10 50 C50 40 90 54 140 44 S220 22 270 34 S350 52 410 30" fill="none" stroke="url(#hrg)" stroke-width="6" stroke-linecap="round" opacity=".6"/>
+      <path d="M-10 50 C50 40 90 54 140 44 S220 22 270 34 S350 52 410 30" fill="none" stroke="#fff" stroke-width="1.3" stroke-dasharray="5 6" opacity=".6"/>
+      <g transform="translate(64 20)"><circle cx="5" cy="5" r="5" fill="#fff" opacity=".7"/><circle cx="5" cy="5" r="2.4" fill="#20C7B7"/></g>
+      <g transform="translate(206 2)"><path d="M10 28S0 20 0 10a10 10 0 0120 0c0 10-10 18-10 18z" fill="#20C7B7"/><circle cx="10" cy="10" r="4" fill="#fff"/></g>
+      <g transform="translate(330 8)"><path d="M9 26S0 18 0 9a9 9 0 0118 0c0 9-9 17-9 17z" fill="#3B82F6"/><circle cx="9" cy="9" r="3.5" fill="#fff"/></g>
     </svg>
-    <div class="logo"><img class="mk" src="assets/logo-mark.png" alt=""><span class="lw"><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine — Multi-Stop Route Planner"><span class="tagline">Plan · Optimise · Deliver <b>faster</b></span></span></div>
+    <div class="logo"><img class="mk" src="assets/logo-mark.png" alt=""><img class="wm" src="assets/wordmark-text-white.png" alt="DropLine — Multi-Stop Route Planner"></div>
     <button class="avatar" id="btnSettings" aria-label="Settings"><svg class="ico" aria-hidden="true"><use href="#i-gear"/></svg></button>
   </header>
   <div class="hlist">
-    <button class="create" id="homeCreate"><span class="cplus"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="ctx"><b>Create route</b><small>Plan and optimise your delivery route</small></span><svg class="ico cchev" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+    <button class="create" id="homeCreate"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
     <div class="sect"><span class="label">Your routes</span><button class="sortbtn" id="routeSort"><span id="routeSortTxt">Latest first</span><svg class="ico" aria-hidden="true"><use href="#i-sort"/></svg></button></div>
     <div id="routeList"></div>
     <p class="hint" id="homeEmpty" style="text-align:center;margin:6px 0">No routes yet. Create one for today's run, then add stops by typing, scanning the paper run sheet, or importing the manifest.</p>
@@ -1147,7 +1141,7 @@ html.webblock #webBlock{display:flex;min-height:100vh;align-items:center;justify
       <section><div class="gstep">Welcome</div><h3>Plan, optimise, deliver</h3><p>Add your stops, let DropLine put them in the fastest order, then drive with spoken directions. Here's how it works in 30 seconds.</p>
         <div class="gdemo"><div class="reptiles" style="margin:4px 0"><div><b>25</b><small>Stops</small></div><div><b style="color:#1B6FE6">1 h 23 m</b><small>Drive</small></div><div><b style="color:#0E8F83">3:45 pm</b><small>Finish</small></div></div></div></section>
       <section><div class="gstep">Step 1</div><h3>Create a route</h3><p>Make one route for each run or day. Tap <b>⋮</b> on a route to rename it, copy it for tomorrow's run, or delete it.</p>
-        <div class="gdemo"><div class="create"><span class="cplus"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="ctx"><b>Create route</b><small>Plan and optimise your delivery route</small></span><svg class="ico cchev" aria-hidden="true"><use href="#i-chev-r"/></svg></div>
+        <div class="gdemo"><div class="create" style="min-height:58px;font-size:22px"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span>Create route</span><svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></div>
         <div class="rcard" style="margin-top:10px"><div class="ro"><div class="rb"><div class="rtop"><b class="rn">Run Fri, 23 Oct</b><span class="rstate go">In progress</span></div><div class="rm">23 Oct 2026 · 53 stops · 13 delivered</div><div class="rprog"><span class="rbar"><i style="width:24%;background:var(--ok)"></i><i style="width:2%;background:var(--fail)"></i></span><b class="rpc">25%</b></div></div></div></div></div></section>
       <section><div class="gstep">Step 2</div><h3>Add your stops</h3><p>On a new route, choose how to add the addresses: <b>type</b> them, <b>scan</b> the paper run sheet page by page, or <b>import</b> the manifest. Add more later with the round <b>＋ Add stops</b> button.</p>
         <div class="gdemo panel list emptyadd">

@@ -20,17 +20,23 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
-      - name: Download open data
+      - name: Install tools
         run: |
-          set -x
           sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool > /dev/null
           pip install -q osmium pyproj scipy numpy
-          UA="Mozilla/5.0 (DropLine route planner address build)"
-          curl -sSL --retry 3 -A "$UA" -o codepoint.zip -w "codepoint http %{http_code} size %{size_download}\n" \
-            "https://api.os.uk/downloads/v1/products/CodePointOpen/downloads?area=GB&format=CSV&redirect" | tee diag.txt
+      - name: Download postcodes (OS Code-Point Open)
+        timeout-minutes: 15
+        run: |
+          curl -sSL --retry 3 --connect-timeout 30 --max-time 600 -A "Mozilla/5.0 (DropLine route planner address build)" -o codepoint.zip \
+            -w "codepoint http %{http_code} size %{size_download}\n" "https://api.os.uk/downloads/v1/products/CodePointOpen/downloads?area=GB&format=CSV&redirect" | tee diag.txt
           unzip -l codepoint.zip | tail -3 | tee -a diag.txt
-          curl -sSL --retry 3 -A "$UA" -o gb.pbf -w "gb http %{http_code} size %{size_download}\n" https://download.geofabrik.de/europe/united-kingdom-latest.osm.pbf | tee -a diag.txt
-          curl -sSL --retry 3 -A "$UA" -o ie.pbf -w "ie http %{http_code} size %{size_download}\n" https://download.geofabrik.de/europe/ireland-and-northern-ireland-latest.osm.pbf | tee -a diag.txt
+      - name: Download OpenStreetMap (UK and Northern Ireland)
+        timeout-minutes: 60
+        run: |
+          for f in "gb europe/united-kingdom-latest.osm.pbf" "ie europe/ireland-and-northern-ireland-latest.osm.pbf"; do set -- $f
+            curl -sSL --retry 3 --connect-timeout 30 --max-time 2400 -A "Mozilla/5.0 (DropLine route planner address build)" -o $1.pbf \
+              -w "$1 http %{http_code} size %{size_download} speed %{speed_download}\n" "https://download.geofabrik.de/$2" | tee -a diag.txt
+          done
           df -h . | tee -a diag.txt
       - name: Keep only addresses and named streets
         run: |

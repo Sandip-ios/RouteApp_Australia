@@ -3,10 +3,9 @@ name: Build address data (UK)
 # Builds compact address files for the whole UK from free open data and publishes them with the app (geo/gb):
 #   OS Code-Point Open (Open Government Licence) for every Great Britain postcode,
 #   OpenStreetMap (ODbL) for house numbers, streets and Northern Ireland postcodes.
+# Run by hand on the "uk" branch only: the files are committed to that branch, so nothing changes on the live app (main)
+# until the UK launch merges the branch.
 on:
-  push:
-    branches: [main]
-    paths: ["tools/ukgeo/**", ".github/workflows/uk-address-data.yml"]
   workflow_dispatch:
 
 permissions:
@@ -58,8 +57,9 @@ jobs:
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
           cp diag.txt /tmp/diag.txt
           git add -A geo/gb
+          B="${{ github.ref_name }}"; [ "$B" = "main" ] && { echo "Refusing to publish UK data to main before launch"; exit 1; }
           git commit -qm "UK address data (OS Code-Point Open, OGL; OpenStreetMap, ODbL)" || exit 0
-          for i in 1 2 3; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep 10; done
+          for i in 1 2 3; do git pull -q --rebase origin "$B" && git push -q origin "HEAD:$B" && break; sleep 10; done
       - name: Publish diagnostics
         if: always()
         env:

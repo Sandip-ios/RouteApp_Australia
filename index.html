@@ -2392,6 +2392,16 @@ function gnafFile(pc){
     return idx; }).catch(() => { delete geoFiles[pc]; return null; });
   return geoFiles[pc];
 }
+/* UK house numbers missing from the open map: estimate from the neighbours on the same side of the street (9 and 11 → 10 is opposite, so 8 and 12). */
+function interpNum(nums, num){
+  const n = parseInt(num, 10); if (!n) return null;
+  let lo = null, hi = null;
+  for (const [k, p] of Object.entries(nums)){ const v = parseInt(k, 10); if (!v || v % 2 !== n % 2 || String(v) !== k.replace(/[A-Z]$/, "")) continue;
+    if (v < n && (!lo || v > lo[0])) lo = [v, p]; if (v > n && (!hi || v < hi[0])) hi = [v, p]; }
+  if (lo && hi && hi[0] - lo[0] <= 20){ const f = (n - lo[0]) / (hi[0] - lo[0]); return [lo[1][0] + f * (hi[1][0] - lo[1][0]), lo[1][1] + f * (hi[1][1] - lo[1][1])]; }
+  const one = lo && n - lo[0] <= 4 ? lo : hi && hi[0] - n <= 4 ? hi : null;
+  return one ? one[1] : null;
+}
 /* The full postcode nearest to a point in a UK district ("SW1A 2AA"), from the district file. */
 function nearestUnit(dist, p){ const u = geoUnits[dist]; if (!u || !p) return null; let best = null, bd = Infinity;
   for (const [k, q] of Object.entries(u.units)){ const d = (q[0] - p[0]) ** 2 + ((q[1] - p[1]) * 0.62) ** 2; if (d < bd){ bd = d; best = k; } }
@@ -2446,7 +2456,10 @@ async function ukLocate(q){
   if (up) pool.sort((a, b) => hav({lat: up[0], lon: up[1]}, {lat: a.c[0], lon: a.c[1]}) - hav({lat: up[0], lon: up[1]}, {lat: b.c[0], lon: b.c[1]}));
   const lbl = (n, x, pt) => (n ? n + " " : "") + titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " " + (full || nearestUnit(P.pc, pt) || P.pc);
   for (const x of pool){ const p = num && x.nums[num]; if (p && (!up || hav({lat: up[0], lon: up[1]}, {lat: p[0], lon: p[1]}) < 1500)) return {found: true, lat: p[0], lon: p[1], geo: "exact", official: lbl(num, x, p), corrected}; }
+  // a postcode point far from the named street (big organisations have their own postcode): trust the street
+  if (up && pool[0] && !num && hav({lat: up[0], lon: up[1]}, {lat: pool[0].c[0], lon: pool[0].c[1]}) > 400) return {found: false, streetOnly: true, lat: pool[0].c[0], lon: pool[0].c[1], geo: "street", official: lbl("", pool[0], pool[0].c), corrected};
   if (up) return {found: true, lat: up[0], lon: up[1], geo: "exact", pcPin: true, official: pool[0] ? lbl(num, pool[0], up) : (num ? num + " " : "") + titleCaseWords(stRaw) + ", " + (U.town || "") + " " + full};
+  for (const x of pool){ const q = num && interpNum(x.nums, num); if (q) return {found: false, streetOnly: true, lat: q[0], lon: q[1], geo: "street", official: lbl(num, x, q), corrected}; }
   if (pool[0]) return {found: false, streetOnly: true, lat: pool[0].c[0], lon: pool[0].c[1], geo: "street", official: lbl(num, pool[0], pool[0].c), corrected};
   return {found: false};
 }
@@ -2631,6 +2644,7 @@ async function finishSearch(P, hits, max){
   for (const h of top){ const f = byPc[h.r.l.pc]; if (!f) continue; const x = f[h.r.st + "|" + h.r.l.loc] || f[h.r.st + "|" + gnorm(h.r.l.loc)]; if (!x) continue;
     const p = x.nums[P.num] || x.nums[P.num.toUpperCase()];
     if (p) out.push({label: label(h.r, P.num, p), lat: p[0], lon: p[1], official: true, geo: "exact"});
+    else if (gb){ const q = interpNum(x.nums, P.num); if (q) out.push({label: label(h.r, P.num, null), lat: q[0], lon: q[1], official: true, geo: "street", note: "Estimated from the houses next door — check the pin"}); }
     if (out.length >= max) break; }
   if (out.length) return out;
   return top.slice(0, Math.min(3, max)).map(h => ({label: label(h.r, P.num), lat: h.r.lat, lon: h.r.lon, official: true, geo: "street", note: "No. " + P.num + " is not in the " + (gb ? "address" : "official") + " list — pin on the street"}));

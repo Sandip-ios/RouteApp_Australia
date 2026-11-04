@@ -2649,7 +2649,31 @@ async function finishSearch(P, hits, max){
   if (out.length) return out;
   return top.slice(0, Math.min(3, max)).map(h => ({label: label(h.r, P.num), lat: h.r.lat, lon: h.r.lon, official: true, geo: "street", note: "No. " + P.num + " is not in the " + (gb ? "address" : "official") + " list — pin on the street"}));
 }
+/* A pasted map link (Google Maps, Apple Maps): the exact point from the link, named after the place, with the address there if known. */
+function mapLinkPoint(q){
+  q = String(q || "").trim(); if (!/^https?:\/\/\S+$/i.test(q) || !/google\.|goo\.gl|maps\.apple|apple\.com/i.test(q)) return null;
+  let t = q; try{ t = decodeURIComponent(q); }catch(e){}
+  const m = t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || t.match(/[?&](?:q|query|ll|sll|destination|daddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  const nm = (t.match(/\/place\/([^/@?]+)/) || [])[1];
+  return {lat: m ? +m[1] : null, lon: m ? +m[2] : null, name: nm ? nm.replace(/\+/g, " ").trim() : "", short: !m && /goo\.gl|maps\.app/i.test(q)};
+}
+async function mapLinkResult(L){
+  let addr = "";
+  try{   // the nearest listed address within about 30 m
+    const idx = await pcIndex(); let best = null, bd = 4000;
+    for (const [pc, p] of Object.entries(idx)){ const d = hav(L, {lat: p[0], lon: p[1]}); if (d < bd){ bd = d; best = pc; } }
+    const f = best && await gnafFile(best);
+    if (f){ let hit = null, hd = 30;
+      for (const x of Object.values(f)) for (const [n, q] of Object.entries(x.nums)){ const d = hav(L, {lat: q[0], lon: q[1]}); if (d < hd){ hd = d; hit = [n, x, q]; } }
+      if (hit){ const [n, x, q] = hit; addr = n + " " + titleCaseWords(x.st) + ", " + titleCaseWords(x.loc) + " " + (CC().id === "GB" ? (nearestUnit(best, q) || best) : x.state + " " + best); }
+      else if (CC().id === "GB") addr = (geoUnits[best] && geoUnits[best].town ? geoUnits[best].town + " " : "") + best; }   // no house there: just the district, never a guessed postcode
+  }catch(e){}
+  const label = [L.name, addr].filter(Boolean).join(", ") || (L.lat.toFixed(5) + ", " + L.lon.toFixed(5));
+  return [{label, lat: L.lat, lon: L.lon, geo: "exact", official: !!addr, note: "From the map link"}];
+}
 async function searchAddresses(q, limit, onEarly){
+  const L = mapLinkPoint(q);
+  if (L){ if (L.short) throw Object.assign(new Error("short link"), {shortLink: true}); return L.lat != null ? mapLinkResult(L) : []; }
   const c = knownCentre();
   const local = await streetSearch(q, c, 6).catch(() => []);
   const strong = local.filter(r => r.geo === "exact" || (r.street && !parseQuery(q).num)).length;
@@ -2694,8 +2718,9 @@ function wireSearch(input, box, onPick){
       box.innerHTML = list.map((r,i) => { const parts = splitLabel(r.label); return '<button data-i="'+i+'">'+esc(parts[0])+'<span class="sub">'+esc(parts[1])+(r.note ? ' · '+esc(r.note) : r.street ? ' · street' : '')+'</span></button>'; }).join(""); };
     timer = setTimeout(async () => {
       const my = ++seq; if (box.hidden || !results.length){ box.hidden = false; box.innerHTML = '<button disabled>Searching…</button>'; }
-      let out; try{ out = await searchAddresses(q, 6, early => { if (my === seq) show(early); }); }catch(e){ out = null; }
+      let out, shortLink = false; try{ out = await searchAddresses(q, 6, early => { if (my === seq) show(early); }); }catch(e){ out = null; shortLink = !!e.shortLink; }
       if (my !== seq) return;
+      if (shortLink){ results = []; box.innerHTML = '<button disabled>This is a short map link, which can\'t be read here. Open it, then copy the full link from the address bar (or type the address).</button>'; return; }
       if (out === null){ results = []; box.innerHTML = '<button disabled>Address search is unavailable. Check your internet connection and try again.</button>'; return; }
       if (!out.length){ results = []; box.innerHTML = '<button disabled>No matches yet. Keep typing, or add the suburb.</button>'; return; }
       show(out);

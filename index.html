@@ -390,6 +390,10 @@ label.panel{display:block}
 .sugg{position:absolute;left:0;right:0;top:100%;margin-top:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgba(16,42,67,.18);z-index:20;overflow:hidden;max-height:320px;overflow-y:auto}
 .sugg button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:11px 14px;font-weight:600}
 .sugg button:last-child{border-bottom:0}
+.sugg .st{display:block;min-width:0}
+.sugg button.place{display:flex;align-items:flex-start;gap:10px}
+.sugg button.place .ico{width:18px;height:18px;flex:none;margin-top:2px;color:var(--teal,#14A394)}
+.sugg .sugghead{padding:8px 14px 6px;font:700 11px/1.2 var(--f-display,inherit);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--line)}
 .sugg button:hover,.sugg button:focus{background:var(--pale)}
 .sugg .sub{display:block;font-size:12.5px;color:var(--muted);font-weight:400}
 .field{display:flex;flex-direction:column;gap:6px;margin:8px 0}
@@ -2297,7 +2301,7 @@ let lastNom = 0;
 async function nominatim(q, limit){
   const wait = 1100 - (Date.now() - lastNom); if (wait > 0) await sleep(wait); lastNom = Date.now();
   const j = await fetchJSON(NOMINATIM+"?format=jsonv2&addressdetails=1&countrycodes="+CC().cc+"&limit="+(limit||6)+"&q="+encodeURIComponent(q), 10000);
-  return (j||[]).map(r => ({label:nomLabel(r), lat:+r.lat, lon:+r.lon, housenumber:r.address && r.address.house_number, postcode:r.address && r.address.postcode}));
+  return (j||[]).map(r => ({label:nomLabel(r), lat:+r.lat, lon:+r.lon, housenumber:r.address && r.address.house_number, postcode:r.address && r.address.postcode, place: isPlaceTag(r.category, r.name)}));
 }
 /* "12 Chester Crescent, Deer Park VIC 3023" from Nominatim's address parts (falls back to its long display name). */
 function nomLabel(r){
@@ -2310,11 +2314,15 @@ function nomLabel(r){
   if (!line1 && !nm) return String(r.display_name || "").replace(/, (Australia|United Kingdom)$/, "");
   return [nm, line1, tail].filter(Boolean).join(", ");
 }
+/* A named business or public place (shop, office, café, hospital, gym, hotel…), not a street or suburb */
+const PLACE_KEYS = /^(amenity|shop|office|tourism|leisure|craft|healthcare|club|emergency|historic|building|man_made|sport|aeroway|railway|public_transport)$/;
+function isPlaceTag(key, name){ return !!name && PLACE_KEYS.test(String(key || "")); }
 async function photon(q, limit, bias){
   const b = bias || biasPoint();
   const j = await fetchJSON(PHOTON+"?q="+encodeURIComponent(q)+"&limit="+(limit||6)+"&lang=en&bbox="+CC().bbox+"&lat="+b.lat+"&lon="+b.lon+(has(myLoc) || has(route.start) || route.stops.some(has) ? "&zoom=14&location_bias_scale=0.1" : ""), 8000);
   return (j.features||[]).filter(f => !f.properties.countrycode || f.properties.countrycode === CC().id).map(f => ({
-    label: photonLabel(f.properties), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], housenumber:f.properties.housenumber, postcode:f.properties.postcode}));
+    label: photonLabel(f.properties), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], housenumber:f.properties.housenumber, postcode:f.properties.postcode,
+    place: isPlaceTag(f.properties.osm_key, f.properties.name)}));
 }
 async function geocode(q, limit){
   try{ const out = await photon(q, limit); if (out.length) return out; }catch(e){}
@@ -2676,13 +2684,18 @@ async function searchAddresses(q, limit, onEarly){
   if (L){ if (L.short) throw Object.assign(new Error("short link"), {shortLink: true}); return L.lat != null ? mapLinkResult(L) : []; }
   const c = knownCentre();
   const local = await streetSearch(q, c, 6).catch(() => []);
+  // no house number in front: it may be a business or place name, so the open map is always asked too
+  const nameish = !parseQuery(q).num && String(q).trim().length >= 4;
   const strong = local.filter(r => r.geo === "exact" || (r.street && !parseQuery(q).num)).length;
-  if (strong >= 3) return local;
+  if (strong >= 3 && !nameish) return local;
   if (local.length && onEarly) onEarly(local);
-  const web = await geocode(q, limit).catch(() => null);
+  const web = await geocode(q, (limit || 6) + 2).catch(() => null);
   if (web === null && !local.length) throw new Error("offline");
   const near = c ? (web || []).slice().sort((a,b) => hav(c,a) - hav(c,b)) : (web || []);
-  return local.concat(near.filter(r => !local.some(l => l.label.toLowerCase() === r.label.toLowerCase() || hav(l, r) < 25))).slice(0, 8);
+  const fresh = r => !local.some(l => l.label.toLowerCase() === r.label.toLowerCase() || hav(l, r) < 25);
+  const places = near.filter(r => r.place && fresh(r)).slice(0, 4);
+  const addrs = local.concat(near.filter(r => !r.place && fresh(r))).slice(0, places.length ? Math.max(3, 8 - places.length) : 8);
+  return addrs.concat(places);
 }
 
 function titleCaseWords(s){ return String(s).toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()); }
@@ -2715,7 +2728,9 @@ function wireSearch(input, box, onPick){
     clearTimeout(timer); const q = input.value.trim();
     if (q.length < 3){ close(); return; }
     const show = list => { results = list; box.hidden = false;
-      box.innerHTML = list.map((r,i) => { const parts = splitLabel(r.label); return '<button data-i="'+i+'">'+esc(parts[0])+'<span class="sub">'+esc(parts[1])+(r.note ? ' · '+esc(r.note) : r.street ? ' · street' : '')+'</span></button>'; }).join(""); };
+      const firstPlace = list.findIndex(r => r.place);
+      box.innerHTML = list.map((r,i) => { const parts = splitLabel(r.label);
+        return (i === firstPlace ? '<div class="sugghead">Places &amp; businesses</div>' : '') + '<button data-i="'+i+'"'+(r.place ? ' class="place"' : '')+'>'+(r.place ? ico("pin-o") : '')+'<span class="st">'+esc(parts[0])+'<span class="sub">'+esc(parts[1])+(r.note ? ' · '+esc(r.note) : r.street ? ' · street' : '')+'</span></span></button>'; }).join(""); };
     timer = setTimeout(async () => {
       const my = ++seq; if (box.hidden || !results.length){ box.hidden = false; box.innerHTML = '<button disabled>Searching…</button>'; }
       let out, shortLink = false; try{ out = await searchAddresses(q, 6, early => { if (my === seq) show(early); }); }catch(e){ out = null; shortLink = !!e.shortLink; }
@@ -4817,7 +4832,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.36";
+const APP_VERSION = "8.37";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }

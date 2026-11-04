@@ -2730,7 +2730,8 @@ function wireSearch(input, box, onPick){
     const show = list => { results = list; box.hidden = false;
       const firstPlace = list.findIndex(r => r.place);
       box.innerHTML = list.map((r,i) => { const parts = splitLabel(r.label);
-        return (i === firstPlace ? '<div class="sugghead">Places &amp; businesses</div>' : '') + '<button data-i="'+i+'"'+(r.place ? ' class="place"' : '')+'>'+(r.place ? ico("pin-o") : '')+'<span class="st">'+esc(parts[0])+'<span class="sub">'+esc(parts[1])+(r.note ? ' · '+esc(r.note) : r.street ? ' · street' : '')+'</span></span></button>'; }).join(""); };
+        return (i === firstPlace ? '<div class="sugghead">Places &amp; businesses</div>' : '') + (r.place ? '<button data-i="'+i+'" class="place">'+ico("pin-o")+'<span class="st">'+esc(parts[0])+'<span class="sub">'+esc(parts[1])+'</span></span></button>'
+          : '<button data-i="'+i+'">'+esc(parts[0])+'<span class="sub">'+esc(parts[1])+(r.note ? ' · '+esc(r.note) : r.street ? ' · street' : '')+'</span></button>'); }).join(""); };
     timer = setTimeout(async () => {
       const my = ++seq; if (box.hidden || !results.length){ box.hidden = false; box.innerHTML = '<button disabled>Searching…</button>'; }
       let out, shortLink = false; try{ out = await searchAddresses(q, 6, early => { if (my === seq) show(early); }); }catch(e){ out = null; shortLink = !!e.shortLink; }

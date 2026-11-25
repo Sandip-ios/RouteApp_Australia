@@ -2251,7 +2251,7 @@ document.addEventListener("click", e => {
   // the maps app shows it with its own Directions button
   const noFix = !has(myLoc) || Date.now() - (myLoc.at || 0) > 120000;
   a.href = a.dataset.view || noFix ? viewUrl(s, navApp()) : extUrl(s, navApp());
-  if (noFix && !a.dataset.view) toast("Your location is off, so " + extName() + " opens at the stop. Tap Directions there.");
+  if (noFix && !a.dataset.view) toast("Your location is off, so " + extName() + " opens at the stop. Tap " + (navApp() === "waze" ? "Go" : "Directions") + " there.");
   // leaving for the maps app: close the navigation menu, so DropLine is ready to use when the driver comes back
   setTimeout(() => { const m = $("navMenu"); if (m) m.hidden = true; }, 300);
 }, true);

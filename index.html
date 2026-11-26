@@ -1997,20 +1997,48 @@ function readList(lines, prevMaxSeq, opts){
 }
 
 const NAME_HEAD = /^(?:customer(?:\s*name)?|cust(?:omer)?\s*(?:#|no\.?|number)?|delivery|deliveries|delivered|pc|ctn|pc\s*ctn|delivered\s*pc\s*ctn|print\s*name|signature|comments?|name|qty|quantity|page\s*\d+.*|overview.*|forwarding\s*agent.*|group\s*number.*|date.*|pod\s*sheet.*|metropolitan\s*summary.*|reprint\s*manifest.*)$/i;
+const NAME_LOWER_OK = /^(on|of|the|and|at|de|la|le|del|da|in|by|n)$/;
+/* One printed line of a customer list → the business name, and whether it read cleanly. */
+function nameOfLine(t){
+  t = t.replace(/^.*?[\dO§)(]{0,3}\d{5,}\b[)\]]?\s*/, "");                 // delivery / customer numbers in front ("54876927 615845", "54§76919 723564")
+  t = t.replace(/^(?:\s*[\dOlI]{4,}\b)+\s*/, "");
+  const cols = t.match(/\s+(\d{1,3})\s+(\d{1,4})\s*$/);                       // delivered PC / CTN counts at the end ("0 7")
+  if (cols) t = t.slice(0, cols.index);
+  t = t.replace(/^[\s•*·>.,;:-]+|[\s.,;:-]+$/g, "").trim();
+  const tok = t.split(" ").filter(Boolean);
+  // printed names are usually in capitals: take the longest run of capital words ("1 STOP CONVENIENCE KING WILLIAM", "METRO CONVENIENCE STORE - NO 1")
+  const isCap = w => /^[A-Z][A-Z0-9'’&.]*(?:-[A-Z0-9'’&.]+)*$/.test(w) && /[A-Z]{2}/.test(w);
+  const joiner = w => /^[-–&]$|^\d{1,3}$/.test(w);
+  let best = null;
+  for (let i = 0; i < tok.length; i++){
+    if (!isCap(tok[i])) continue;
+    let j = i, caps = 0;
+    while (j < tok.length && (isCap(tok[j]) || (joiner(tok[j]) && j + 1 <= tok.length))){ if (isCap(tok[j])) caps++; else if (/^\d/.test(tok[j]) && !/^NO\.?$/.test(tok[j - 1] || "") && !(j + 1 < tok.length && isCap(tok[j + 1]))) break; j++; }
+    if (caps >= 2 && (!best || j - i > best[1] - best[0])) best = [i, j];
+    i = j;
+  }
+  if (best){ let [i, j] = best; if (i > 0 && /^\d{1,3}$/.test(tok[i - 1])) i--;            // "1 STOP …"
+    while (j > i && joiner(tok[j - 1]) && !/^NO\.?$/.test(tok[j - 2] || "")) j--;
+    return {name: tok.slice(i, j).join(" "), clean: true, caps: true, cols}; }
+  if (tok.length && tok.every(w => isCap(w) || joiner(w)) && tok.some(isCap)) return {name: t, clean: true, caps: true, cols};   // a one-word name in capitals ("QUICK-E-MART")
+  // other lists (mixed case): clean only if every word looks like part of a name
+  const clean = tok.length > 0 && tok.every(w => /^[A-Za-z0-9][A-Za-z0-9'’&.]*(?:-[A-Za-z0-9'’&.]+)*$|^[-–&]$/.test(w) && !(/^[a-z]+$/.test(w) && !NAME_LOWER_OK.test(w)))
+    && tok.some(w => /[A-Za-z]{3,}/.test(w));
+  return {name: t, clean, cols};
+}
 function readNames(vis, texts, prevMaxSeq, lineCount){
   const rows = [];
   vis.forEach((v, i) => {
-    let t = texts[i];
-    t = t.replace(/^(?:\s*[\dOlI]{4,}\b)+\s*/, "");                     // delivery and customer numbers in front ("54876927 615845")
-    const cols = t.match(/\s+(\d{1,3})\s+(\d{1,4})\s*$/);                  // delivered PC / CTN counts at the end ("0 7")
-    if (cols) t = t.slice(0, cols.index);
-    t = t.replace(/^[\s•*·>.,;:-]+|[\s.,;:-]+$/g, "").trim();
-    const heads = (t.match(/\b(customer|cust|delivery|delivered|pc|ctn|print|signature|comments|qty)\b/gi) || []).length;
-    if (NAME_HEAD.test(t) || heads >= 2 || t.replace(/[^A-Za-z]/g, "").length < 4) return;   // column headings
+    const raw = texts[i], heads = (raw.match(/\b(customer|cust|delivery|delivered|pc|ctn|print|signature|comments|qty)\b/gi) || []).length;
+    const {name: t, clean, caps, cols} = nameOfLine(raw);
+    if (NAME_HEAD.test(t) || heads >= 2 || t.replace(/[^A-Za-z]/g, "").length < 4) return;   // column headings, scraps
     const name = /[a-z]/.test(t) ? t : titleCase(t.toUpperCase()).replace(/\b([A-Z])([A-Z]+)\b/g, (x, a, b) => a + b.toLowerCase());
     rows.push({seq: prevMaxSeq + 1 + rows.length, address: name, search: name, size: cols ? +cols[2] + " ctn" : "", box: v.items.reduce((o, it) => o ? {x: Math.min(o.x, it.x), y: Math.min(o.y, it.y), x2: Math.max(o.x2, it.x + it.w), y2: Math.max(o.y2, it.y + it.h)} : {x: it.x, y: it.y, x2: it.x + it.w, y2: it.y + it.h}, null),
-      status: "check", problem: "Business name — finding it on the map…", name: "", isName: true});
+      status: clean ? "ok" : "check", problem: clean ? "" : "Check this name — the photo was unclear here (or tap Not a stop)", name: "", isName: true, caps: !!caps});
   });
+  // names printed in capitals: a line in ordinary letters on the same page is a heading or a note, not a customer
+  if (rows.filter(r => r.caps).length >= 0.6 * rows.length) rows.forEach(r => { if (!r.caps && r.status === "ok"){ r.status = "check"; r.problem = "Is this a customer? Check it, or tap Not a stop"; } });
+  rows.forEach(r => delete r.caps);
   const seqs = rows.map(r => r.seq);
   return {rows, total: null, firstSeq: seqs.length ? Math.min(...seqs) : prevMaxSeq + 1, lastSeq: seqs.length ? Math.max(...seqs) : prevMaxSeq, lineCount, names: true};
 }
@@ -2190,6 +2218,7 @@ let selId = null, expandedId = null, failPickId = null, placingId = null, myLoc 
 function loadJSON(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
 function saveJSON(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
 function persist(){ route.updatedAt = Date.now();
+  try{ rememberShops(); }catch(e){}
   if (route.stops.length || route.start){ if (!route.country) route.country = deviceCountry(); } else delete route.country;   // a route keeps the country of its first stop
   let ok = saveJSON(STORE_CUR, route);
   if (ok && route.name !== undefined && document.getElementById("home")){ const a = lib(); if (a[route.id] || route.createdAt){ a[route.id] = route; ok = saveLib(a); } }
@@ -2745,10 +2774,28 @@ function lev(a, b){ if (a === b) return 0; const m = a.length, n = b.length; if 
 function looksLikeName(q){ q = String(q || "");
   if (/\b(NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b[\s,.]*\d{4}/i.test(q) || UK_PC.test(q)) return false;
   return !/\b\d+[A-Za-z]?(?:\s*[-\/]\s*\d+[A-Za-z]?)?\s+(?:[A-Za-z'’]+\s+){0,4}?(?:st|street|rd|road|ave|avenue|av|tce|terrace|dr|drive|ct|court|cres|crescent|pde|parade|hwy|highway|ln|lane|pl|place|way|blvd|bvd|boulevard|cct|circuit|cl|close|gr|grove|sq|square|esp|esplanade|mews|row|gardens|gdns|walk)\b/i.test(q); }
-/* Find a named business near the driver on the open map ("Adelaide Convenience - No 1"). */
+/* Business addresses the driver has given before: a shop on next week's manifest is found straight away. */
+const STORE_SHOPS = "dropline.shops.v1";
+const shopKey = n => String(n || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "");
+let shopBook = loadJSON(STORE_SHOPS) || {};
+function rememberShops(){
+  let changed = false;
+  for (const st of route.stops){
+    if (!st.shop || !has(st) || (st.geo !== "exact" && st.geo !== "manual")) continue;
+    const k = shopKey(st.shop), cur = shopBook[k], lbl = st.label.replace(new RegExp("^" + st.shop.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ",\\s*", "i"), "");
+    if (!cur || cur.lat !== st.lat || cur.lon !== st.lon || cur.label !== lbl){ shopBook[k] = {name: st.shop, label: lbl, lat: st.lat, lon: st.lon, cc: CC().id, t: Date.now()}; changed = true; }
+  }
+  if (changed){ const ks = Object.keys(shopBook); if (ks.length > 2000) ks.sort((a, b) => shopBook[a].t - shopBook[b].t).slice(0, ks.length - 2000).forEach(k => delete shopBook[k]); saveJSON(STORE_SHOPS, shopBook); }
+}
+/* Find a named business: one the driver gave before, else on the open map near the driver ("Adelaide Convenience - No 1"),
+   else on a street named in it ("Convenience on Flinders" → Flinders Street nearby, pin to check). */
 async function placeLocate(q, bias){
   const base = String(q).replace(/\s+/g, " ").trim();
-  const variants = [base, base.replace(/\s*[-–]?\s*\bno\.?\s*\d+\s*$/i, ""), base.replace(/\b(store|shop|pty|ltd|the)\b/gi, " ").replace(/\s*[-–]?\s*\bno\.?\s*\d+\s*$/i, "")]
+  const known = shopBook[shopKey(base)];
+  if (known && (known.cc || "AU") === CC().id) return {lat: known.lat, lon: known.lon, geo: "exact", official: known.label, source: "place", remembered: true};
+  const ws = base.split(" ");
+  const variants = [base, base.replace(/\s*[-–]?\s*\bno\.?\s*\d+\s*$/i, ""), base.replace(/\b(store|shop|pty|ltd|the)\b/gi, " ").replace(/\s*[-–]?\s*\bno\.?\s*\d+\s*$/i, ""),
+                    ws.length > 3 ? ws.slice(0, -1).join(" ") : "", ws.length > 4 ? ws.slice(0, -2).join(" ") : ""]
     .map(x => x.replace(/\s+/g, " ").replace(/[\s-]+$/, "").trim()).filter((x, i, a) => x.length >= 3 && a.indexOf(x) === i);
   const words = (base.toLowerCase().match(/[a-z]{3,}/g) || []).filter(w => !/^(the|and|store|shop|pty|ltd)$/.test(w));
   for (const v of variants){
@@ -2760,10 +2807,41 @@ async function placeLocate(q, bias){
     if (scored.length){ const r = scored[0].r, addr = r.label.includes(", ") ? r.label.slice(r.label.indexOf(", ") + 2) : "";
       return {lat: r.lat, lon: r.lon, geo: "exact", official: addr || r.label, placeLabel: r.label, source: "place"}; }
   }
-  return null;
+  return streetInName(base, bias);
+}
+const STREET_TYPE_WORD = /^(STREET|ST|ROAD|RD|AVENUE|AVE|TERRACE|TCE|DRIVE|DR|COURT|CT|CRESCENT|CRES|PARADE|PDE|HIGHWAY|HWY|LANE|LN|PLACE|PL|WAY|BOULEVARD|BVD|BLVD|CIRCUIT|CCT|CLOSE|CL|GROVE|GR|SQUARE|SQ|ESPLANADE|ESP|MALL|ARCADE|WALK|ROW|MEWS|GARDENS|GDNS)$/;
+const NAME_GENERIC = new Set("CITY STATION RAILWAY MARKET PARK CENTRAL CENTRE CENTER NORTH SOUTH EAST WEST MAIN HIGH FOOD STORE SHOP MART CONVENIENCE CAFE KIOSK METRO QUICK EXPRESS PLAZA MALL ARCADE CORNER NEW OLD GRAND ROYAL KING QUEEN PRINCE PRINCES CHINA TOWN BEACH BAY HILL VALLEY GARDEN GARDENS LAKE RIVER UNION CHURCH SCHOOL HOSPITAL ADELAIDE SYDNEY MELBOURNE BRISBANE PERTH HOBART DARWIN CANBERRA LONDON MANCHESTER BIRMINGHAM GLASGOW".split(" "));
+/* "1 Stop Convenience King William" → King William Street, the nearest one to the driver (a street-level pin to check). */
+async function streetInName(name, bias){
+  try{
+    const all = await loadStreets(); if (!all || !all.length) return null;
+    const W = gnorm(name).split(" ").filter(Boolean), c = bias || knownCentre();
+    let best = null, bd = Infinity;
+    for (const r of all){
+      const sw = r.sw.length > 1 && STREET_TYPE_WORD.test(r.sw[r.sw.length - 1]) ? r.sw.slice(0, -1) : null;
+      if (!sw || sw.join("").length < 5 || sw.every(w => NAME_GENERIC.has(w)) || (sw.length === 1 && sw[0].length < 6)) continue;
+      let at = -1; for (let i = 0; i + sw.length <= W.length; i++) if (sw.every((w, j) => W[i + j] === w)){ at = i; break; }
+      if (at < 0 || at === 0 && sw.length === W.length) continue;          // the street's own name must appear inside the business name
+      const d = c ? hav(c, r) : 0; if (d > 25000) continue;
+      const minor = /^(PLACE|PL|LANE|LN|COURT|CT|CLOSE|CL|WALK|MEWS|ROW|ARCADE|MALL)$/.test(r.sw[r.sw.length - 1]) ? 1500 : 0;   // a main street before a lane of the same name
+      const score = d - sw.length * 3000 + minor;                               // longer street names ("King William") beat short ones
+      if (score < bd){ bd = score; best = r; }
+    }
+    if (!best) return null;
+    const label = titleCaseWords(best.st) + ", " + titleCaseWords(best.l.loc) + (CC().id === "GB" ? " " + best.l.pc : " " + best.l.state + " " + best.l.pc);
+    return {lat: best.lat, lon: best.lon, geo: "street", official: label, source: "place", streetGuess: true};
+  }catch(e){ return null; }
 }
 async function smartLocate(q, bias){
-  if (looksLikeName(q)){ const p = await placeLocate(q, bias); if (p) return p; if (p === undefined) return undefined; }
+  const nameLike = looksLikeName(q), known = nameLike && shopBook[shopKey(q)];
+  if (known && (known.cc || "AU") === CC().id) return {lat: known.lat, lon: known.lon, geo: "exact", official: known.label, source: "place", remembered: true};
+  // a business name with no house number in front: look for the business first
+  if (nameLike && !/^\s*\d/.test(q)){ const p = await placeLocate(q, bias); if (p) return p; if (p === undefined) return undefined; }
+  const r0 = await addrLocate(q, bias);
+  if (nameLike && /^\s*\d/.test(q) && (!r0 || r0.geo !== "exact")){ const p = await placeLocate(q, bias); if (p) return p; }   // "1 Stop Convenience …"
+  return r0;
+}
+async function addrLocate(q, bias){
   const g = CC().id === "GB" ? await ukLocate(q) : await gnafLocate(q);
   if (g && g.found && g.pcPin){   // UK postcode point: try the open map for the exact house first
     const r = await photonLocate(q, bias);
@@ -3065,7 +3143,7 @@ async function importGroups(list, replace){ track("stops_added", {how: importHow
     if (!ex) return true;
     const have = new Set(parcels(ex).map(p => p.seq).filter(x => x != null)), add = g.parcels.filter(p => p.seq == null || !have.has(p.seq));
     if (add.length){ ex.parcels = (ex.parcels || []).concat(add); if (ex.qty) ex.qty += add.length; } merged++; return false; });
-  list.forEach(g => route.stops.push({id:uid(), label:g.address, query:g.search, lat:null, lon:null, geo:"pending", status:"pending", reason:"", parcels:g.parcels}));
+  list.forEach(g => route.stops.push(Object.assign({id:uid(), label:g.address, query:g.search, lat:null, lon:null, geo:"pending", status:"pending", reason:"", parcels:g.parcels}, g.shop ? {shop: titleCaseName(g.shop)} : {})));
   if (merged) toast(merged + " address" + (merged > 1 ? "es were" : " was") + " already on this route, so the parcels were added to " + (merged > 1 ? "those stops" : "that stop") + ".");
   const np = list.reduce((a,g) => a + g.parcels.length, 0);
   markStale(); persist(); render();
@@ -4059,9 +4137,10 @@ function flagFromLookup(q, r){
       if (row.status !== "check"){ row.status = "check"; row.problem = "Level and house number may be joined — check the number"; changed = true; }
       continue;
     }
-    if (row.isName){   // a business name: the address found on the map, or ask for it
-      if (r && r.source === "place"){ row.name = row.name || row.address; row.address = r.official; row.status = "ok"; row.problem = ""; }
-      else { row.status = "check"; row.problem = "Not found on the map by name — type its street address"; }
+    if (row.isName){   // a business name read clearly: never held for review. The address found is shown with it;
+      // not found → added without a pin, and the driver gives the address once (it is remembered for next time)
+      if (row.status !== "check"){ row.status = "ok"; row.problem = ""; }
+      if (r && r.source === "place"){ row.shop = row.shop || row.address; row.name = row.shop; row.address = r.official; row.found = r.streetGuess ? "street" : r.remembered ? "saved" : "map"; }
       changed = true; continue;
     }
     const exactOfficial = r && r.source === "gnaf" && r.geo === "exact" && !r.corrected;
@@ -4267,7 +4346,7 @@ function acceptPage(){
   scanPage.rows = scanPage.rows.filter(r => !r.removed);
   const empty = scanPage.rows.filter(r => !r.address.trim());
   scanPage.rows.forEach(r => { if (r.address.trim()) prefetch(r.search || r.address.trim()); });
-  scan.pages.push({rows: scanPage.rows.filter(r => r.address.trim()).map(r => ({seq:r.seq, address:r.address.trim(), search:r.search || r.address.trim(), size:r.size || "", name:r.name || ""}))});
+  scan.pages.push({rows: scanPage.rows.filter(r => r.address.trim()).map(r => ({seq:r.seq, address:r.address.trim(), search:r.search || r.address.trim(), size:r.size || "", name:r.name || "", shop:r.shop || (r.isName ? r.address.trim() : "")}))});
   scanPage = null; scanSave();
   if (empty.length) toast("Left out (no address typed): #"+empty.map(r=>r.seq).join(", #"));
 }
@@ -4277,7 +4356,7 @@ function onRowEdit(e){ const i = e.target.dataset.i; if (i == null || !scanPage)
   if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " ");
   fitBox(e.target);
   const r = scanPage.rows[+i]; r.address = e.target.value;
-  if (r.isName){ if (!r.name) r.name = r.search; delete r.isName; }   // the driver typed the address for a business name: keep the name for the stop
+  if (r.isName){ if (!r.name) r.name = r.search; r.shop = r.shop || r.name; delete r.isName; }   // the driver typed the address for a business name: keep the name for the stop, and learn it
   if (CC().id === "GB"){ r.search = r.address; return; }
   const c = DroplineScan.cleanAddress(r.address.replace(/,/g," "));
   r.search = c.search || r.address; }
@@ -4336,7 +4415,7 @@ async function finishScan(btn){
   delete $("scanFinishIdle").dataset.confirmed;
   const groups = new Map();
   rows.sort((a,b) => a.seq - b.seq).forEach(r => { const k = r.address.toLowerCase().replace(/\s+/g," ");
-    if (!groups.has(k)) groups.set(k, {address:(r.name ? titleCaseName(r.name) + ", " : "") + r.address, search:r.search || r.address, parcels:[]});
+    if (!groups.has(k)) groups.set(k, {address:(r.name ? titleCaseName(r.name) + ", " : "") + r.address, search:r.search || r.address, parcels:[], shop: r.shop || null});
     groups.get(k).parcels.push({seq:r.seq, size:r.size || "", note:""}); });
   $("scanSheet").hidden = true; $("importSheet").hidden = true; $("scanMsg").hidden = true;
   showNextStep(null, "Adding "+groups.size+" stops…");
@@ -4912,7 +4991,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.39";
+const APP_VERSION = "8.40";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
@@ -5343,7 +5422,7 @@ setTimeout(() => {
 if (route.opt && !route.opt.stale && route.opt.method !== "estimate" && !route.opt.geometry) drawRoad();
 /* keep a copy of the app on the phone so it opens with no signal (website only; not in local tests) */
 try{ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {}); }catch(e){}
-window.RP = {statsState: () => ({phReady, phLoading, q: phQueue.length, allowed: statsAllowed()}), country: () => CC().id, openRoute, activeStates, loadStreets, knownCentre: () => knownCentre(), setView, planTimes, leaveInfo, splitLabel, gnafFile, handleBack, syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
+window.RP = {statsState: () => ({phReady, phLoading, q: phQueue.length, allowed: statsAllowed()}), country: () => CC().id, placeLocate, openRoute, activeStates, loadStreets, knownCentre: () => knownCentre(), setView, planTimes, leaveInfo, splitLabel, gnafFile, handleBack, syncLocalAddresses, routePostcodes, solve, tourCost, setStatus, showReport, showPin, reportText, parseList, grader, loadSample, render, gnafSuggest, gnafLocate, streetSearch, parseQuery, searchAddresses, activeStates, onResume, permState, navMe: () => { const l = nav.me && nav.me.getLatLng(); return l ? [l.lat, l.lng] : null; }, get route(){ return route; }};
 startUp();
 })();
 </script>

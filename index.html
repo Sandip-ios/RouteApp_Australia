@@ -1919,6 +1919,12 @@ function readList(lines, prevMaxSeq, opts){
   const vis = [];
   for (const l of L){ const r = vis[vis.length - 1]; if (r && Math.abs(l.cy - r.cy) < 0.55*H) r.items.push(l); else vis.push({cy: l.cy, items: [l]}); }
   const bb = (b, it) => it.reduce((o, i) => o ? {x: Math.min(o.x, i.x), y: Math.min(o.y, i.y), x2: Math.max(o.x2, i.x + i.w), y2: Math.max(o.y2, i.y + i.h)} : {x: i.x, y: i.y, x2: i.x + i.w, y2: i.y + i.h}, b);
+  // A list of business names with no addresses (a customer column: "1 STOP CONVENIENCE KING WILLIAM"):
+  // one row per printed line, looked up by name later. Never merge several names into one row.
+  const lineText = v => v.items.slice().sort((a, b) => a.x - b.x).map(i => i.text.trim()).join(" ").replace(/[|\[\]{}_~]+/g, " ").replace(/\s+/g, " ").trim();
+  const streetish = new RegExp("\\d+[A-Za-z]?\\s+(?:[A-Za-z'’]+\\s+){0,4}?(?:"+STREET_TYPES+")\\b", "i");
+  const texts = vis.map(lineText);
+  if (!texts.some(t => END.test(t)) && texts.filter(t => streetish.test(t)).length <= 0.3 * texts.length) return readNames(vis, texts, prevMaxSeq, L.length);
   const found = []; let cur = null;
   for (const v of vis){
     v.items.sort((a, b) => a.x - b.x);
@@ -1990,7 +1996,26 @@ function readList(lines, prevMaxSeq, opts){
   return {rows, total: null, firstSeq: seqs.length ? Math.min(...seqs) : prevMaxSeq + 1, lastSeq: seqs.length ? Math.max(...seqs) : prevMaxSeq, lineCount: L.length};
 }
 
-const api = {readPage, readList, cleanAddress, classify};
+const NAME_HEAD = /^(?:customer(?:\s*name)?|cust(?:omer)?\s*(?:#|no\.?|number)?|delivery|deliveries|delivered|pc|ctn|pc\s*ctn|delivered\s*pc\s*ctn|print\s*name|signature|comments?|name|qty|quantity|page\s*\d+.*|overview.*|forwarding\s*agent.*|group\s*number.*|date.*|pod\s*sheet.*|metropolitan\s*summary.*|reprint\s*manifest.*)$/i;
+function readNames(vis, texts, prevMaxSeq, lineCount){
+  const rows = [];
+  vis.forEach((v, i) => {
+    let t = texts[i];
+    t = t.replace(/^(?:\s*[\dOlI]{4,}\b)+\s*/, "");                     // delivery and customer numbers in front ("54876927 615845")
+    const cols = t.match(/\s+(\d{1,3})\s+(\d{1,4})\s*$/);                  // delivered PC / CTN counts at the end ("0 7")
+    if (cols) t = t.slice(0, cols.index);
+    t = t.replace(/^[\s•*·>.,;:-]+|[\s.,;:-]+$/g, "").trim();
+    const heads = (t.match(/\b(customer|cust|delivery|delivered|pc|ctn|print|signature|comments|qty)\b/gi) || []).length;
+    if (NAME_HEAD.test(t) || heads >= 2 || t.replace(/[^A-Za-z]/g, "").length < 4) return;   // column headings
+    const name = /[a-z]/.test(t) ? t : titleCase(t.toUpperCase()).replace(/\b([A-Z])([A-Z]+)\b/g, (x, a, b) => a + b.toLowerCase());
+    rows.push({seq: prevMaxSeq + 1 + rows.length, address: name, search: name, size: cols ? +cols[2] + " ctn" : "", box: v.items.reduce((o, it) => o ? {x: Math.min(o.x, it.x), y: Math.min(o.y, it.y), x2: Math.max(o.x2, it.x + it.w), y2: Math.max(o.y2, it.y + it.h)} : {x: it.x, y: it.y, x2: it.x + it.w, y2: it.y + it.h}, null),
+      status: "check", problem: "Business name — finding it on the map…", name: "", isName: true});
+  });
+  const seqs = rows.map(r => r.seq);
+  return {rows, total: null, firstSeq: seqs.length ? Math.min(...seqs) : prevMaxSeq + 1, lastSeq: seqs.length ? Math.max(...seqs) : prevMaxSeq, lineCount, names: true};
+}
+
+const api = {readPage, readList, readNames, cleanAddress, classify};
 if (typeof module !== "undefined" && module.exports) module.exports = api; else root.DroplineScan = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -2716,7 +2741,29 @@ function lev(a, b){ if (a === b) return 0; const m = a.length, n = b.length; if 
   for (let i = 1; i <= m; i++){ const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1]===b[j-1]?0:1)); prev = cur; }
   return prev[n]; }
 /* Official list first; the open-map search only for addresses outside it. */
+/* A business or place name, not an address: no "number + street" and no state/postcode */
+function looksLikeName(q){ q = String(q || "");
+  if (/\b(NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b[\s,.]*\d{4}/i.test(q) || UK_PC.test(q)) return false;
+  return !/\b\d+[A-Za-z]?(?:\s*[-\/]\s*\d+[A-Za-z]?)?\s+(?:[A-Za-z'’]+\s+){0,4}?(?:st|street|rd|road|ave|avenue|av|tce|terrace|dr|drive|ct|court|cres|crescent|pde|parade|hwy|highway|ln|lane|pl|place|way|blvd|bvd|boulevard|cct|circuit|cl|close|gr|grove|sq|square|esp|esplanade|mews|row|gardens|gdns|walk)\b/i.test(q); }
+/* Find a named business near the driver on the open map ("Adelaide Convenience - No 1"). */
+async function placeLocate(q, bias){
+  const base = String(q).replace(/\s+/g, " ").trim();
+  const variants = [base, base.replace(/\s*[-–]?\s*\bno\.?\s*\d+\s*$/i, ""), base.replace(/\b(store|shop|pty|ltd|the)\b/gi, " ").replace(/\s*[-–]?\s*\bno\.?\s*\d+\s*$/i, "")]
+    .map(x => x.replace(/\s+/g, " ").replace(/[\s-]+$/, "").trim()).filter((x, i, a) => x.length >= 3 && a.indexOf(x) === i);
+  const words = (base.toLowerCase().match(/[a-z]{3,}/g) || []).filter(w => !/^(the|and|store|shop|pty|ltd)$/.test(w));
+  for (const v of variants){
+    let list; try{ list = await photon(v, 8, bias); }catch(e){ if (e.status === 429) photonSlow = Date.now(); return undefined; }
+    const scored = list.filter(r => r.place && (!bias || hav(bias, r) < 80000))
+      .map(r => ({r, hit: words.filter(w => r.label.toLowerCase().includes(w)).length}))
+      .filter(x => x.hit >= Math.min(2, words.length))
+      .sort((a, b) => b.hit - a.hit || (bias ? hav(bias, a.r) - hav(bias, b.r) : 0));
+    if (scored.length){ const r = scored[0].r, addr = r.label.includes(", ") ? r.label.slice(r.label.indexOf(", ") + 2) : "";
+      return {lat: r.lat, lon: r.lon, geo: "exact", official: addr || r.label, placeLabel: r.label, source: "place"}; }
+  }
+  return null;
+}
 async function smartLocate(q, bias){
+  if (looksLikeName(q)){ const p = await placeLocate(q, bias); if (p) return p; if (p === undefined) return undefined; }
   const g = CC().id === "GB" ? await ukLocate(q) : await gnafLocate(q);
   if (g && g.found && g.pcPin){   // UK postcode point: try the open map for the exact house first
     const r = await photonLocate(q, bias);
@@ -4012,6 +4059,11 @@ function flagFromLookup(q, r){
       if (row.status !== "check"){ row.status = "check"; row.problem = "Level and house number may be joined — check the number"; changed = true; }
       continue;
     }
+    if (row.isName){   // a business name: the address found on the map, or ask for it
+      if (r && r.source === "place"){ row.name = row.name || row.address; row.address = r.official; row.status = "ok"; row.problem = ""; }
+      else { row.status = "check"; row.problem = "Not found on the map by name — type its street address"; }
+      changed = true; continue;
+    }
     const exactOfficial = r && r.source === "gnaf" && r.geo === "exact" && !r.corrected;
     if (exactOfficial){
       row.official = r.official;
@@ -4150,14 +4202,16 @@ async function readScanned(canvas){
   catch(e){ scanMsg("That photo could not be read. Try again, or choose a different photo.", true); return; }
   // photo taken sideways or upside down: few addresses read → try the other ways round and keep the best
   const gbScan = CC().id === "GB";
-  const score = r => (r.lines || []).filter(l => gbScan ? /\b[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}\b/.test(l.text || "") : /\b(?:NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b[\s,.]*\d{4}/i.test(l.text || "")).length;
+  const score = r => (r.lines || []).filter(l => gbScan ? /\b[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}\b/.test(l.text || "") : /\b(?:NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b[\s,.]*\d{4}/i.test(l.text || "")).length
+                   + (r.lines || []).filter(l => /\b[A-Za-z]{4,}\s+[A-Za-z]{3,}\b/.test(l.text || "")).length / 2;   // lines of real words (a list of business names) also show the page is the right way up
   if (score(res) < 3){ let c = canvas;
     for (let turn = 1; turn <= 3; turn++){ c = rotateCanvas(c); let r2; try{ r2 = await eng.recognize({image: c.toDataURL("image/jpeg", 0.92)}); }catch(e){ continue; }
       if (score(r2) > score(res) + 1){ res = r2; canvas = c; } } }
   const lines = res.lines || [], kinds = lines.map(l => DroplineScan.classify(l.text || ""));
   const isSheet = !gbScan && kinds.filter(k => k === "code" || k === "track").length >= 3;
   const routeMax = route.stops.reduce((m, x) => Math.max(m, ...parcels(x).map(p => +p.seq || 0)), 0);
-  const page = isSheet ? DroplineScan.readPage(lines, scanLastSeq()) : DroplineScan.readList(lines, Math.max(scanLastSeq(), routeMax), {cc: CC().id});
+  let page = isSheet ? DroplineScan.readPage(lines, scanLastSeq()) : DroplineScan.readList(lines, Math.max(scanLastSeq(), routeMax), {cc: CC().id});
+  if (isSheet && !page.rows.length) page = DroplineScan.readList(lines, Math.max(scanLastSeq(), routeMax), {cc: CC().id});   // numbers but no run-sheet rows: read it as a list
   track("scan_page", {kind: isSheet ? "run_sheet" : "list", rows: page.rows.length, to_check: page.rows.filter(r => r.status !== "ok").length, seconds: Math.round((performance.now() - t0) / 100) / 10});
   if (page.total) scan.total = page.total;
   if (!page.rows.length){ scanMsg("No addresses found. Put the box around the page or just the addresses, with good light, and try again." + (isSheet ? "" : gbScan ? " Each address should end with the postcode, e.g. W5 5DB." : " Each address should end with the state and postcode, e.g. VIC 3023."), true); return; }
@@ -4223,6 +4277,7 @@ function onRowEdit(e){ const i = e.target.dataset.i; if (i == null || !scanPage)
   if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " ");
   fitBox(e.target);
   const r = scanPage.rows[+i]; r.address = e.target.value;
+  if (r.isName){ if (!r.name) r.name = r.search; delete r.isName; }   // the driver typed the address for a business name: keep the name for the stop
   if (CC().id === "GB"){ r.search = r.address; return; }
   const c = DroplineScan.cleanAddress(r.address.replace(/,/g," "));
   r.search = c.search || r.address; }
@@ -4857,7 +4912,7 @@ window.addEventListener("focus", onResume);
 try{ navigator.permissions && navigator.permissions.query({name: "geolocation"}).then(r => { r.onchange = () => onResume(); }).catch(() => {}); }catch(e){}
 
 /* ---------- settings: notifications, contact, bug report, privacy, version ---------- */
-const APP_VERSION = "8.38";
+const APP_VERSION = "8.39";
 const DEV_EMAIL = "sandip@enterpriseanalytic.com", DEV_CC = "sandypatel8889@gmail.com";
 const mailto = (subject, body) => "mailto:" + DEV_EMAIL + "?cc=" + encodeURIComponent(DEV_CC) + "&subject=" + encodeURIComponent(subject) + (body ? "&body=" + encodeURIComponent(body) : "");
 function platformName(st){ return st && st.platform === "android" ? "Android app" : st && st.platform === "ios" ? "iPhone app" : isNativeApp() ? "phone app (older build)" : "web browser"; }
